@@ -80,7 +80,7 @@ def normin(fh,config):
 def numpy_fft_images(fh,config):
     input = cPickle.loads(fh.read())
     output = np.fft.fftn(input)
-    return cPickle.dumps(output)
+    return {'res':cPickle.dumps(output),'summary':{'img_shape':output.shape}}
     
     
 @dot('v1','normin_images','fft_images')
@@ -157,37 +157,35 @@ def get_filters(config):
     
     #return filt as string
     
+def cache_func(config,param_names):
+    filter_config = OrderedDict([(n,config[n]) for n in param_names[0]])
+    image_config = OrderedDict([(n,config[n]) for n in param_names[1]])
     
-@cross('v1',['filters','fft_images'],'filtered_images',caches=['fft_filters'])
-def numpy_convolve_images(fhs,config,param_names,cache_data)
+    new_config = filter_config.copy()
+    new_config['img_shape'] = image_config['img_shape']
+    
+    return new_config
+    
+    
+@cross('v1',['filters','fft_images'],'filtered_images',caches=[('fft_filters',cache_func)])
+def numpy_convolve_images(fhs,config,cache_fhs)
      
     filter_fh = fhs[0]
     image_fh = fhs[1]
     
-    filter_config = OrderedDict([(n,config[n]) for n in param_names[0]])
-
     conv_mode = config['conv_mode']
     
     image_fft = cPickle.loads(image_fh.read())
     
-    img_shape = image.shape
-    
-    filter_fft_fs = cache_data['fs'][0]
-    filter_fft_coll = cache_data['colls'][0]
-    
-    cache_rec = {'img_shape':image.shape}
-    cache_rec.update(filter_config)
-    
-    cache_value = filter_fft_coll.find_one(cache_rec):
+    cache_fh = cache_fhs[0]
     if cache_value:
-        filter_fft = cPickle.loads(filter_fft_fs.get(cache_value['_id']).read())
+        filter_fft = cPickle.loads(cache_fh.read())
+        return numpy.fft.ifftn(image_fft * filter_fft),[None]
     else:
         filter = cPickle.loads(filter_fh.read())
-        filter_fft = np.fft.fftn(filter,img_shape)
-        filter_fft_fs.put(filter_fft,**cache_rec)
-                
-    return numpy.fft.ifftn(image_fft * filter_fft)
-    
+        filter_fft = np.fft.fftn(filter,img_shape)                
+        return numpy.fft.ifftn(image_fft * filter_fft),[filter_fft]
+
     
 @cross('v1',['fft_filters','fft_images'],'filtered_images',caches=['fft_filters'])
 def pyfft_convolve_images(fhs,config,param_names,cache_data) 

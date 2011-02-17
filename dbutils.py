@@ -70,6 +70,81 @@ def ensure_indexes(db,roots):
     for coll in colls:
         coll.ensure_index('config',unique=True)
  
+def do_rec(in_fs,func):
+    if in_fs:
+    	in_fhs = [fs.get(id) for (id,fs) in zip(ids,in_fs)]
+    else:
+        in_fhs = None
+        
+	if func.caches:
+		cache_data = []
+		cache_configs = []
+		cache_fhs = []
+		for c_coll, c_func, c_fs in zip(func.cache_colls,func.cache_funcs,func.cache_fs):
+			c_config = c_func(config,param_names)
+			cache_configs.append(c_config)
+			c_data = c_coll.find_one(reach_in('config',c_config))
+			cache_data.append(c_data)
+			if c_data:
+			    c_fs = c_fs.get(c_data['_id'])
+			    cache_fhs.append(c_fs)
+	
+	    if in_fhs:
+    		results, new_cache_data = func(in_fhs,config,cache_fhs)	
+    	else:
+    	    results, new_cahce_data = func(config,cache_fhs)	
+		
+		for (c_fs,new_c_data,c_config) in zip(func.cache_fs,new_cache_data,cache_configs):
+			if new_c_data:
+				c_fs.put(new_c_data,{'config':c_config})
+				
+	else:  
+	    if in_fhs:
+    		results = func(in_fhs,config)
+    	else:
+    	    results = func(config)
+	
+	return results
+ 
+def prepare_func_caches(func):
+    if func.caches:
+        if is_str_like(func.caches):
+            func.caches = [func.caches]
+        assert isinstance(func.caches,list)
+        for (i,c) in enumerate(func.caches):
+            if is_str_like(c):
+                func.caches[i] = (c,lambda x : x)
+            else:
+                assert isinstance(c,tuple) and len(c) == 2
+            
+        cache_roots, cache_funcs =  zip(*func.caches)
+        func.cache_roots = cache_roots
+        func.cache_func = cache_funcs
+        func.cache_colls = [db[root + '.files'] for root in func.cache_roots]
+        func.cache_fs = [gridfs.GridFS(db,collection = coll) for coll in func.cache_roots]
+
+
+def interpret_res(res,config):
+    outdata = {'config' : config.copy()}
+    
+	if not is_instance(res,str):
+		assert is_instance(res,dict) and 'summary' in res.keys() and 'res' in res.keys()
+		summary = res['summary']
+		res = res['res']
+		outdata['config'].update(summary)
+	
+	return outdata,res
+
+     
+def already_exists(config,fs_list):
+
+    exists = [fs.exists(reach_in('config',config)) for fs in fs_list]
+    
+    assert (not any(exists)) or all(exists)
+    
+    return all(exists)
+ 
+ 
 @creates(op_creates)
 def inject_op(func, query=None):
 
@@ -80,16 +155,17 @@ def inject_op(func, query=None):
     db = conn[dbname]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]
     ensure_indexes(db,outroots)
+    prepare_func_caches(func)
     
     configs = func.generate_configs(query)
               
     for config in configs:
         assert isinstance(config,OrderedDict)
         if not already_exists(config,out_fs):
-			results = func(config)
+			results = do_rec(None,func)
 	
 			for (fs,res) in zip(out_fs,results):
-				outdata = {'config' : config}
+				outdata,res = interpret_res(res,config)
 				fs.put(res,**outdata)
 				
                          
@@ -110,20 +186,17 @@ def cross_op(func,query = None,params=None):
     in_fs = [gridfs.GridFS(db,collection = coll) for coll in inroots]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]    
     ensure_indexes(db,outroots)
+    prepare_func_caches(func)
     if params is None:
         params = {}
-
-    if func.caches:
-        cache_colls = [db[root + '.files'] for root in func.caches]
-        cache_fs = [gridfs.GridFS(db,collection = coll) for coll in func.caches]   
-        cache_data = {'colls':cache_colls,'fs':cache_fs}
-
+  
     cursors = [db[coll].find(reach_in('config',q)) for (q,coll) in zip(query,innames)]
     
     I = itertools.product(cursors)
 
     for T in I:
         ids = [t.pop('_id') for t in T]
+        
         config = T[0]['config']
         param_names = [T[0]['config'].keys()]
         for t in T[1:]:
@@ -133,14 +206,11 @@ def cross_op(func,query = None,params=None):
         param_names.append(params.keys())
                     
         if not already_exists(config,out_fs):
-			in_fhs = [fs.get(id) for (id,fs) in zip(ids,in_fs)]
-			if func.caches:
-	           	results = func(in_fhs,config,param_names,cache_data)	
-			else:  
-    			results = func(in_fhs,config,param_names)
+
+            results = do_rec(in_fs,func)
 			
 			for (fs,res) in zip(out_fs,results):
-				outdata = {'config' : config}
+			    outdata,res = interpret_res(res,config)
 				fs.put(res,**outdata)
         
     write_outcerts(func,query,params=params)
@@ -160,6 +230,7 @@ def dot_op(func, query = None, params=None):
     in_fs = [gridfs.GridFS(db,collection = coll) for coll in inroots]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]
     ensure_indexes(db,outroots)
+    prepare_func_caches(func)
     if params is None:
         params = {}
 
@@ -176,23 +247,16 @@ def dot_op(func, query = None, params=None):
         config.update(params)
     
         if not already_exists(config,out_fs):
-			in_fhs = [fs.get(id) for (id,fs) in zip(ids,in_fs)]
-			results = func(in_fhs,config)
+			results = do_rec(in_fs,func)
 			
 			for (fs,res) in zip(out_fs,results):
-				outdata = {'_id': ids[0], 'config' : config}
+			    outdata,res = interpret_res(res,config)
+				outdata['_id'] = ids[0]
 				fs.put(res,**outdata)
         
     write_outcerts(func,query,params=params)
      
-     
-def already_exists(config,fs_list):
 
-    exists = [fs.exists(reach_in('config',config)) for fs in fs_list]
-    
-    assert (not any(exists)) or all(exists)
-    
-    return all(exists)
 
             
 @depends_on(lambda x : x[0].meta_action.__dependor__(x), lambda x : x[0].meta_action.__creator__(x))
