@@ -1,52 +1,138 @@
+import sys
+import os
+import time
+from os import path
+import warnings
+import pprint
+import hashlib
+import cPickle
+import warnings
+import math
 
+import numpy as np
+import scipy as sp
+from scipy import io
+
+from starflow.protocols import protocolize, actualize
+
+import v1like_funcs as v1f 
+import v1like_math as v1m 
+import colorconv as colorconv
+
+from npclockit import clockit_onprofile
+
+from dbutils import dot,cross,inject
+
+try:
+    import v1_pyfft
+except:
+    GPU_SUPPORT = False
+else:
+    GPU_SUPPORT = True
+    
+	@cross('v1',['normin_images','filters'],'filtered_images',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
+	def pyfft_convolve_images(fhs,config)
+		image_fh = fhs[0] 
+		filter_fh = fhs[1]
+		image_source = lambda : cPickle.loads(image_fh.read())
+		filter_source = lambda : cPickle.loads(filter_fh.read())
+		image_config = config[0] 
+		filter_config = config[1] 
+		  
+		res = v1like_filter_pyfft(img_source,filter_source,image_config,filter_config)
+	  
+		return cPickle.dumps(res)
+
+
+@protocolize()
+def v1_protocol(config_path,use_cpu = False):
+
+    config = get_config(config_path)
+    
+    if use_cpu or not GPU_SUPPORT:    
+        filter_convolve_func = pyfft_convolve_images
+    else:
+        filter_convolve_func = numpy_convolve_images
+    
+    image_params = config['image_query']
+    preproc_params = {'preproc':config['preproc'],
+	                  'normin':config['normin'],
+	                  'filter':config['filter'],
+	                  'normout':config['normout']}                                                             
+    postproc_params = image_params.copy(); postproc_params.update(preproc_params)
+    filter_params = config['filter_query']
+    postconv_params = postproc_params.copy(); postconv_params.update(filter_params)
+    featsel = {'featsel':config['featsel']}
+    
+	args = [('render_image', render_image , image_params),
+	        ('im_to_array',image_to_array , image_params),
+	        ('preprocess',preprocess , image_params, preproc_params),
+	        ('normin',normin, postproc_params),
+		    ('get_filters',get_filters, filter_params),
+	        ('convolve_images', convolve_func, [postproc_params, filter_params]),
+	        ('activate',activate, postconv_params),
+	        ('normout',normout, postconv_params),
+	        ('pool',pool, postconv_params),
+	        ('add_features',add_features, next_config, featsel)]
+
+    D = []
+    for a in args:
+        if len(a) == 3:
+            D.append((a[0],db_update,(a[1],a[2])))
+        elif len(a) == 4:
+            D.append((a[0],db_update,[(a[1],a[2]),{'params':a[3]}]))
+            
+    actualize(D)
+
+
+
+
+#=-=-=-=-=-=-=-=-=-=-=-=-=
 def image_config(query):
 
     #get translation_x, translation_y, rotation_xy, rotation_xz, rotation_yz, lighting, color, whatever params
     
-    translation_x_step = query['translation_x_step']
-    translation_x_upper = query['translation_x_upper']
-    translation_x_lower = query['translation_x_lower']
-    translation_x_range = arange(translation_x_lower,translation_x_upper,translation_x_step)
-    #...
-    rotatation_xy_step =  query['rotation_x_lower']
-    #...
-
-    #make ranges and then params range-product
-    ranges = [translation_x_range,
-              translation_y_range,
-              #...
-             ]
-    param_names = ['tx',
-                   'ty'
-                   #...
-                   ]
+    ranger = lambda mn,mx,d : np.arange(query[mn],query[mx],query[d])
+    
+    tx = ranger('txmin','txmax','txdelta')
+    ty = ranger('tymin','tymax','tydelta')
+    tz = ranger('tzmin','tzmax','tzdelta')
+    rxy = ranger('rxymin','rxymax','rxydelta')
+    rxz = ranger('rxzmin','rxzmax','rxzdelta')
+    ryz = ranger('ryzmin','ryzmax','ryzdelta')
+    model_ids = query['model_ids']
+    
+    param_names = ['tx','ty','tz','rxy','rxz','ryz','model_id']
+    ranges = [tz,ty,tz,rxy,xz,ryz,model_ids]
     params = [dict(zip(param_names,p)) for p in itertools.product(*ranges)]
+
     
-    #get image query
-    model_universe = query['image_universe']
-    geoms = list(geom_db.find(model_universe))    #query something, e.g. sqlite, or whatever to get names
+    return parms
     
-    
-    product = [{'geom':g['name'],'params':p} for p in params for g in geoms]]
-    
-    #get random
-    backgrounds = random_background_numbers(product)
-    
-    for (p,b) in zip(product,backgrounds):
-        p['bg_num'] = b
-    
-    
-    return product
-    
+IMAGE_URL = 'localhost:8000/render?'
+
+
 @inject('v1','rendered_images',image_config)
 def render_image(config):
-     geom_name = config['geom']
-     params = config['params']
-     bg_num = config['bg_num']
      
-     #render image with specified geometry, invariance params, and background
+     params_list = [[config]]
      
-     #return rendered image as string
+     tmp = tempfile.mkdtemp()
+     
+     os.chdir(tmp)
+     
+     os.system('wget ' + IMAGE_URL + json.dumps(params_list))
+     
+     zipfile = [x for x in os.listdir('.') if x.endswith('.zip')][0]
+     
+     zipname = zip[:-4]
+     
+     os.system('tar -xzvf ' + zipfile)
+     
+     imagefile = [os.path.join(zipname,x) for x in os.listdir(zipname) if x.endswith('.tif')][0]
+     
+     return open(imagefile).read()
+     
    
    
 @dot('v1','rendered_images','image_arrays')
@@ -75,41 +161,35 @@ def normin(fh,config):
     
     return norm(input,conv_mode,config['normin'])
 
-
-@dot('v1','normin_images','fft_images')
-def numpy_fft_images(fh,config):
-    input = cPickle.loads(fh.read())
-    output = np.fft.fftn(input)
-    return {'res':cPickle.dumps(output),'summary':{'img_shape':output.shape}}
     
-    
-@dot('v1','normin_images','fft_images')
-def pyfft_images(fh,config):
-    return pyfft(fh,config)
-    
+def random_id():
+    hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()
+   
 
 def filter_config_generator(query):
     model_name = query['model_name']
 
-    if model_name == 'totally_random':
-        #generate a bunch of random identifiers as a function of size and number
-        
+    if model_name == 'totally_random':        
         num = query['num_filters']
         fh, fw = query['kshape']
-        params = [{'id':random_id(num,fh*fw),'kshape':[fh,fw]} for i in xrange(num)]
+        params = [{'id':random_id(),'kshape':[fh,fw]} for i in xrange(num)]
         
         
     elif model_name == 'random_gabor':    
-        norients = query['norients']
-        orients = [ o*sp.pi/norients for o in xrange(norients) ]
-        divfreqs = query['divfreqs']
-        freqs = [1./d for d in divfreqs]
-        phases = query['phases']
+        
+        min_wl = query['min_wavelength']
+        max_wl = query['max_wavelength']
+        
         
         num = query['num_filters']
-        values = randomly_choose(num,orients,divfreqs,phases)
+        values = []
+        for i in num:
+            orient = 2*np.pi*np.random.random()
+            freq = 1./np.random.randint(min_wl,high = max_wl)
+            phase = 2*np.pi*np.random.random()
+            values.append((orient,freq,phase))
        
-        param_names = ['orientation','frequency','phases'] 
+        param_names = ['orientation','frequency','phase'] 
         params = [dict(zip(param_names,v)) for v in values]       
         
         for p in params:
@@ -133,7 +213,8 @@ def filter_config_generator(query):
     configs = [{'model_name':model_name,'params':p} for p in params]
     
     return configs
-    
+ 
+ 
     
 @inject('v1','filters', filter_config_generator)
 def get_filters(config):
@@ -142,7 +223,8 @@ def get_filters(config):
     fh, fw = config['kshape']
     
     if model_name == 'totally_random':
-        filt = generate_random_filter((fh,fw))
+        filt = np.random.random((fh,fw))
+        
     elif model_name = 'random_gabor' or 'gridded_gabor':
         freq = config['frequency']
         orient = config['orientation']
@@ -155,41 +237,25 @@ def get_filters(config):
         
         
     
-    #return filt as string
+    return cPickle.dumps(filt)
     
-def cache_func(config,param_names):
-    filter_config = OrderedDict([(n,config[n]) for n in param_names[0]])
-    image_config = OrderedDict([(n,config[n]) for n in param_names[1]])
-    
-    new_config = filter_config.copy()
-    new_config['img_shape'] = image_config['img_shape']
-    
-    return new_config
-    
-    
-@cross('v1',['filters','fft_images'],'filtered_images',caches=[('fft_filters',cache_func)])
-def numpy_convolve_images(fhs,config,cache_fhs)
-     
-    filter_fh = fhs[0]
-    image_fh = fhs[1]
-    
-    conv_mode = config['conv_mode']
-    
-    image_fft = cPickle.loads(image_fh.read())
-    
-    cache_fh = cache_fhs[0]
-    if cache_value:
-        filter_fft = cPickle.loads(cache_fh.read())
-        return numpy.fft.ifftn(image_fft * filter_fft),[None]
-    else:
-        filter = cPickle.loads(filter_fh.read())
-        filter_fft = np.fft.fftn(filter,img_shape)                
-        return numpy.fft.ifftn(image_fft * filter_fft),[filter_fft]
 
+@cross('v1',['normin_images','filters'],'filtered_images')
+def numpy_convolve_images(fhs,config)
+
+    image_fh = fhs[0] 
+    filter_fh = fhs[1]
+    image_source = lambda x : cPickle.loads(image_fh.read())
+    filter_source = lambda x : cPickle.loads(filter_fh.read())
+    image_config = config[0] 
+    filter_config = config[1] 
+      
+    res = v1like_filter_numpy(img_source,filter_source,image_config,filter_config)
+  
+    return cPickle.dumps(res)
     
-@cross('v1',['fft_filters','fft_images'],'filtered_images',caches=['fft_filters'])
-def pyfft_convolve_images(fhs,config,param_names,cache_data) 
-    pass
+
+
     
     
 @dot('v1','filtered_images','activated_images')
@@ -232,6 +298,7 @@ feature_inputs = ['normin_images',
 @dot('v1',feature_inputs,'final_processed_features')
 def add_features(fhs,config):
  
+    featsel = config['featsel']
     
     if featsel['output']:
         imga1 = cPickle.loads(fhs[0].read())
@@ -264,6 +331,11 @@ def add_features(fhs,config):
     
     return cPickle.dumps(out)
 
+
+#=-=-=-=-=-=-=-=-=-=
+
+
+
 def get_config(config_fname):
     config_path = path.abspath(config_fname)
     if verbose: print "Config file:", config_path
@@ -272,46 +344,6 @@ def get_config(config_fname):
     
     return config
 
-
-@protocolize()
-def v1_protocol(config_path):
-
-    config = get_config(config_path)
-    
-    #here's where system params have to be dealt with
-    fft_image_func = numpy_fft_images
-    filter_convolve_func = numpy_convolve_filters
-    
-    image_params = config['image_query']
-    preproc_params = {'preproc':config['preproc'],
-	                  'normin':config['normin'],
-	                  'filter':config['filter'],
-	                  'normout':config['normout']}                                                             
-    postproc_params = image_params.copy(); postproc_params.update(preproc_params)
-    filter_params = config['filter_query']
-    postconv_params = postproc_params.copy(); postconv_params.update(filter_params)
-    featsel = config['featsel']
-    
-	args = [('render_image', render_image , image_params),
-	        ('im_to_array',image_to_array , image_params),
-	        ('preprocess',preprocess , image_params, preproc_params),
-	        ('normin',normin, postproc_params),
-	        ('fft_images',fft_image_func,postproc_params),
-		    ('get_filters',get_filters, filter_params),
-	        ('convolve_images', filter_convolve_func, [postproc_params, filter_params]),
-	        ('activate',activate, postconv_params),
-	        ('normout',normout, postconv_params),
-	        ('pool',pool, postconv_params),
-	        ('add_features',add_features, next_config, featsel)]
-
-    D = []
-    for a in args:
-        if len(a) == 3:
-            D.append((a[0],db_update,(a[1],a[2])))
-        elif len(a) == 4:
-            D.append((a[0],db_update,[(a[1],a[2]),{'params':a[3]}]))
-            
-    actualize(D)
     
 #=-=-=-=-=-=-=-=-=-=-
 
@@ -325,6 +357,7 @@ def norm(input,conv_mode,params):
        output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
 
     return cPickle.dumps(output)
+
 
 def image2array(rep,fobj):
     resize_type = rep['preproc'].get('resize_type', 'input')
