@@ -11,9 +11,8 @@ def setup_pyfft():
 	cuda.init()
 	CONTEXT = make_default_context()
 	
-def cleanup_pyfft()
+def cleanup_pyfft():
     CONTEXT.pop()
-
 
 
 def pad(data,shape):

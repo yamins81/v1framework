@@ -1,5 +1,5 @@
 import cPickle
-from dbutils import DataCollection
+from dbutils import connect_to_db
 from starflow.utils import uniqify, ListUnion
 import scipy as sp
 
@@ -7,12 +7,15 @@ import scipy as sp
 generate splits from the DB. 
 """
 
-def generate_split(config_path,tag,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
+def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
 
     if universe is None:
         universe = {}
 
-    data = DataCollection(config_path = config_path, steptag = tag)
+    connection = connect_to_db()
+    db = connection[dbname]
+    data = db[collectionname]
+
     task_query.update(universe)
     
     task_data = list(data.find(task_query))
@@ -24,7 +27,7 @@ def generate_split(config_path,tag,task_query,ntrain,ntest,ntrain_pos = None, un
     nontask_data = list(data.find(nontask_query))
     N_nontask = len(nontask_data)
          
-    assert ntrain + ntest <= N_task + N_nontask, "Too many training and/or testing examples."
+    assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples."
     
     if ntrain_pos is not None:
         ntrain_neg = ntrain - ntrain_pos
@@ -72,7 +75,7 @@ def validate(idseq):
     return ids
     
     
-def generate_multi_split(config_path,tag,queries,ntrain,ntest,ntrain_pos = None, universe = None):
+def generate_multi_split(dbname,collectionname,queries,ntrain,ntest,ntrain_pos = None, universe = None):
 
     if universe is None:
         universe = {}
@@ -80,7 +83,9 @@ def generate_multi_split(config_path,tag,queries,ntrain,ntest,ntrain_pos = None,
     for q in queries:
         q.update(universe)
         
-    data = DataCollection(config_path = config_path, steptag = tag)
+    connection = connect_to_db()
+    db = connection[dbname]
+    data = db[collectionname]
     
     task_data_list = [list(data.find(query)) for query in queries]
     task_id_list = [[(i,x['_id']) for x in X] for (i,X) in enumerate(task_data_list)]

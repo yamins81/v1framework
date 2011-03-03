@@ -8,6 +8,9 @@ import hashlib
 import cPickle
 import warnings
 import math
+import itertools
+import hashlib
+import os
 
 import numpy as np
 import scipy as sp
@@ -18,11 +21,11 @@ from starflow.protocols import protocolize, actualize
 import v1like_funcs as v1f 
 import v1like_math as v1m 
 import colorconv as colorconv
-
 from npclockit import clockit_onprofile
 
-from dbutils import dot,cross,inject
+from dbutils import dot,cross,inject, DBAdd
 
+#determine GPU support
 try:
     import v1_pyfft
 except:
@@ -30,92 +33,93 @@ except:
 else:
     GPU_SUPPORT = True
     
-	@cross('v1',['normin_images','filters'],'filtered_images',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
-	def pyfft_convolve_images(fhs,config)
-		image_fh = fhs[0] 
-		filter_fh = fhs[1]
-		image_source = lambda : cPickle.loads(image_fh.read())
-		filter_source = lambda : cPickle.loads(filter_fh.read())
-		image_config = config[0] 
-		filter_config = config[1] 
-		  
-		res = v1like_filter_pyfft(img_source,filter_source,image_config,filter_config)
-	  
-		return cPickle.dumps(res)
+    @cross('v1',['normin_images','filters'],'filtered_images',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
+    def pyfft_convolve_images(fhs,config):
+        image_fh = fhs[0] 
+        filter_fh = fhs[1]
+        image_source = lambda : cPickle.loads(image_fh.read())
+        filter_source = lambda : cPickle.loads(filter_fh.read())
+        image_config = config[0] 
+        filter_config = config[1] 
+          
+        res = v1like_filter_pyfft(img_source,filter_source,image_config,filter_config)
+      
+        return cPickle.dumps(res)
 
 
-@protocolize()
-def v1_protocol(config_path,use_cpu = False):
+    
+#the main protocol
+def feature_extraction_protocol(config_path,use_cpu = False):
+    D = DBAdd(v1_initialize,args = (config_path,use_cpu))
+    actualize(D)
+
+def v1_initialize(config_path,use_cpu):
+    if use_cpu or not GPU_SUPPORT:    
+        convolve_func = numpy_convolve_images
+    else:
+        convolve_func = pyfft_convolve_images
 
     config = get_config(config_path)
     
-    if use_cpu or not GPU_SUPPORT:    
-        filter_convolve_func = pyfft_convolve_images
-    else:
-        filter_convolve_func = numpy_convolve_images
+    image_params = {'image':config['image']}
+
+    preproc_params = {'preproc' : config['preproc'],
+                      'normin': config['normin'],
+                      'filter_kshape' : config['filter']['kshape'],
+                      'normout':config['normout']}
+    preproc_params.update(config['global'])
     
-    image_params = config['image_query']
-    preproc_params = {'preproc':config['preproc'],
-	                  'normin':config['normin'],
-	                  'filter':config['filter'],
-	                  'normout':config['normout']}                                                             
-    postproc_params = image_params.copy(); postproc_params.update(preproc_params)
-    filter_params = config['filter_query']
-    postconv_params = postproc_params.copy(); postconv_params.update(filter_params)
+    filter_params = {'filter':config['filter']}
+    if filter_params['filter']['model_name'] in ['random','random_gabor']:
+        filter_params['filter']['id'] = random_id()
+        
     featsel = {'featsel':config['featsel']}
-    
-	args = [('render_image', render_image , image_params),
-	        ('im_to_array',image_to_array , image_params),
-	        ('preprocess',preprocess , image_params, preproc_params),
-	        ('normin',normin, postproc_params),
-		    ('get_filters',get_filters, filter_params),
-	        ('convolve_images', convolve_func, [postproc_params, filter_params]),
-	        ('activate',activate, postconv_params),
-	        ('normout',normout, postconv_params),
-	        ('pool',pool, postconv_params),
-	        ('add_features',add_features, next_config, featsel)]
-
-    D = []
-    for a in args:
-        if len(a) == 3:
-            D.append((a[0],db_update,(a[1],a[2])))
-        elif len(a) == 4:
-            D.append((a[0],db_update,[(a[1],a[2]),{'params':a[3]}]))
-            
-    actualize(D)
 
 
+    return [('render_image', render_image,{'args':(image_params,)}),
+            ('im_to_array',image_to_array),
+            ('preprocess',preprocess,{'params':preproc_params}),
+            ('normin',normin),
+            ('get_filterbank',get_filterbank,{'args':(filter_params,)}),
+            ('convolve_images', convolve_func),
+            ('activate',activate),
+            ('normout',normout),
+            ('pool',pool),
+            ('add_features',add_features,{'params':featsel})]
 
+ 
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=
-def image_config(query):
+#the DB operations
 
-    #get translation_x, translation_y, rotation_xy, rotation_xz, rotation_yz, lighting, color, whatever params
-    
-    ranger = lambda mn,mx,d : np.arange(query[mn],query[mx],query[d])
-    
-    tx = ranger('txmin','txmax','txdelta')
-    ty = ranger('tymin','tymax','tydelta')
-    tz = ranger('tzmin','tzmax','tzdelta')
-    rxy = ranger('rxymin','rxymax','rxydelta')
-    rxz = ranger('rxzmin','rxzmax','rxzdelta')
-    ryz = ranger('ryzmin','ryzmax','ryzdelta')
-    model_ids = query['model_ids']
-    
-    param_names = ['tx','ty','tz','rxy','rxz','ryz','model_id']
-    ranges = [tz,ty,tz,rxy,xz,ryz,model_ids]
-    params = [dict(zip(param_names,p)) for p in itertools.product(*ranges)]
-
-    
-    return parms
-    
 IMAGE_URL = 'localhost:8000/render?'
 
+def image_config(image_params):
+  
+    args = image_params['image']
+    ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [v]
+    
+    tx = ranger('tx')
+    ty = ranger('ty')
+    tz = ranger('tz')
+    rxy = ranger('rxy')
+    rxz = ranger('rxz')
+    ryz = ranger('ryz')
+    model_ids = args['model_ids']
+    
+    param_names = ['tx','ty','tz','rxy','rxz','ryz','model_id']
+    
+    ranges = [tz,ty,tz,rxy,rxz,ryz,model_ids]
+    
+    params = [{'image':dict(zip(param_names,p))} for p in itertools.product(*ranges)]
+     
+    return params
+    
 
 @inject('v1','rendered_images',image_config)
 def render_image(config):
      
-     params_list = [[config]]
+     params_list = [[config['image']]]
      
      tmp = tempfile.mkdtemp()
      
@@ -134,11 +138,10 @@ def render_image(config):
      return open(imagefile).read()
      
    
-   
 @dot('v1','rendered_images','image_arrays')
 def image_to_array(fh,config):
         
-    return cPickle.dumps(image2array(config,fh))
+    return cPickle.dumps(image2array(config['image'],fh))
     
      
 @dot('v1','image_arrays',['preprocessed_images','partially_preprocessed_images'])
@@ -161,87 +164,57 @@ def normin(fh,config):
     
     return norm(input,conv_mode,config['normin'])
 
-    
-def random_id():
-    hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()
    
-
 def filter_config_generator(query):
-    model_name = query['model_name']
+    return [query]
+   
+@inject('v1','filters', filter_config_generator)
+def get_filterbank(config):
 
-    if model_name == 'totally_random':        
+    config = config['filter']
+    
+    model_name = config['model_name']
+    fh, fw = config['kshape']
+    num_filters = config['num_filters']
+    
+    if model_name == 'totally_random':
+        filterbank = np.random.random((fh,fw,num_filters))
+    elif model_name == 'random_gabor':
+        min_wl = config['min_wavelength']
+        max_wl = config['max_wavelength']  
+        xc = fw/2
+        yc = fh/2
         num = query['num_filters']
-        fh, fw = query['kshape']
-        params = [{'id':random_id(),'kshape':[fh,fw]} for i in xrange(num)]
-        
-        
-    elif model_name == 'random_gabor':    
-        
-        min_wl = query['min_wavelength']
-        max_wl = query['max_wavelength']
-        
-        
-        num = query['num_filters']
-        values = []
+        filterbank = np.empty((fh,fw,num_filters))
         for i in num:
             orient = 2*np.pi*np.random.random()
             freq = 1./np.random.randint(min_wl,high = max_wl)
             phase = 2*np.pi*np.random.random()
-            values.append((orient,freq,phase))
-       
-        param_names = ['orientation','frequency','phase'] 
-        params = [dict(zip(param_names,v)) for v in values]       
-        
-        for p in params:
-            p['kshape'] = query['kshape']
-       
+            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
+                               freq,orient,phase,
+                               (fw,fh))     
     elif model_name == 'gridded_gabor':
-        norients = query['norients']
+        
+        norients = config['norients']
         orients = [ o*sp.pi/norients for o in xrange(norients) ]
-        divfreqs = query['divfreqs']
+        divfreqs = config['divfreqs']
         freqs = [1./d for d in divfreqs]
-        phases = query['phases']
-        
-        values = itertools.product(orients,divfreqs,phases)
-        
-        param_names = ['orientation','frequency','phase']
-        params = [dict(zip(param_names,v)) for v in values]
-        for p in params:
-            p['kshape'] = query['kshape']
-                 
-       
-    configs = [{'model_name':model_name,'params':p} for p in params]
-    
-    return configs
- 
- 
-    
-@inject('v1','filters', filter_config_generator)
-def get_filters(config):
-
-    model_name = config['model_name']
-    fh, fw = config['kshape']
-    
-    if model_name == 'totally_random':
-        filt = np.random.random((fh,fw))
-        
-    elif model_name = 'random_gabor' or 'gridded_gabor':
-        freq = config['frequency']
-        orient = config['orientation']
-        phase = config['phase']
+        phases = config['phases']       
         xc = fw/2
         yc = fh/2
-        filt = v1m.gabor2d(xc,yc,xc,yc,
+        values = itertools.product(freqs,orients,phases)
+        filterbank = np.empty((fh,fw,num_filters))
+        for (freq,orient,phase) in values:
+            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh))
-        
-        
+           
     
-    return cPickle.dumps(filt)
+    return cPickle.dumps(filterbank)
     
 
 @cross('v1',['normin_images','filters'],'filtered_images')
-def numpy_convolve_images(fhs,config)
+def numpy_convolve_images(fhs,config):
 
     image_fh = fhs[0] 
     filter_fh = fhs[1]
@@ -256,8 +229,6 @@ def numpy_convolve_images(fhs,config)
     
 
 
-    
-    
 @dot('v1','filtered_images','activated_images')
 def activate(fh,config):
     minout = config['activ']['minout'] # sustain activity
@@ -295,7 +266,7 @@ feature_inputs = ['normin_images',
                   'activated_images',
                   'pooled_images',
                   'partially_preprocessed_images']    
-@dot('v1',feature_inputs,'final_processed_features')
+@dot('v1',feature_inputs,'extracted_features')
 def add_features(fhs,config):
  
     featsel = config['featsel']
@@ -333,19 +304,22 @@ def add_features(fhs,config):
 
 
 #=-=-=-=-=-=-=-=-=-=
+#random utilities
 
-
+def random_id():
+    hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()
 
 def get_config(config_fname):
     config_path = path.abspath(config_fname)
-    if verbose: print "Config file:", config_path
+    print("Config file:", config_path)
     config = {}
     execfile(config_path, {},config)
     
-    return config
+    return config['config']
 
     
 #=-=-=-=-=-=-=-=-=-=-
+#the base functions
 
 def norm(input,conv_mode,params):
     output = {}
@@ -405,24 +379,22 @@ def image_preprocessing(arr,params):
     arr = sp.atleast_3d(arr)
 
     smallest_edge = min(arr.shape[:2])
-
-    rep = params
     
-    preproc_lsum = rep['preproc']['lsum_ksize']
+    preproc_lsum = params['preproc']['lsum_ksize']
     if preproc_lsum is None:
         preproc_lsum = 1
     smallest_edge -= (preproc_lsum-1)
             
-    normin_kshape = rep['normin']['kshape']
+    normin_kshape = params['normin']['kshape']
     smallest_edge -= (normin_kshape[0]-1)
 
-    filter_kshape = rep['filter']['kshape']
+    filter_kshape = params['filter']['kshape']
     smallest_edge -= (filter_kshape[0]-1)
         
-    normout_kshape = rep['normout']['kshape']
+    normout_kshape = params['normout']['kshape']
     smallest_edge -= (normout_kshape[0]-1)
         
-    pool_lsum = rep['pool']['lsum_ksize']
+    pool_lsum = params['pool']['lsum_ksize']
     smallest_edge -= (pool_lsum-1)
 
     arrh, arrw, _ = arr.shape
@@ -512,10 +484,10 @@ def map_preprocessing(imga0,params):
     #imga0 = imga0 / 255.0
     
     # flip image ?
-    if 'flip_lr' in params['preproc'] and params['preproc']['flip_lr']:
+    if params['preproc'].get('flip_lr') is True:
         imga0 = imga0[:,::-1]
         
-    if 'flip_ud' in params['preproc'] and params['preproc']['flip_ud']:
+    if params['preproc'].get('flip_ud') is True:
         imga0 = imga0[::-1,:]            
     
     # smoothing

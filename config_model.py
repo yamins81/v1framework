@@ -23,15 +23,12 @@ import scipy as sp
 
 
 # dict with all representation parameters
-representation = {
+config = {
 
-# - image
-'image_query':{
-    'divfreqs' : [2, 3, 4, 6, 11, 18]
-    'phases': [0],
-    'norients' : 16
-    },
-
+'global' : {
+   'color_space' : 'rgb',
+   'conv_mode' : 'valid'
+},
 # - preprocessing
 # prepare images before processing
 'preproc': {
@@ -55,14 +52,15 @@ representation = {
 
 # - linear filtering
 'filter': {
+    'model_name':'gridded_gabor',
     # kernel shape of the gabors
-    'kshape': (43,43),
+    'kshape': [43,43],
     # list of orientations
-    'orients': orients,
+    'norients': 16,
     # list of frequencies
-    'freqs': freqs,
+    'divfreqs': [2, 3, 4, 6, 11, 18],
     # list of phases
-    'phases': phases,
+    'phases': [0],
     },
 
 # - simple non-linear activation
@@ -110,10 +108,15 @@ representation = {
     # Include representation output histograms ? None or (division, nfeatures)
     'pool_hists': None,
     },
-    
-'filter_query' : {
-    
 
-    }
+'image' : {
+      'model_ids':['MB30635','MB30634','MB30625','MB30335'],
+      'tx':{'$gt':-6.5,'$lt':-1.5,'delta':.05},
+      'ty':{'$gt':-2,'$lt':2 ,'delta':1},
+      'tz':{'$gt':-2,'$lt':2,'delta':1},
+      'rxy':0, 'rxz':0, 'ryz': 0
+      
+   } 
+
 }
 
