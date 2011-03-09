@@ -42,40 +42,32 @@ def v1_feature_extraction_protocol(config_path,use_cpu = False):
 
 def v1_initialize(config_path,use_cpu):
     if use_cpu or not GPU_SUPPORT:    
-        convolve_func = numpy_convolve_images
+        postfilter_func = numpy_postfilter
     else:
-        convolve_func = pyfft_convolve_images
+        postfilter_func = pyfft_postfilter
 
     config = get_config(config_path)
     
     image_params = OrderedDict([('image',config['image'])])
     
-    preproc_params = OrderedDict([('preproc' , config['preproc']),
+    prefilter_params = OrderedDict([('preproc' , config['preproc']),
                       ('normin' , config['normin']),
                       ('filter_kshape' , config['filter']['kshape']),
                       ('normout' , config['normout']),
                       ('pool',config['pool'])])
-    preproc_params.update(config['global'])
+    prefilter_params.update(config['global'])
     
     filter_params = OrderedDict([('filter',config['filter'])])
     if filter_params['filter']['model_name'] in ['random','random_gabor']:
         filter_params['filter']['id'] = random_id()
     
-    activ = OrderedDict([('activ',config['activ'])]) 
-    featsel = OrderedDict([('featsel',config['featsel'])])
+    postfilter_params = OrderedDict([('activ',config['activ']),('featsel',config['featsel'])]) 
 
+    return [('render_image', render_image,{'args':(image_params,)}), 
+            ('prefiltering',prefilter,{'params':prefilter_params}),                        
+            ('get_filterbank',get_filterbank,{'args':(filter_params,)}),            
+            ('postfiltering',postfilter_func,{'params':postfilter_params})]
 
-    return [('render_image', render_image,{'args':(image_params,)}),
-            ('preprocessing',preprocessing,{'params':preproc_params}),
-            ('normin',normin),
-            ('get_filterbank',get_filterbank,{'args':(filter_params,)}),
-            ('convolve_images', convolve_func),
-            ('activate',activate,{'params':activ}),
-            ('normout',normout),
-            ('pool',pool),
-            ('postprocessing',postprocessing,{'params':featsel})]
-
- 
 
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=
@@ -110,16 +102,9 @@ def render_image(config):
      else:
          raise ValueError, 'image generator not recognized'
    
-######image preprocessing  
-@dot('v1','rendered_images',['preprocessed_images','partially_preprocessed_images'])
-def preprocessing(fhs,config):
-    fh = fhs[0]
-    array = image2array(config,fh)
-    output,orig_imga = preprocess(array,config)
-    return (cPickle.dumps(output),cPickle.dumps(orig_imga))
-
-
-######input norm
+   
+   
+######prefiltering 
 def norm(input,conv_mode,params):
     output = {}
     for cidx in input.keys():
@@ -128,14 +113,17 @@ def norm(input,conv_mode,params):
        else:
           inobj = input[cidx][:,:,sp.newaxis]
        output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
-    return cPickle.dumps(output)
-    
-@dot('v1','preprocessed_images','normin_images')
-def normin(fhs,config):
+    return output
+
+
+@dot('v1','rendered_images','prefiltered_images')
+def prefilter(fhs,config):
     fh = fhs[0]
+    array = image2array(config,fh)
+    output,orig_imga = preprocess(array,config)
     conv_mode = config['conv_mode']
-    input = cPickle.loads(fh.read())
-    return norm(input,conv_mode,config['normin'])
+    normed_output = norm(output,conv_mode,config['normin'])
+    return cPickle.dumps([orig_imga,normed_output])
 
    
 ######filter generation   
@@ -148,11 +136,10 @@ def get_filterbank(config):
     
     
 
-######convolution
-def convolve(fhs,config,convolve_func):
-    image_fh = fhs[0] 
-    filter_fh = fhs[1]
-    image = cPickle.loads(image_fh.read())
+######postfiltering
+
+def convolve(image,filter_fh,config,convolve_func):
+
     
     def filter_source():
         filter_fh.seek(0)
@@ -163,76 +150,44 @@ def convolve(fhs,config,convolve_func):
     output = {}
     for cidx in image.keys():
         output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,image_config,filter_config)
-    return cPickle.dumps(output)   
-
-@cross('v1',['normin_images','filters'],'filtered_images')
-def numpy_convolve_images(fhs,config):
-    return convolve(fhs, config, v1f.v1like_filter_numpy)
+    return output
     
-if GPU_SUPPORT:    
-    @cross('v1',['normin_images','filters'],'filtered_images',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
-    def pyfft_convolve_images(fhs,config):
-        return convolve(fhs, config, v1f.v1like_filter_pyfft)
 
+def postfilter(fhs,config,convolve_func):
+    image_fh = fhs[0] 
+    filter_fh = fhs[1]
+    orig_imga, norm_in = cPickle.loads(image_fh.read())
 
-######nonlinear clipping
-@dot('v1','filtered_images','activated_images')
-def activate(fhs,config):
-    fh = fhs[0]
+    filtered = convolve(norm_in, filter_fh, config, convolve_func)
+
     minout = config['activ']['minout'] # sustain activity
     maxout = config['activ']['maxout'] # saturation
-    input = cPickle.loads(fh.read())
-    output = {}
+    activ = {}
     for cidx in input.keys():
-       output[cidx] = input[cidx].clip(minout, maxout)
-    return cPickle.dumps(output)
-
-
-######output normalization
-@dot('v1','activated_images','normout_images')
-def normout(fhs,config):
-    fh = fhs[0]
-    conv_mode = config['conv_mode']
-    input = cPickle.loads(fh.read())
-    return norm(input,conv_mode,config['normout'])
-
-  
-######pooling  
-@dot('v1','normout_images','pooled_images')
-def pool(fhs,config):
-    fh = fhs[0]
-    conv_mode = config['conv_mode']
-    input = cPickle.loads(fh.read()) 
-    output = {}
+       activ[cidx] = filtered[cidx].clip(minout, maxout)
+       
+    norm_out = norm(activ,conv_mode,config['normout'])
+    
+    pooled = {}
     for cidx in input.keys():
-        output[cidx] = v1f.v1like_pool(input[cidx],conv_mode,**config['pool'])
-    return cPickle.dumps(output)
+        pooled[cidx] = v1f.v1like_pool(norm_out[cidx],conv_mode,**config['pool'])
 
+    fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,featsel) 
 
-######postprocessing    
-feature_inputs = ['normin_images',
-                  'filtered_images',
-                  'activated_images',
-                  'normout_images',
-                  'pooled_images',
-                  'partially_preprocessed_images']    
-@dot('v1',feature_inputs,'v1_features')
-def postprocessing(fhs,config):
-    featsel = config['featsel']
-    if any([v for (k,v) in featsel if k != 'output']):
-        Normin = cPickle.loads(fhs[0].read())
-        Filtered = cPickle.loads(fhs[1].read())
-        Activated = cPickle.loads(fhs[2].read())
-        Normout = cPickle.loads(fhs[3].read())
-        Pooled = cPickle.loads(fh[4].read())
-        Partially_processed = cPickle.loads(fh[5].read())
-        fvector_l = postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,featsel)     
-    else:
-        Pooled = cPickle.loads(fh[4].read())
-        fvector_l = [fvector[key].ravel() for key in Pooled]
     out = sp.concatenate(fvector_l).ravel()
     
     return cPickle.dumps(out)
+
+
+@cross('v1',['prefiltered_images','filters'],'v1_features')
+def numpy_postfilter(fhs,config):
+    return postfilter(fhs,config,v1f.v1like_filter_numpy)
+    
+if GPU_SUPPORT:    
+    @cross('v1',['prefiltered_images','filters'],'v1_features',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
+    def pyfft_postfilter(fhs,config):
+        return postfilter(fhs, config, v1f.v1like_filter_pyfft)
+
 
 
 
