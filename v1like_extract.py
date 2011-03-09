@@ -53,7 +53,8 @@ def v1_initialize(config_path,use_cpu):
     preproc_params = OrderedDict([('preproc' , config['preproc']),
                       ('normin' , config['normin']),
                       ('filter_kshape' , config['filter']['kshape']),
-                      ('normout' , config['normout'])])
+                      ('normout' , config['normout']),
+                      ('pool',config['pool'])])
     preproc_params.update(config['global'])
     
     filter_params = OrderedDict([('filter',config['filter'])])
@@ -94,7 +95,7 @@ def image_config_gen(image_params):
     else:
         raise ValueError, 'image generator not recognized'     
     for p in params:
-        p['generator'] = generator
+        p['image']['generator'] = generator
     return params
     
 @inject('v1','rendered_images',image_config_gen)
@@ -110,9 +111,10 @@ def render_image(config):
    
 ######image preprocessing  
 @dot('v1','rendered_images',['preprocessed_images','partially_preprocessed_images'])
-def preprocessing(fh,config):
-    array = image2array(config['image'],fh)
-    output,orig_imga = preprocess(arr)
+def preprocessing(fhs,config):
+    fh = fhs[0]
+    array = image2array(config,fh)
+    output,orig_imga = preprocess(array,config)
     return (cPickle.dumps(output),cPickle.dumps(orig_imga))
 
 
@@ -124,11 +126,12 @@ def norm(input,conv_mode,params):
           inobj = input[cidx]
        else:
           inobj = input[cidx][:,:,sp.newaxis]
-       output[cidx] = v1like_norm(inobj, conv_mode, **params)
-    return output
+       output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
+    return cPickle.dumps(output)
     
 @dot('v1','preprocessed_images','normin_images')
-def normin(fh,config):
+def normin(fhs,config):
+    fh = fhs[0]
     conv_mode = config['conv_mode']
     input = cPickle.loads(fh.read())
     return norm(input,conv_mode,config['normin'])
@@ -143,16 +146,23 @@ def get_filterbank(config):
     return cPickle.dumps(filterbank)
     
     
+
 ######convolution
 def convolve(fhs,config,convolve_func):
     image_fh = fhs[0] 
     filter_fh = fhs[1]
-    image_source = lambda x : cPickle.loads(image_fh.read())
-    filter_source = lambda x : cPickle.loads(filter_fh.read())
+    image = cPickle.loads(image_fh.read())
+    
+    def filter_source():
+        filter_fh.seek(0)
+        return cPickle.loads(filter_fh.read())
+
     image_config = config[0] 
     filter_config = config[1] 
-    res = convolve_func(img_source,filter_source,image_config,filter_config)
-    return cPickle.dumps(res)   
+    output = {}
+    for cidx in image.keys():
+        output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,image_config,filter_config)
+    return cPickle.dumps(output)   
 
 @cross('v1',['normin_images','filters'],'filtered_images')
 def numpy_convolve_images(fhs,config):
@@ -166,7 +176,8 @@ if GPU_SUPPORT:
 
 ######nonlinear clipping
 @dot('v1','filtered_images','activated_images')
-def activate(fh,config):
+def activate(fhs,config):
+    fh = fhs[0]
     minout = config['activ']['minout'] # sustain activity
     maxout = config['activ']['maxout'] # saturation
     input = cPickle.loads(fh.read())
@@ -178,7 +189,8 @@ def activate(fh,config):
 
 ######output normalization
 @dot('v1','activated_images','normout_images')
-def normout(fh,config):
+def normout(fhs,config):
+    fh = fhs[0]
     conv_mode = config['conv_mode']
     input = cPickle.loads(fh.read())
     return norm(input,conv_mode,config['normout'])
@@ -186,7 +198,8 @@ def normout(fh,config):
   
 ######pooling  
 @dot('v1','normout_images','pooled_images')
-def pool(fh,config):
+def pool(fhs,config):
+    fh = fhs[0]
     conv_mode = config['conv_mode']
     input = cPickle.loads(fh.read()) 
     output = {}

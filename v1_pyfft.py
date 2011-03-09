@@ -8,9 +8,11 @@ CONTEXT = None
 PLANS = {}
 
 def setup_pyfft():
-	cuda.init()
-	CONTEXT = make_default_context()
-	
+    cuda.init()
+    global CONTEXT
+    CONTEXT = make_default_context()
+
+    
 def cleanup_pyfft():
     CONTEXT.pop()
 
@@ -34,19 +36,19 @@ def pad(data,shape):
     
     return newdata
 
-def fft(data,shape=None,reverse=False):
+def fft(data,shape=None,inverse=False):
 
     if shape:
         data = pad(data,shape)
                         
     plan  = PLANS.get(data.shape)
     if not plan:
-    	plan = Plan(data.shape)
-    	PLANS[data.shape] = plan
-	
-	gpu_data = gpuarray.to_gpu(np.cast[np.complex64](data))
-	plan.execute(gpu_data,reverse=reverse)
-	r = gpu_data.get()
+        plan = Plan(data.shape)
+        PLANS[data.shape] = plan
+    
+    gpu_data = gpuarray.to_gpu(np.cast[np.complex64](data))
+    plan.execute(gpu_data,inverse = inverse)
+    r = gpu_data.get()
     
     return r
 

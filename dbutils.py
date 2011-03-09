@@ -127,10 +127,10 @@ def inject_op(func):
     conn = pm.Connection()
     db = conn[dbname]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]
-    ensure_indexes(db,outroots)
+    #ensure_indexes(db,outroots)
     
     if func.setup:
-        pass_args = func.setup()
+        pass_args = func.setup() or {}
     else:
         pass_args = {}    
     
@@ -164,10 +164,10 @@ def dot_op(func):
     db = conn[dbname]
     in_fs = [gridfs.GridFS(db,collection = coll) for coll in inroots]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]
-    ensure_indexes(db,outroots)
+    #ensure_indexes(db,outroots)
     ftime = FuncTime(func)
     if func.setup:
-        pass_args = func.setup()
+        pass_args = func.setup() or {}
     else:
         pass_args = {}
 
@@ -216,10 +216,10 @@ def cross_op(func):
     db = conn[dbname]
     in_fs = [gridfs.GridFS(db,collection = coll) for coll in inroots]
     out_fs = [gridfs.GridFS(db,collection = coll) for coll in outroots]    
-    ensure_indexes(db,outroots)
+    #ensure_indexes(db,outroots)
     ftime = FuncTime(func)      
     if func.setup:
-        pass_args = func.setup()
+        pass_args = func.setup() or {}
     else:
         pass_args = {}
   
@@ -381,6 +381,7 @@ def createCertificateDict(path,d,tol=10000000000):
     
   
 def do_rec(in_fhs,config,func,pass_args):
+    print("Computing", config)
     if in_fhs:
         results = func(in_fhs,config,**pass_args)          
     else:
@@ -401,7 +402,7 @@ def dict_union(dictlist):
     
     
 def get_time(dt):
-    return time.mktime(dt.timetuple()) + dt.microsecond*(10**-6)
+    return time.mktime(dt.timetuple()) + dt.microsecond*(10**-6) 
     
 from starflow import linkmanagement, storage
 def FuncTime(func):
@@ -414,7 +415,7 @@ def FuncTime(func):
     check = zip(Up['SourceFile'],Up['LinkSource']) + [(modulepath,funcname)]
     checkpaths = Up['SourceFile'].tolist() + [modulepath]
     times = storage.ListFindMtimes(check,depends_on = tuple(checkpaths))
-    return max(times.values())
+    return time.mktime(time.gmtime(max(times.values())))
 
 
 def reach_in(attr,q):
@@ -434,7 +435,7 @@ def interpret_res(res,config):
 
     outdata['filename'] = get_filename(config) 
     if not isinstance(res,str):
-        assert is_instance(res,dict) and 'summary' in res.keys() and 'res' in res.keys()
+        assert isinstance(res,dict) and 'summary' in res.keys() and 'res' in res.keys()
         summary = res['summary']
         res = res['res']
         outdata['summary'] = summary

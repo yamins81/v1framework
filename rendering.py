@@ -42,7 +42,7 @@ def renderman_render(config):
 	 return open(imagefile).read()
 
 def cairo_config_gen(args):
-    ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
+    ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args[v]['delta']).tolist() if isinstance(args.get(v),dict) else [args.get(v)]
     
     tx = ranger('tx')
     ty = ranger('ty')
@@ -57,6 +57,7 @@ def cairo_config_gen(args):
     param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height']
     ranges = [tx, ty, rxy, sx, sy, objects, patterns, width, height]
     params = [OrderedDict([('image' , OrderedDict(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
+
     return params
     
 
@@ -76,11 +77,11 @@ def cairo_render(params):
         Rot = OrderedDict([('type','rotate'),('args',(params.get['rxy'],))]) 
         InvRot = OrderedDict([('type','rotate'),('args',(params.get['rxy'],))])
         object = [Rot] + object + [InvRot]
-        
+         
     if params.get('tx') != None or params.get('ty') != None:
         Tr = OrderedDict([('type','translate'),('args',(params.get('tx',0),params.get('ty',0)))])
         InvTr = OrderedDict([('type','translate'),('args',(-params.get('tx',0),-params.get('ty',0)))])
-        object = [Tr] + obejct + [InvTr]
+        object = [Tr] + object + [InvTr]
         
     
     params = OrderedDict([('objs' , [OrderedDict([('pattern' , pattern), ('segments' , object)])]),

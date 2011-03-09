@@ -1,13 +1,18 @@
 import Image
 import scipy as sp
+import scipy.signal
 import numpy as np
 
 from npclockit import clockit_onprofile
 import colorconv
 
+from npclockit import clockit_onprofile
+
+conv = scipy.signal.convolve
+
 PROFILE = False
 
-def preprocess(arr):
+def preprocess(arr,config):
     orig_imga,orig_imga_conv = image_preprocessing(arr,config) 
     output = {}
     for cidx in xrange(orig_imga_conv.shape[2]):
@@ -134,7 +139,7 @@ def image2array(rep,fobj):
         assert normin_kshape[0] == normin_kshape[1]
         new_max_edge += normin_kshape[0]-1
 
-        filter_kshape = rep['filter']['kshape']
+        filter_kshape = rep['filter_kshape']
         assert filter_kshape[0] == filter_kshape[1]
         new_max_edge += filter_kshape[0]-1
         
@@ -172,7 +177,7 @@ def image_preprocessing(arr,params):
     normin_kshape = params['normin']['kshape']
     smallest_edge -= (normin_kshape[0]-1)
 
-    filter_kshape = params['filter']['kshape']
+    filter_kshape = params['filter_kshape']
     smallest_edge -= (filter_kshape[0]-1)
         
     normout_kshape = params['normout']['kshape']
@@ -207,7 +212,7 @@ def image_preprocessing(arr,params):
     if orig_imga.shape[2] == 3 \
             and (orig_imga[:,:,0]-orig_imga.mean(2) < 0.1*orig_imga.max()).all() \
             and (orig_imga[:,:,1]-orig_imga.mean(2) < 0.1*orig_imga.max()).all() \
-            and (orig_imga[:,:,2]-orig_imga.mean(2) < 0.1*orig_imga.max()).all():
+            and (orig_imga[:,:,2]-orig_imga.mean(2) < 0.1*orig_imga.max()).all(): 
         orig_imga = sp.atleast_3d(orig_imga[:,:,0])
 
     # rescale to [0,1]
@@ -262,31 +267,31 @@ def image_preprocessing(arr,params):
 
 def map_preprocessing(imga0,params): 
     
-    assert(imga0.min() != imga0.max())
+    if imga0.min() != imga0.max():   #TODO: ASK PEOPLE ABOUT THIS
     
-    # -- 0. preprocessing
-    #imga0 = imga0 / 255.0
-    
-    # flip image ?
-    if params['preproc'].get('flip_lr') is True:
-        imga0 = imga0[:,::-1]
+        # -- 0. preprocessing
+        #imga0 = imga0 / 255.0
         
-    if params['preproc'].get('flip_ud') is True:
-        imga0 = imga0[::-1,:]            
-    
-    # smoothing
-    lsum_ksize = params['preproc']['lsum_ksize']
-    conv_mode = params['conv_mode']
-    if lsum_ksize is not None:
-         k = sp.ones((lsum_ksize), 'f') / lsum_ksize             
-         imga0 = conv(conv(imga0, k[sp.newaxis,:], conv_mode), 
-                      k[:,sp.newaxis], conv_mode)
-         
-    # whiten full image (assume True)
-    if 'whiten' not in params['preproc'] or params['preproc']['whiten']:
-        imga0 -= imga0.mean()
-        if imga0.std() != 0:
-            imga0 /= imga0.std()
+        # flip image ?
+        if params['preproc'].get('flip_lr') is True:
+            imga0 = imga0[:,::-1]
+            
+        if params['preproc'].get('flip_ud') is True:
+            imga0 = imga0[::-1,:]            
+        
+        # smoothing
+        lsum_ksize = params['preproc']['lsum_ksize']
+        conv_mode = params['conv_mode']
+        if lsum_ksize is not None:
+             k = sp.ones((lsum_ksize), 'f') / lsum_ksize             
+             imga0 = conv(conv(imga0, k[sp.newaxis,:], conv_mode), 
+                          k[:,sp.newaxis], conv_mode)
+             
+        # whiten full image (assume True)
+        if 'whiten' not in params['preproc'] or params['preproc']['whiten']:
+            imga0 -= imga0.mean()
+            if imga0.std() != 0:
+                imga0 /= imga0.std()
 
     return imga0
 

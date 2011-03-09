@@ -8,7 +8,10 @@ Key sub-operations performed in a simple V1-like model
 
 """
 import time
+import math 
+
 import scipy as sp
+import numpy as np
 import scipy.signal
 
 try:
@@ -211,18 +214,18 @@ def get_bounds(image_shape,filter_shape,conv_mode):
     return (slice(begx,endx),slice(begy,endy))    
 
 
-def v1like_filter_numpy(img_source,filter_source,image_config,filter_config):
+def v1like_filter_numpy(image,filter_source,image_config,filter_config):
 
     conv_mode = image_config['conv_mode']
     filter_shape = filter_config['filter']['kshape']
-    
-    image = img_source()
-    image_shape = image.shape
-    image_fft = np.fft.fftn(image,fft_shape)
-    
-    fft_shape = tuple( np.array(image_shape) + np.array(filter_shape) - 1 )    
 
-    filter_key = (fft_shape,filter_config.items())
+    image_shape = image.shape
+    
+    fft_shape = tuple( np.array(image_shape) + np.array(filter_shape) - 1 )   
+    
+    image_fft = np.fft.fftn(image,fft_shape)
+
+    filter_key = (fft_shape,repr(filter_config['filter']))
         
     if filter_key not in FILTER_FFT_CACHE:
         filterbank = filter_source()
@@ -244,23 +247,23 @@ def v1like_filter_numpy(img_source,filter_source,image_config,filter_config):
     return res_fft
     
     
-def v1like_filter_pyfft(img_source,filter_source,image_config,filter_config):
+def v1like_filter_pyfft(image,filter_source,image_config,filter_config):
 
     conv_mode = image_config['conv_mode']
     filter_shape = filter_config['filter']['kshape']
-    
-    image = img_source()
-    image_shape = image.shape
-    image_fft = np.fft.fftn(image,fft_shape)
 
-    
+    image_shape = image.shape
+
     full_shape = tuple( np.array(image_shape) + np.array(filter_shape) - 1 )
     fft_shape = power2(full_shape) 
+    
+    image_fft = v1_pyfft.fft(image,fft_shape)
 
-    filter_key = (fft_shape,filter_config.items())
+    filter_key = (fft_shape,repr(filter_config['filter']))
         
     if filter_key not in FILTER_FFT_CACHE:
         filterbank = filter_source()
+        print filterbank
         filter_fft = np.empty(fft_shape + (filterbank.shape[2],),dtype=filterbank.dtype)
         for i in range(filterbank.shape[2]):
             filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape)
@@ -270,8 +273,9 @@ def v1like_filter_pyfft(img_source,filter_source,image_config,filter_config):
     
     res_fft = np.empty(filter_fft.shape,dtype=filter_fft.dtype)
     for i in range(res_fft.shape[2]):
-        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],reverse=True)
+        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True)
         
+    delta = np.array(fft_shape) - np.array(full_shape)
     myslice = tuple([slice(d,d + f) for (d,f) in zip(delta,full_shape)])
 
     res_fft = res_fft[myslice]

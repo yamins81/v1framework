@@ -7,7 +7,6 @@ def get_filterbank(config):
     model_name = config['model_name']
     fh, fw = config['kshape']
     
-    
     if model_name == 'totally_random':
         num_filters = config['num_filters']
         filterbank = np.random.random((fh,fw,num_filters))
@@ -43,3 +42,5 @@ def get_filterbank(config):
             filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh)) 
+
+    return filterbank
