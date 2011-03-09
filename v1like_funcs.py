@@ -186,7 +186,7 @@ def v1like_norm(hin, conv_mode, kshape, threshold):
 FILTER_FFT_CACHE = {}
 
 def power2(shape):
-    return tuple([int(math.ceil(math.log(x,2))) for x in shape])
+    return tuple([2**int(math.ceil(math.log(x,2))) for x in shape])
 
 
 def get_bounds(image_shape,filter_shape,conv_mode):
@@ -248,13 +248,14 @@ def v1like_filter_numpy(image,filter_source,image_config,filter_config):
     
     
 def v1like_filter_pyfft(image,filter_source,image_config,filter_config):
-
+     
     conv_mode = image_config['conv_mode']
     filter_shape = filter_config['filter']['kshape']
 
     image_shape = image.shape
 
     full_shape = tuple( np.array(image_shape) + np.array(filter_shape) - 1 )
+
     fft_shape = power2(full_shape) 
     
     image_fft = v1_pyfft.fft(image,fft_shape)
@@ -269,9 +270,11 @@ def v1like_filter_pyfft(image,filter_source,image_config,filter_config):
             filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape)
         FILTER_FFT_CACHE[filter_key] = filter_fft
     else:
+        
         filter_fft = FILTER_FFT_CACHE[filter_key]
     
-    res_fft = np.empty(filter_fft.shape,dtype=filter_fft.dtype)
+    res_fft = np.empty(fft_shape + (filter_fft.shape[2],), dtype=filter_fft.dtype)
+    print('RESSHAPE',res_fft.shape)
     for i in range(res_fft.shape[2]):
         res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True)
         

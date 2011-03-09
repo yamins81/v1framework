@@ -195,8 +195,9 @@ def dot_op(func):
             results =  do_rec(fhs, newconfig, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
                 outdata,res = interpret_res(res,newconfig)
+                print("HERE")
                 fs.put(res,**outdata)
-                 
+                print("HERE2") 
     if func.cleanup:
         func.cleanup()     
         
@@ -249,6 +250,7 @@ def cross_op(func):
             for (fs,res) in zip(out_fs,results):
                 outdata,res = interpret_res(res,flat_config)
                 fs.put(res,**outdata)
+     
 
     if func.cleanup:
         func.cleanup()  

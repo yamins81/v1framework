@@ -60,7 +60,8 @@ def v1_initialize(config_path,use_cpu):
     filter_params = OrderedDict([('filter',config['filter'])])
     if filter_params['filter']['model_name'] in ['random','random_gabor']:
         filter_params['filter']['id'] = random_id()
-        
+    
+    activ = OrderedDict([('activ',config['activ'])]) 
     featsel = OrderedDict([('featsel',config['featsel'])])
 
 
@@ -69,7 +70,7 @@ def v1_initialize(config_path,use_cpu):
             ('normin',normin),
             ('get_filterbank',get_filterbank,{'args':(filter_params,)}),
             ('convolve_images', convolve_func),
-            ('activate',activate),
+            ('activate',activate,{'params':activ}),
             ('normout',normout),
             ('pool',pool),
             ('postprocessing',postprocessing,{'params':featsel})]
@@ -218,7 +219,7 @@ feature_inputs = ['normin_images',
 @dot('v1',feature_inputs,'v1_features')
 def postprocessing(fhs,config):
     featsel = config['featsel']
-    if featsel['output']:
+    if any([v for (k,v) in featsel if k != 'output']):
         Normin = cPickle.loads(fhs[0].read())
         Filtered = cPickle.loads(fhs[1].read())
         Activated = cPickle.loads(fhs[2].read())
