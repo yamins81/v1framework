@@ -6,12 +6,14 @@ def get_filterbank(config):
     config = config['filter']
     model_name = config['model_name']
     fh, fw = config['kshape']
-    num_filters = config['num_filters']
+    
     
     if model_name == 'totally_random':
+        num_filters = config['num_filters']
         filterbank = np.random.random((fh,fw,num_filters))
         
     elif model_name == 'random_gabor':
+        num_filters = config['num_filters']
         min_wl = config['min_wavelength']
         max_wl = config['max_wavelength']  
         xc = fw/2
@@ -28,15 +30,16 @@ def get_filterbank(config):
                                
     elif model_name == 'gridded_gabor':
         norients = config['norients']
-        orients = [ o*sp.pi/norients for o in xrange(norients) ]
+        orients = [ o*np.pi/norients for o in xrange(norients) ]
         divfreqs = config['divfreqs']
         freqs = [1./d for d in divfreqs]
         phases = config['phases']       
         xc = fw/2
         yc = fh/2
-        values = itertools.product(freqs,orients,phases)
+        values = list(itertools.product(freqs,orients,phases))
+        num_filters = len(values)
         filterbank = np.empty((fh,fw,num_filters))
-        for (freq,orient,phase) in values:
+        for (i,(freq,orient,phase)) in enumerate(values):
             filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh)) 

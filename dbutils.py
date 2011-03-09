@@ -291,8 +291,16 @@ def get_op_gen(op,oplist):
                 params = OrderedDict([])
             
             func.params = params
-            parents = [[op0 for op0 in oplist if ir in op0[1].outroots][0]  for ir in inroots]
-
+            
+            parents = []
+            for ir in inroots:
+                try:
+                    parent = [op0 for op0 in oplist if ir in op0[1].outroots][0]
+                except IndexError:
+                    raise IndexError, 'No parent found for at least one collection in ' + repr(op0[1].outroots) 
+                else:
+                    parents.append(parent)
+  
             for parent in parents:
                 get_op_gen(parent,oplist)
                 
@@ -316,7 +324,14 @@ def get_op_gen(op,oplist):
             
             func.params = params        
             
-            parents = [[op0 for op0 in oplist if ir in op0[1].outroots][0]  for ir in inroots]
+            parents = []
+            for ir in inroots:
+                try:
+                    parent = [op0 for op0 in oplist if ir in op0[1].outroots][0]
+                except IndexError:
+                    raise IndexError, 'No parent found for at least one collection in ' + repr(op0[1].outroots)
+                else:
+                    parents.append(parent)
             
             for parent in parents:
                 get_op_gen(parent,oplist)
@@ -336,6 +351,7 @@ def get_op_gen(op,oplist):
 
 def db_ops_initialize(oplist):
     for op in oplist:
+        print('Initializing', op)
         get_op_gen(op,oplist)
         
 

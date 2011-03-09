@@ -12,9 +12,12 @@ def get_live_modules(LiveModuleFilters):
     through directories that will be irrelevant.
     '''
     FilteredModuleFiles = []
-    Avoid = ['^RawData$','^Data$','^.svn$','^ZipCodeMaps$','.data$','^scrap$']
+    Avoid = ['^RawData$','^Data$','^.svn$','.data$','^scrap$']
     FilterFn = lambda z,y : y.split('.')[-1] == 'py' and CheckInOutFormulae(z,y)
     for x in LiveModuleFilters.keys():
         Filter = lambda y : FilterFn(LiveModuleFilters[x],y) 
         FilteredModuleFiles += filter(Filter,RecursiveFileList(x,Avoid=Avoid))
     return FilteredModuleFiles
+
+
+

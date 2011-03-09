@@ -4,4 +4,15 @@
 #system searches to find python modules to analyze and include in the 
 #system updating.  See manual for more detailed information. 
 #Lines beginning with a hash mark (like this one) will be ignored.
-
+../main.py
+../v1like_extract.py
+../v1like_funcs.py
+../v1like_math.py
+../filter_generation.py
+../v1_pyfft.py
+../config
+../colorconv.py
+../processing.py
+../rendering.py
+../cairo_objects.py
+../generated_code

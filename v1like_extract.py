@@ -5,6 +5,8 @@ import os
 import hashlib
 import cPickle
 
+from collections import OrderedDict
+
 import numpy as np
 import scipy as sp
 from starflow.protocols import protocolize, actualize
@@ -33,7 +35,7 @@ else:
 #=-=-=-=-=-=-=-=-=-=-=-=-=
 #=-=-=-=-=-=-=-=-=-=-=-=-=
 
-def feature_extraction_protocol(config_path,use_cpu = False):
+def v1_feature_extraction_protocol(config_path,use_cpu = False):
     D = DBAdd(v1_initialize,args = (config_path,use_cpu))
     actualize(D)
 
@@ -46,19 +48,19 @@ def v1_initialize(config_path,use_cpu):
 
     config = get_config(config_path)
     
-    image_params = {'image':config['image']}
-
-    preproc_params = {'preproc' : config['preproc'],
-                      'normin': config['normin'],
-                      'filter_kshape' : config['filter']['kshape'],
-                      'normout':config['normout']}
+    image_params = OrderedDict([('image',config['image'])])
+    
+    preproc_params = OrderedDict([('preproc' , config['preproc']),
+                      ('normin' , config['normin']),
+                      ('filter_kshape' , config['filter']['kshape']),
+                      ('normout' , config['normout'])])
     preproc_params.update(config['global'])
     
-    filter_params = {'filter':config['filter']}
+    filter_params = OrderedDict([('filter',config['filter'])])
     if filter_params['filter']['model_name'] in ['random','random_gabor']:
         filter_params['filter']['id'] = random_id()
         
-    featsel = {'featsel':config['featsel']}
+    featsel = OrderedDict([('featsel',config['featsel'])])
 
 
     return [('render_image', render_image,{'args':(image_params,)}),
@@ -69,7 +71,7 @@ def v1_initialize(config_path,use_cpu):
             ('activate',activate),
             ('normout',normout),
             ('pool',pool),
-            ('add_features',add_features,{'params':featsel})]
+            ('postprocessing',postprocessing,{'params':featsel})]
 
  
 
@@ -82,8 +84,6 @@ def v1_initialize(config_path,use_cpu):
 
 
 ######image generation
-
-
 def image_config_gen(image_params):
     args = image_params['image']
     generator = args['generator']
@@ -106,7 +106,7 @@ def render_image(config):
      elif generator == 'cairo':
          return cairo_render(config)
      else:
-         raise ValueError, 'iamge generator not recognized'
+         raise ValueError, 'image generator not recognized'
    
 ######image preprocessing  
 @dot('v1','rendered_images',['preprocessed_images','partially_preprocessed_images'])
@@ -199,7 +199,7 @@ def pool(fh,config):
 feature_inputs = ['normin_images',
                   'filtered_images',
                   'activated_images',
-                  'normout',
+                  'normout_images',
                   'pooled_images',
                   'partially_preprocessed_images']    
 @dot('v1',feature_inputs,'v1_features')
@@ -233,7 +233,7 @@ def random_id():
     hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()
 
 def get_config(config_fname):
-    config_path = path.abspath(config_fname)
+    config_path = os.path.abspath(config_fname)
     print("Config file:", config_path)
     config = {}
     execfile(config_path, {},config)

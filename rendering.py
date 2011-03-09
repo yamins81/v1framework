@@ -9,9 +9,10 @@ import cairo
 
 IMAGE_URL = 'localhost:8000/render?'
 
-ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
 
 def renderman_config_gen(args):
+    ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
+    
     tx = ranger('tx')
     ty = ranger('ty')
     tz = ranger('tz')
@@ -24,8 +25,8 @@ def renderman_config_gen(args):
     kenv = ranger('kenv')
     model_ids = args['model_ids']   
 
-    param_names = ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','kenv','model_id','generator']
-    ranges = [tz,ty,tz,rxy,rxz,ryz,sx,sy,sz,kenv,model_ids,generator]
+    param_names = ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','kenv','model_id']
+    ranges = [tx,ty,tz,rxy,rxz,ryz,sx,sy,sz,kenv,model_ids]
     params = [OrderedDict([('image' , OrderedDict(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
     return params
 
@@ -41,6 +42,8 @@ def renderman_render(config):
 	 return open(imagefile).read()
 
 def cairo_config_gen(args):
+    ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
+    
     tx = ranger('tx')
     ty = ranger('ty')
     rxy = ranger('rxy')
@@ -51,8 +54,8 @@ def cairo_config_gen(args):
     width = [args['width']]
     height = [args['height']]
 
-    param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height','generator']
-    ranges = [tz,ty,rxy,sx,sy,objects,patterns,width,height , generator]
+    param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height']
+    ranges = [tx, ty, rxy, sx, sy, objects, patterns, width, height]
     params = [OrderedDict([('image' , OrderedDict(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
     return params
     
