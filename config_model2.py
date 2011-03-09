@@ -8,6 +8,8 @@ from collections import OrderedDict
 
 import scipy as sp
 
+import cairo_objects 
+
 
 # dict with all representation parameters
 config = {
@@ -97,12 +99,14 @@ config = {
     },
 
 'image' : {
-      'generator' : 'renderman', 
-      'model_ids':['MB30635','MB30634','MB30625','MB30335'],
+      'generator' : 'cairo',
+      'width' : 256,
+      'height' : 256'
+      'objects':[cairo_objects.SQUARE],
+      'patterns':[cairo_objects.SOLID_RED],
       'tx':{'$gt':-6.5,'$lt':-1.5,'delta':.05},
       'ty':{'$gt':-2,'$lt':2 ,'delta':1},
-      'rxz':{'$gt':-3.14,'$lt':3.14,'delta':.5}
-      
+
    } 
 
 }

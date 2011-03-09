@@ -8,9 +8,7 @@ Key sub-operations performed in a simple V1-like model
 
 """
 import time
-
-import Image
-import scipy as N
+import scipy as sp
 import scipy.signal
 
 try:
@@ -20,7 +18,6 @@ except:
 
 from npclockit import clockit_onprofile
 
-fftconv = scipy.signal.fftconvolve
 conv = scipy.signal.convolve
 
 PROFILE = False
@@ -56,13 +53,13 @@ def v1s_norm(hin, conv_mode, kshape, threshold):
     hout_h = hin_h - kh + 1
     hout_w = hin_w - kw + 1
     hout_d = hin_d    
-    hout = N.empty((hout_h, hout_w, hout_d), 'f')
+    hout = sp.empty((hout_h, hout_w, hout_d), 'f')
 
     # -- compute numerator (hnum) and divisor (hdiv)
     # sum kernel
     hin_d = hin.shape[-1]
     kshape3d = list(kshape) + [hin_d]            
-    ker = N.ones(kshape3d, dtype=dtype)
+    ker = sp.ones(kshape3d, dtype=dtype)
     size = ker.size
 
     # compute sum-of-square
@@ -78,16 +75,17 @@ def v1s_norm(hin, conv_mode, kshape, threshold):
     hsum = conv(hsrc, ker, conv_mode).astype(dtype)
     hnum = hsrc[ys:ys+hs, xs:xs+ws] - (hsum/size)
     val = (hssq - (hsum**2.)/size)
-    N.putmask(val, val<0, 0) # to avoid negative sqrt
+    sp.putmask(val, val<0, 0) # to avoid negative sqrt
     hdiv = val ** (1./2) + eps
 
     # -- apply normalization
     # 'volume' threshold
-    N.putmask(hdiv, hdiv < (threshold+eps), 1.)
+    sp.putmask(hdiv, hdiv < (threshold+eps), 1.)
     result = (hnum / hdiv)
     
     hout[:] = result
     return hout
+
 
 @clockit_onprofile(PROFILE)
 def v1like_norm(hin, conv_mode, kshape, threshold):
@@ -124,13 +122,13 @@ def v1like_norm(hin, conv_mode, kshape, threshold):
         hout_w = hout_w - kw + 1
         
     hout_d = hin_d    
-    hout = N.empty((hout_h, hout_w, hout_d), 'float32')
+    hout = sp.empty((hout_h, hout_w, hout_d), 'float32')
 
     # -- compute numerator (hnum) and divisor (hdiv)
     # sum kernel
     hin_d = hin.shape[-1]
     kshape3d = list(kshape) + [hin_d]            
-    ker = N.ones(kshape3d, dtype=dtype)
+    ker = sp.ones(kshape3d, dtype=dtype)
     size = ker.size
 
     # compute sum-of-square
@@ -173,7 +171,7 @@ def v1like_norm(hin, conv_mode, kshape, threshold):
 
     # -- apply normalization
     # 'volume' threshold
-    N.putmask(hdiv, hdiv < (threshold+eps), 1.)
+    sp.putmask(hdiv, hdiv < (threshold+eps), 1.)
     result = (hnum / hdiv)
     
     #print result.shape
@@ -182,7 +180,6 @@ def v1like_norm(hin, conv_mode, kshape, threshold):
     return hout
 
 # -------------------------------------------------------------------------
-
 FILTER_FFT_CACHE = {}
 
 def power2(shape):
@@ -286,6 +283,7 @@ def v1like_filter_pyfft(img_source,filter_source,image_config,filter_config):
     
     
 # -------------------------------------------------------------------------
+
 @clockit_onprofile(PROFILE)
 #@profile
 def v1like_pool(hin, conv_mode, lsum_ksize, outshape=None, order=1):
@@ -312,11 +310,11 @@ def v1like_pool(hin, conv_mode, lsum_ksize, outshape=None, order=1):
         dtype = hin.dtype
         if conv_mode == "valid":
             aux_shape = auxh, auxw, auxd = hin_h-lsum_ksize+1, hin_w-lsum_ksize+1, hin_d
-            aux = N.empty(aux_shape, dtype)
+            aux = sp.empty(aux_shape, dtype)
         else:
-            aux = N.empty(hin.shape, dtype)
-        k1d = N.ones((lsum_ksize), 'f')
-        k2d = N.ones((lsum_ksize, lsum_ksize), 'f')
+            aux = sp.empty(hin.shape, dtype)
+        k1d = sp.ones((lsum_ksize), 'f')
+        k2d = sp.ones((lsum_ksize, lsum_ksize), 'f')
         krow = k1d[None,:]
         kcol = k1d[:,None]
         for d in xrange(aux.shape[2]):
@@ -352,156 +350,9 @@ def sresample(src, outshape):
     
     inh, inw = inshape = src.shape[:2]
     outh, outw = outshape
-    hslice = (N.arange(outh) * (inh-1.)/(outh-1.)).round().astype(int)
-    wslice = (N.arange(outw) * (inw-1.)/(outw-1.)).round().astype(int)
+    hslice = (sp.arange(outh) * (inh-1.)/(outh-1.)).round().astype(int)
+    wslice = (sp.arange(outw) * (inw-1.)/(outw-1.)).round().astype(int)
     hout = src[hslice, :][:, wslice]    
     return hout.copy()
     
     
-    
-# -------------------------------------------------------------------------
-@clockit_onprofile(PROFILE)
-def get_image(img_fname, max_edge=None, min_edge=None,
-              resize_method='bicubic'):
-    """ Return a resized image as a numpy array
-
-    Inputs:
-      img_fname -- image filename
-      max_edge -- maximum edge length (None = no resize)
-      min_edge -- minimum edge length (None = no resize)
-      resize_method -- 'antialias' or 'bicubic'
-     
-    Outputs:
-      imga -- result
-    
-    """
-    
-    # -- open image
-    img = Image.open(img_fname)#.convert("RGB")
-
-    if max_edge is not None:
-        # -- resize so that the biggest edge is max_edge (keep aspect ratio)
-        iw, ih = img.size
-        if iw > ih:
-            new_iw = max_edge
-            new_ih = int(round(1.* max_edge * ih/iw))
-        else:
-            new_iw = int(round(1.* max_edge * iw/ih))
-            new_ih = max_edge
-        if resize_method.lower() == 'bicubic':
-            img = img.resize((new_iw, new_ih), Image.BICUBIC)
-        elif resize_method.lower() == 'antialias':
-            img = img.resize((new_iw, new_ih), Image.ANTIALIAS)
-        else:
-            raise ValueError("resize_method '%s' not understood", resize_method)
-
-    # -- convert to a numpy array
-    imga = array_from_image(img)
-        
-    return imga
-
-def array_from_image(img):
-
-    flatten = img.mode not in ['RGB','RGBA','RGBa','CMYK','YCbCr','RGBX']
-    
-    imga = N.misc.fromimage(img,flatten=flatten)
-         
-    return imga
-# -------------------------------------------------------------------------
-@clockit_onprofile(PROFILE)
-def get_image2(img_fname, resize=None):
-    """ Return a resized image as a numpy array
-
-    Inputs:
-      img_fname -- image filename
-      resize -- tuple of (type, size) where type='min_edge' or 'max_edge' 
-                if None = no resize
-     
-    Outputs:
-      imga -- result
-    
-    """
-    
-    # -- open image
-    img = Image.open(img_fname)                
-
-    # -- resize image if needed
-    if resize is not None:
-        rtype, rsize = resize
-
-        if rtype == 'min_edge':
-            # -- resize so that the smallest edge is rsize (keep aspect ratio)
-            iw, ih = img.size
-            if iw < ih:
-                new_iw = rsize
-                new_ih = int(round(1.* rsize * ih/iw))
-            else:
-                new_iw = int(round(1.* rsize * iw/ih))
-                new_ih = rsize
-
-        elif rtype == 'max_edge':
-            # -- resize so that the biggest edge is rszie (keep aspect ratio)
-            iw, ih = img.size
-            if iw > ih:
-                new_iw = rsize
-                new_ih = int(round(1.* rsize * ih/iw))
-            else:
-                new_iw = int(round(1.* rsize * iw/ih))
-                new_ih = rsize
-        
-        else:
-            raise ValueError, "resize parameter not understood"
-
-        if resize_method.lower() == 'bicubic':
-            img = img.resize((new_iw, new_ih), Image.BICUBIC)
-        elif resize_method.lower() == 'antialias':
-            img = img.resize((new_iw, new_ih), Image.ANTIALIAS)
-        else:
-            raise ValueError("resize_method '%s' not understood", resize_method)
-
-    # -- convert to a numpy array
-    imga = array_from_image(img)
-    
-    return imga
-
-
-# -------------------------------------------------------------------------
-@clockit_onprofile(PROFILE)
-def rephists(hin, division, nfeatures):
-    """ Compute local feature histograms from a given 3d (width X height X
-    n_channels) image.
-
-    These histograms are intended to serve as easy-to-compute additional
-    features that can be concatenated onto the V1-like output vector to
-    increase performance with little additional complexity. These additional
-    features are only used in the V1LIKE+ (i.e. + 'easy tricks') version of
-    the model. 
-
-    Inputs:
-      hin -- 3d image (width X height X n_channels)
-      division -- granularity of the local histograms (e.g. 2 corresponds
-                  to computing feature histograms in each quadrant)
-      nfeatures -- desired number of resulting features 
-     
-    Outputs:
-      fvector -- feature vector
-    
-    """
-
-    hin_h, hin_w, hin_d = hin.shape
-    nzones = hin_d * division**2
-    nbins = nfeatures / nzones
-    sx = (hin_w-1.)/division
-    sy = (hin_h-1.)/division
-    fvector = N.zeros((nfeatures), 'f')
-    hists = []
-    for d in xrange(hin_d):
-        h = [N.histogram(hin[j*sy:(j+1)*sy,i*sx:(i+1)*sx,d], bins=nbins)[0].ravel()
-             for i in xrange(division)
-             for j in xrange(division)
-             ]
-        hists += [h]
-
-    hists = N.array(hists, 'f').ravel()    
-    fvector[:hists.size] = hists
-    return fvector
