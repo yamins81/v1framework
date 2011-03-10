@@ -138,15 +138,14 @@ def get_filterbank(config):
 
 ######postfiltering
 
-def convolve(image,filter_fh,config,convolve_func):
+def convolve(image,filter_fh,image_config,filter_config,convolve_func):
 
     
     def filter_source():
         filter_fh.seek(0)
         return cPickle.loads(filter_fh.read())
 
-    image_config = config[0] 
-    filter_config = config[1] 
+
     output = {}
     for cidx in image.keys():
         output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,image_config,filter_config)
@@ -158,19 +157,27 @@ def postfilter(fhs,config,convolve_func):
     filter_fh = fhs[1]
     orig_imga, norm_in = cPickle.loads(image_fh.read())
 
-    filtered = convolve(norm_in, filter_fh, config, convolve_func)
+    image_config = config[0] 
+    filter_config = config[1] 
+    params = config[2]
 
-    minout = config['activ']['minout'] # sustain activity
-    maxout = config['activ']['maxout'] # saturation
+    conv_mode = image_config['conv_mode'] 
+
+    filtered = convolve(norm_in, filter_fh, image_config, filter_config, convolve_func)
+
+    minout = params['activ']['minout'] # sustain activity
+    maxout = params['activ']['maxout'] # saturation
     activ = {}
-    for cidx in input.keys():
+    for cidx in filtered.keys():
        activ[cidx] = filtered[cidx].clip(minout, maxout)
        
-    norm_out = norm(activ,conv_mode,config['normout'])
+    norm_out = norm(activ,conv_mode,image_config['normout'])
     
     pooled = {}
-    for cidx in input.keys():
-        pooled[cidx] = v1f.v1like_pool(norm_out[cidx],conv_mode,**config['pool'])
+    for cidx in norm_out.keys():
+        pooled[cidx] = v1f.v1like_pool(norm_out[cidx],conv_mode,**image_config['pool'])
+        
+    featsel = params['featsel']    
 
     fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,featsel) 
 

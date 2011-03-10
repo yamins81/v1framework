@@ -298,19 +298,20 @@ def map_preprocessing(imga0,params):
 
 def postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,featsel):     
         
-        keys = Pooled.keys()
-        fvector_l = []
-        for cidx in keys:
-            fvector = include_map_level_features(Normin[cidx],
-                                                 Filtered[cidx],
-                                                 Activated[cidx],
-                                                 Normout[cidx],
-                                                 Pooled[cidx],
-                                                 Pooled[cidx],
-                                                 featsel)
-            fvector_l += [fvector]
-        fvector_l = include_image_level_features(orig_imga,fvector_l,featsel) 
-        fvector_l = [fvector.ravel() for fvector in fvector_l]
+    keys = Pooled.keys()
+    fvector_l = []
+    for cidx in keys:
+        fvector = include_map_level_features(Normin[cidx],
+                                             Filtered[cidx],
+                                             Activated[cidx],
+                                             Normout[cidx],
+                                             Pooled[cidx],
+                                             Pooled[cidx],
+                                             featsel)
+        fvector_l += [fvector]
+    fvector_l = include_image_level_features(Partially_processed,fvector_l,featsel) 
+    fvector_l = [fvector.ravel() for fvector in fvector_l]
+    return fvector_l
 
      
 def include_image_level_features(orig_imga,fvector_l,featsel):
