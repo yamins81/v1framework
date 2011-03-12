@@ -214,10 +214,10 @@ def get_bounds(image_shape,filter_shape,conv_mode):
     return (slice(begx,endx),slice(begy,endy))    
 
 
-def v1like_filter_numpy(image,filter_source,image_config,filter_config):
+def v1like_filter_numpy(image,filter_source,model_config):
 
-    conv_mode = image_config['conv_mode']
-    filter_shape = filter_config['filter']['kshape']
+    conv_mode = model_config['conv_mode']
+    filter_shape = model_config['filter']['kshape']
 
     image_shape = image.shape
     
@@ -225,7 +225,7 @@ def v1like_filter_numpy(image,filter_source,image_config,filter_config):
     
     image_fft = np.fft.fftn(image,fft_shape)
 
-    filter_key = (fft_shape,repr(filter_config['filter']))
+    filter_key = (fft_shape,repr(model_config['filter']))
         
     if filter_key not in FILTER_FFT_CACHE:
         filterbank = filter_source()
@@ -247,10 +247,10 @@ def v1like_filter_numpy(image,filter_source,image_config,filter_config):
     return res_fft
     
     
-def v1like_filter_pyfft(image,filter_source,image_config,filter_config):
+def v1like_filter_pyfft(image,filter_source,model_config):
      
-    conv_mode = image_config['conv_mode']
-    filter_shape = filter_config['filter']['kshape']
+    conv_mode = model_config['conv_mode']
+    filter_shape = model_config['filter']['kshape']
 
     image_shape = image.shape
 
@@ -260,21 +260,18 @@ def v1like_filter_pyfft(image,filter_source,image_config,filter_config):
     
     image_fft = v1_pyfft.fft(image,fft_shape)
 
-    filter_key = (fft_shape,repr(filter_config['filter']))
+    filter_key = (fft_shape,repr(model_config['filter']))
         
     if filter_key not in FILTER_FFT_CACHE:
         filterbank = filter_source()
-        print filterbank
         filter_fft = np.empty(fft_shape + (filterbank.shape[2],),dtype=filterbank.dtype)
         for i in range(filterbank.shape[2]):
             filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape)
         FILTER_FFT_CACHE[filter_key] = filter_fft
     else:
-        
         filter_fft = FILTER_FFT_CACHE[filter_key]
     
     res_fft = np.empty(fft_shape + (filter_fft.shape[2],), dtype=filter_fft.dtype)
-    print('RESSHAPE',res_fft.shape)
     for i in range(res_fft.shape[2]):
         res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True)
         

@@ -42,31 +42,21 @@ def v1_feature_extraction_protocol(config_path,use_cpu = False):
 
 def v1_initialize(config_path,use_cpu):
     if use_cpu or not GPU_SUPPORT:    
-        postfilter_func = numpy_postfilter
+        extract_func = numpy_extract
     else:
-        postfilter_func = pyfft_postfilter
+        extract_func = pyfft_extract
 
     config = get_config(config_path)
     
     image_params = OrderedDict([('image',config['image'])])
-    
-    prefilter_params = OrderedDict([('preproc' , config['preproc']),
-                      ('normin' , config['normin']),
-                      ('filter_kshape' , config['filter']['kshape']),
-                      ('normout' , config['normout']),
-                      ('pool',config['pool'])])
-    prefilter_params.update(config['global'])
-    
-    filter_params = OrderedDict([('filter',config['filter'])])
-    if filter_params['filter']['model_name'] in ['random','random_gabor']:
-        filter_params['filter']['id'] = random_id()
-    
-    postfilter_params = OrderedDict([('activ',config['activ']),('featsel',config['featsel'])]) 
+    model_params = OrderedDict([('model',config['model'])])
 
-    return [('render_image', render_image,{'args':(image_params,)}), 
-            ('prefiltering',prefilter,{'params':prefilter_params}),                        
-            ('get_filterbank',get_filterbank,{'args':(filter_params,)}),            
-            ('postfiltering',postfilter_func,{'params':postfilter_params})]
+    if model_params['model']['filter']['model_name'] in ['random','random_gabor']:
+        model_params['model']['filter']['id'] = random_id()
+    
+    return [('generate_images', render_image, {'args':(image_params,)}),                         
+            ('generate_models', get_filterbank, {'args':(model_params,)}),            
+            ('extract_features',extract_func)]
 
 
 
@@ -75,7 +65,6 @@ def v1_initialize(config_path,use_cpu):
 #the DB operations
 #=-=-=-=-=-=-=-=-=-=-=-=-=
 #=-=-=-=-=-=-=-=-=-=-=-=-=
-
 
 ######image generation
 def image_config_gen(image_params):
@@ -91,7 +80,7 @@ def image_config_gen(image_params):
         p['image']['generator'] = generator
     return params
     
-@inject('v1','rendered_images',image_config_gen)
+@inject('v1','raw_images',image_config_gen)
 def render_image(config): 
      config = config['image'].copy()
      generator = config.pop('generator')
@@ -103,8 +92,83 @@ def render_image(config):
          raise ValueError, 'image generator not recognized'
    
    
-   
-######prefiltering 
+######filter generation   
+def model_config_generator(query): return [query]
+    
+@inject('v1','models', model_config_generator)
+def get_filterbank(config):
+    filterbank = filter_generation.get_filterbank(config['model'])    
+    return cPickle.dumps(filterbank)
+    
+      
+######extraction
+def extract_features(fhs,config,convolve_func):
+
+    image_config = config[0]
+    model_config = config[1]['model']
+    image_fh = fhs[0] 
+    filter_fh = fhs[1]
+    
+    conv_mode = model_config['conv_mode']
+    
+    #preprocessing
+    array = image2array(model_config,image_fh)
+    preprocessed,orig_imga = preprocess(array,model_config)
+    
+    #input normalization
+    norm_in = norm(preprocessed,conv_mode,model_config['normin'])
+    
+    #filtering
+    filtered = convolve(norm_in, filter_fh, model_config, convolve_func)
+
+    #nonlinear activation
+    activ = activate(filtered,model_config)
+    
+    #output normalization
+    norm_out = norm(activ,conv_mode,model_config['normout'])
+    
+    #pooling
+    pooled = pool(norm_out,conv_mode,model_config)
+        
+    #postprocessing
+    fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,model_config['featsel']) 
+
+    output = sp.concatenate(fvector_l).ravel()
+    
+    return cPickle.dumps(output)
+
+
+@cross('v1',['raw_images','models'],'features')
+def numpy_extract(fhs,config):
+    return extract_features(fhs,config,v1f.v1like_filter_numpy)
+    
+if GPU_SUPPORT:    
+    @cross('v1',['raw_images','models'],'features',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
+    def pyfft_extract(fhs,config):
+        return extract_features(fhs, config, v1f.v1like_filter_pyfft)
+
+
+
+#=-=-=-=-=-=-=-=-=-=
+#=-=-=-=-=-=-=-=-=-=
+#random utilities
+#=-=-=-=-=-=-=-=-=-=
+#=-=-=-=-=-=-=-=-=-=
+
+def pool(input,conv_mode,config):
+    pooled = {}
+    for cidx in input.keys():
+        pooled[cidx] = v1f.v1like_pool(input[cidx],conv_mode,**config['pool'])
+    return pooled
+
+def activate(input,config):
+    minout = config['activ']['minout'] # sustain activity
+    maxout = config['activ']['maxout'] # saturation
+    activ = {}
+    for cidx in input.keys():
+       activ[cidx] = input[cidx].clip(minout, maxout)
+    return activ
+
 def norm(input,conv_mode,params):
     output = {}
     for cidx in input.keys():
@@ -115,95 +179,14 @@ def norm(input,conv_mode,params):
        output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
     return output
 
-
-@dot('v1','rendered_images','prefiltered_images')
-def prefilter(fhs,config):
-    fh = fhs[0]
-    array = image2array(config,fh)
-    output,orig_imga = preprocess(array,config)
-    conv_mode = config['conv_mode']
-    normed_output = norm(output,conv_mode,config['normin'])
-    return cPickle.dumps([orig_imga,normed_output])
-
-   
-######filter generation   
-def filter_config_generator(query): return [query]
-    
-@inject('v1','filters', filter_config_generator)
-def get_filterbank(config):
-    filterbank = filter_generation.get_filterbank(config)    
-    return cPickle.dumps(filterbank)
-    
-    
-
-######postfiltering
-
-def convolve(image,filter_fh,image_config,filter_config,convolve_func):
-
-    
+def convolve(image,filter_fh,model_config,convolve_func):
     def filter_source():
         filter_fh.seek(0)
         return cPickle.loads(filter_fh.read())
-
-
     output = {}
     for cidx in image.keys():
-        output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,image_config,filter_config)
+        output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,model_config)
     return output
-    
-
-def postfilter(fhs,config,convolve_func):
-    image_fh = fhs[0] 
-    filter_fh = fhs[1]
-    orig_imga, norm_in = cPickle.loads(image_fh.read())
-
-    image_config = config[0] 
-    filter_config = config[1] 
-    params = config[2]
-
-    conv_mode = image_config['conv_mode'] 
-
-    filtered = convolve(norm_in, filter_fh, image_config, filter_config, convolve_func)
-
-    minout = params['activ']['minout'] # sustain activity
-    maxout = params['activ']['maxout'] # saturation
-    activ = {}
-    for cidx in filtered.keys():
-       activ[cidx] = filtered[cidx].clip(minout, maxout)
-       
-    norm_out = norm(activ,conv_mode,image_config['normout'])
-    
-    pooled = {}
-    for cidx in norm_out.keys():
-        pooled[cidx] = v1f.v1like_pool(norm_out[cidx],conv_mode,**image_config['pool'])
-        
-    featsel = params['featsel']    
-
-    fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,featsel) 
-
-    out = sp.concatenate(fvector_l).ravel()
-    
-    return cPickle.dumps(out)
-
-
-@cross('v1',['prefiltered_images','filters'],'v1_features')
-def numpy_postfilter(fhs,config):
-    return postfilter(fhs,config,v1f.v1like_filter_numpy)
-    
-if GPU_SUPPORT:    
-    @cross('v1',['prefiltered_images','filters'],'v1_features',setup = v1_pyfft.setup_pyfft,cleanup = v1_pyfft.cleanup_pyfft)
-    def pyfft_postfilter(fhs,config):
-        return postfilter(fhs, config, v1f.v1like_filter_pyfft)
-
-
-
-
-
-#=-=-=-=-=-=-=-=-=-=
-#=-=-=-=-=-=-=-=-=-=
-#random utilities
-#=-=-=-=-=-=-=-=-=-=
-#=-=-=-=-=-=-=-=-=-=
 
 def random_id():
     hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()

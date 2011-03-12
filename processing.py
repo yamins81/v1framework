@@ -139,7 +139,7 @@ def image2array(rep,fobj):
         assert normin_kshape[0] == normin_kshape[1]
         new_max_edge += normin_kshape[0]-1
 
-        filter_kshape = rep['filter_kshape']
+        filter_kshape = rep['filter']['kshape']
         assert filter_kshape[0] == filter_kshape[1]
         new_max_edge += filter_kshape[0]-1
         
@@ -177,7 +177,7 @@ def image_preprocessing(arr,params):
     normin_kshape = params['normin']['kshape']
     smallest_edge -= (normin_kshape[0]-1)
 
-    filter_kshape = params['filter_kshape']
+    filter_kshape = params['filter']['kshape']
     smallest_edge -= (filter_kshape[0]-1)
         
     normout_kshape = params['normout']['kshape']
