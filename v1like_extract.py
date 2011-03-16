@@ -5,7 +5,8 @@ import os
 import hashlib
 import cPickle
 
-from collections import OrderedDict
+#from collections import OrderedDict
+from bson import SON
 
 import numpy as np
 import scipy as sp
@@ -34,11 +35,13 @@ else:
 #the main protocol
 #=-=-=-=-=-=-=-=-=-=-=-=-=
 #=-=-=-=-=-=-=-=-=-=-=-=-=
+    
 
-def v1_feature_extraction_protocol(config_path,use_cpu = False):
+def v1_feature_extraction_protocol(config_path,use_cpu = False,write=False):
     D = DBAdd(v1_initialize,args = (config_path,use_cpu))
-    actualize(D)
-
+    if write:
+        actualize(D)
+    return D
 
 def v1_initialize(config_path,use_cpu):
     if use_cpu or not GPU_SUPPORT:    
@@ -48,14 +51,14 @@ def v1_initialize(config_path,use_cpu):
 
     config = get_config(config_path)
     
-    image_params = OrderedDict([('image',config['image'])])
-    model_params = OrderedDict([('model',config['model'])])
-
-    if model_params['model']['filter']['model_name'] in ['random','random_gabor']:
-        model_params['model']['filter']['id'] = random_id()
+    image_params = SON([('image',config['image'])])
+    models_params = config['models']
+    for model_params in models_params:
+        if model_params['filter']['model_name'] in ['really_random','random_gabor']:
+            model_params['id'] = config_path
     
     return [('generate_images', render_image, {'args':(image_params,)}),                         
-            ('generate_models', get_filterbank, {'args':(model_params,)}),            
+            ('generate_models', get_filterbank, {'args':(models_params,)}),            
             ('extract_features',extract_func)]
 
 
@@ -93,11 +96,11 @@ def render_image(config):
    
    
 ######filter generation   
-def model_config_generator(query): return [query]
+def model_config_generator(models): return [SON([('model',m)]) for m in models]
     
 @inject('v1','models', model_config_generator)
 def get_filterbank(config):
-    filterbank = filter_generation.get_filterbank(config['model'])    
+    filterbank = filter_generation.get_filterbank(config['model'])
     return cPickle.dumps(filterbank)
     
       
@@ -188,8 +191,7 @@ def convolve(image,filter_fh,model_config,convolve_func):
         output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,model_config)
     return output
 
-def random_id():
-    hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()
+
 
 def get_config(config_fname):
     config_path = os.path.abspath(config_fname)
@@ -203,4 +205,6 @@ def get_config(config_fname):
     
 
 
+def random_id():
+    return hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()    
 

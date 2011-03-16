@@ -1,7 +1,8 @@
 import cPickle
 import pymongo as pm
 import scipy as sp
-
+from bson import SON
+import gridfs
 from starflow.utils import uniqify, ListUnion
 
 from svm import classify, ova_classify, multi_classify
@@ -11,8 +12,14 @@ from svm import classify, ova_classify, multi_classify
 train / test 
 """
 
-def train_test(outdir,query,ntrain,ntest,ntrain_pos = None,classifier = None,classifier_kwargs = {},N=10,universe=None):
-    MakeDir(outdir)
+
+def train_test(query,dbname, colname, ntrain,ntest,ntrain_pos = None,classifier = None,classifier_kwargs = None,N=10,universe=None):
+
+    print('Q',query)
+    print('U',universe)
+
+    if classifier_kwargs is None:
+        classifier_kwargs = {}
 
     if isinstance(query,dict):
         splitter = generate_split
@@ -27,7 +34,7 @@ def train_test(outdir,query,ntrain,ntest,ntrain_pos = None,classifier = None,cla
 
     for i in range(N):
         print(i)
-        split = splitter('v1','extracted_features',query,ntrain,ntest,ntrain_pos = ntrain_pos, universe=universe)
+        split = splitter(dbname,colname,query,ntrain,ntest,ntrain_pos = ntrain_pos, universe=universe)
         train_data = split['train_data']
         train_features = split['train_features']
         train_labels = split['train_labels']
@@ -48,43 +55,41 @@ def train_test(outdir,query,ntrain,ntest,ntrain_pos = None,classifier = None,cla
 
     stats = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']
     
-    output = {'split_results' : results}
+    outdata = SON([('split_results' , results),('split_data',split_data)])
     
+    outresults = SON([])
     for stat in stats:
         if stat in results[0] and results[0][stat] != None:
-            output[stat] = sp.array([result[stat] for result in results]).mean()
+            outresults[stat] = sp.array([result[stat] for result in results]).mean()
     
 
-    F = open(os.path.join(outdir,'splits.pickle'),'w')
-    cPickle.dump(split_data,F)
-    F.close()
-    F = open(os.path.join(outdir,'results.pickle'),'w')
-    cPickle.dump(output,F)
-    F.close()
+    return outdata, outresults
 
 
+from dbutils import get_most_recent_files
 def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
 
     if universe is None:
-        universe = {}
+        universe = SON([])
 
-    connection = pm.Connection()
+    connection = pm.Connection(document_class=SON)
     db = connection[dbname]
-    data = db[collectionname]
+    data = db[collectionname + '.files']
+    fs = gridfs.GridFS(db,collection=collectionname)
 
     task_query.update(universe)
     
-    task_data = list(data.find(task_query))
-    task_ids = [x['_id'] for x in task_data]
+    task_data = get_most_recent_files(data,task_query)
+    task_fnames = [x['filename'] for x in task_data]
     N_task = len(task_data)
     
-    nontask_query = {'_id':{'$nin':task_ids}}
+    nontask_query = {'filename':{'$nin':task_fnames}}
     nontask_query.update(universe)
-    nontask_data = list(data.find(nontask_query))
+    nontask_data = get_most_recent_files(data,nontask_query)
     N_nontask = len(nontask_data)
-         
-    assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples."
-    
+
+    assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples " + str([N_task,N_nontask])
+        
     if ntrain_pos is not None:
         ntrain_neg = ntrain - ntrain_pos
         assert ntrain_pos <= N_task
@@ -112,14 +117,12 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
     
         test_data = [all_data[i] for i in perm[ntrain:ntrain + ntest]]
         
+     
+    train_labels = sp.array([x['filename'] in task_fnames for x in train_data])
+    test_labels = sp.array([x['filename'] in task_fnames for x in test_data])
     
-    
-    train_labels = sp.array([x['_id'] in task_ids for x in train_data])
-    test_labels = sp.array([x['_id'] in task_ids for x in test_data])
-    
-
-    train_features = sp.row_stack([cPickle.loads(data.fs.get(r['_id']).read()) for r in train_data])
-    test_features = sp.row_stack([cPickle.loads(data.fs.get(r['_id']).read()) for r in test_data])
+    train_features = sp.row_stack([cPickle.loads(fs.get_version(r['filename']).read()) for r in train_data])
+    test_features = sp.row_stack([cPickle.loads(fs.get_version(r['filename']).read()) for r in test_data])
     
     return {'train_data': train_data, 'test_data' : test_data, 'train_features' : train_features,'train_labels':train_labels,'test_features':test_features,'test_labels':test_labels}
 

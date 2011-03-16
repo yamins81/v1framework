@@ -1,5 +1,5 @@
-from collections import OrderedDict
+from bson import SON
 
-SQUARE = [OrderedDict([('type','rectangle'),('args',(.45,.45,.55,.55))])]
+SQUARE = [SON([('type','rectangle'),('args',(.45,.45,.55,.55))])]
 
-SOLID_RED = OrderedDict([('type','SolidPattern'),('args',(1,0,0))])
+SOLID_RED = SON([('type','SolidPattern'),('args',(1,0,0))])

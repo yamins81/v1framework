@@ -2,7 +2,7 @@ import tempfile
 import os
 import itertools
 
-from collections import OrderedDict
+from bson import SON
 
 import numpy as np
 import cairo
@@ -27,7 +27,7 @@ def renderman_config_gen(args):
 
     param_names = ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','kenv','model_id']
     ranges = [tx,ty,tz,rxy,rxz,ryz,sx,sy,sz,kenv,model_ids]
-    params = [OrderedDict([('image' , OrderedDict(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
+    params = [SON([('image' , SON(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
     return params
 
 def renderman_render(config):
@@ -56,7 +56,7 @@ def cairo_config_gen(args):
 
     param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height']
     ranges = [tx, ty, rxy, sx, sy, objects, patterns, width, height]
-    params = [OrderedDict([('image' , OrderedDict(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
+    params = [SON([('image' , SON(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
 
     return params
     
@@ -69,22 +69,22 @@ def cairo_render(params):
     width = params['width']
     
     if params.get('sx') or params.get('sy'):
-        S = OrderedDict([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
-        InvS = OrderedDict([('type','scale'),('args',(1./params.get('sx',1),1./params.get('sy',1)))])
+        S = SON([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
+        InvS = SON([('type','scale'),('args',(1./params.get('sx',1),1./params.get('sy',1)))])
         object = [S] + object + [InvS]
     
     if params.get('rxy'):
-        Rot = OrderedDict([('type','rotate'),('args',(params.get['rxy'],))]) 
-        InvRot = OrderedDict([('type','rotate'),('args',(params.get['rxy'],))])
+        Rot = SON([('type','rotate'),('args',(params.get['rxy'],))]) 
+        InvRot = SON([('type','rotate'),('args',(params.get['rxy'],))])
         object = [Rot] + object + [InvRot]
          
     if params.get('tx') != None or params.get('ty') != None:
-        Tr = OrderedDict([('type','translate'),('args',(params.get('tx',0),params.get('ty',0)))])
-        InvTr = OrderedDict([('type','translate'),('args',(-params.get('tx',0),-params.get('ty',0)))])
+        Tr = SON([('type','translate'),('args',(params.get('tx',0),params.get('ty',0)))])
+        InvTr = SON([('type','translate'),('args',(-params.get('tx',0),-params.get('ty',0)))])
         object = [Tr] + object + [InvTr]
         
     
-    params = OrderedDict([('objs' , [OrderedDict([('pattern' , pattern), ('segments' , object)])]),
+    params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object)])]),
                  ('width' , width), ('height' , height)
                 ])
                 

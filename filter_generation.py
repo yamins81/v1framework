@@ -7,7 +7,7 @@ def get_filterbank(config):
     model_name = config['model_name']
     fh, fw = config['kshape']
     
-    if model_name == 'totally_random':
+    if model_name == 'really_random':
         num_filters = config['num_filters']
         filterbank = np.random.random((fh,fw,num_filters))
         
@@ -17,9 +17,8 @@ def get_filterbank(config):
         max_wl = config['max_wavelength']  
         xc = fw/2
         yc = fh/2
-        num = query['num_filters']
         filterbank = np.empty((fh,fw,num_filters))
-        for i in num:
+        for i in range(num_filters):
             orient = 2*np.pi*np.random.random()
             freq = 1./np.random.randint(min_wl,high = max_wl)
             phase = 2*np.pi*np.random.random()
