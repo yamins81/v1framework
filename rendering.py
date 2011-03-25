@@ -27,7 +27,7 @@ def renderman_config_gen(args):
 
     param_names = ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','kenv','model_id']
     ranges = [tx,ty,tz,rxy,rxz,ryz,sx,sy,sz,kenv,model_ids]
-    params = [SON([('image' , SON(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
+    params = [SON([('image' , SON(filter(lambda x: x[1] is not None, zip(param_names,p))))]) for p in itertools.product(*ranges)]  
     return params
 
 def renderman_render(config):
@@ -40,6 +40,7 @@ def renderman_render(config):
 	 os.system('tar -xzvf ' + zipfile)
 	 imagefile = [os.path.join(zipname,x) for x in os.listdir(zipname) if x.endswith('.tif')][0]
 	 return open(imagefile).read()
+
 
 def cairo_config_gen(args):
     ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args[v]['delta']).tolist() if isinstance(args.get(v),dict) else [args.get(v)]
@@ -56,7 +57,7 @@ def cairo_config_gen(args):
 
     param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height']
     ranges = [tx, ty, rxy, sx, sy, objects, patterns, width, height]
-    params = [SON([('image' , SON(filter(lambda x: x[1], zip(param_names,p))))]) for p in itertools.product(*ranges)]  
+    params = [SON([('image' , SON(filter(lambda x: x[1] is not None, zip(param_names,p))))]) for p in itertools.product(*ranges)]  
 
     return params
     
@@ -68,33 +69,41 @@ def cairo_render(params):
     height = params['height']
     width = params['width']
     
+
     if params.get('sx') or params.get('sy'):
         S = SON([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
         InvS = SON([('type','scale'),('args',(1./params.get('sx',1),1./params.get('sy',1)))])
         object = [S] + object + [InvS]
-    
+
+ 
     if params.get('rxy'):
-        Rot = SON([('type','rotate'),('args',(params.get['rxy'],))]) 
-        InvRot = SON([('type','rotate'),('args',(params.get['rxy'],))])
-        object = [Rot] + object + [InvRot]
-         
+        Rot = SON([('type','rotate'),('args',(params.get('rxy'),))]) 
+        InvRot = SON([('type','rotate'),('args',(-params.get('rxy'),))])
+        object = [Rot] + object + [InvRot]    
+
     if params.get('tx') != None or params.get('ty') != None:
-        Tr = SON([('type','translate'),('args',(params.get('tx',0),params.get('ty',0)))])
-        InvTr = SON([('type','translate'),('args',(-params.get('tx',0),-params.get('ty',0)))])
+        Tr = SON([('type','translate'),('args',(params.get('tx',0),-params.get('ty',0)))])
+        InvTr = SON([('type','translate'),('args',(-params.get('tx',0),params.get('ty',0)))])
         object = [Tr] + object + [InvTr]
+       
         
+    
+    Tr = SON([('type','translate'),('args',(.5,.5))])
+    InvTr = SON([('type','translate'),('args',(-.5,-.5))])
+    object = [Tr] + object + [InvTr]
+          
     
     params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object)])]),
                  ('width' , width), ('height' , height)
                 ])
-                
+                           
     return cairo_render_image(params)
 
 
 def cairo_render_image(params):
 
     WIDTH, HEIGHT = params['width'], params['height']
-
+    
     surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
     ctx = cairo.Context(surface)
 

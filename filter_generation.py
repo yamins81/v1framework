@@ -41,5 +41,8 @@ def get_filterbank(config):
             filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh)) 
+                               
+    elif model_name == 'pixels':
+        return np.ones((fh,fw,1))
 
     return filterbank

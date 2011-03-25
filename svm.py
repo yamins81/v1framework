@@ -60,9 +60,11 @@ def classify(train_features,
     ap = 0
     rng = sp.arange(0, 1.1, .1)
     for th in rng:
-        p = prec[rec>=th].max()
-        if p == []:
-               p =0
+        parray = prec[rec>=th]
+        if len(parray) == 0:
+            p = 0
+        else:
+            p = parray.max()
         ap += p / rng.size
 
     #area under curve

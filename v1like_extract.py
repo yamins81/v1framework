@@ -14,7 +14,7 @@ from starflow.protocols import protocolize, actualize
 
 import v1like_funcs as v1f 
 import filter_generation
-from dbutils import dot,cross,inject, DBAdd
+from dbutils import dot,cross,inject, aggregate, DBAdd
 from processing import image2array, preprocess, postprocess
 from rendering import renderman_config_gen, cairo_config_gen, renderman_render, cairo_render
 
@@ -107,6 +107,10 @@ def get_filterbank(config):
 ######extraction
 def extract_features(fhs,config,convolve_func):
 
+    print('\n')
+    print(config)
+    print('\n')
+    
     image_config = config[0]
     model_config = config[1]['model']
     image_fh = fhs[0] 
@@ -116,25 +120,26 @@ def extract_features(fhs,config,convolve_func):
     
     #preprocessing
     array = image2array(model_config,image_fh)
-    preprocessed,orig_imga = preprocess(array,model_config)
     
+    preprocessed,orig_imga = preprocess(array,model_config)
+        
     #input normalization
-    norm_in = norm(preprocessed,conv_mode,model_config['normin'])
+    norm_in = norm(preprocessed,conv_mode,model_config.get('normin'))
     
     #filtering
     filtered = convolve(norm_in, filter_fh, model_config, convolve_func)
 
+
     #nonlinear activation
-    activ = activate(filtered,model_config)
+    activ = activate(filtered,model_config.get('activ'))
     
     #output normalization
-    norm_out = norm(activ,conv_mode,model_config['normout'])
-    
+    norm_out = norm(activ,conv_mode,model_config.get('normout'))
     #pooling
-    pooled = pool(norm_out,conv_mode,model_config)
+    pooled = pool(norm_out,conv_mode,model_config.get('pool'))
         
     #postprocessing
-    fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,model_config['featsel']) 
+    fvector_l = postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,model_config.get('featsel'))
 
     output = sp.concatenate(fvector_l).ravel()
     
@@ -151,6 +156,62 @@ if GPU_SUPPORT:
         return extract_features(fhs, config, v1f.v1like_filter_pyfft)
 
 
+#=-=-=-=-=-=-=-=-=-=-=
+#=-=-=-=-=-=-=-=-=-=-=
+#experimental learning
+#=-=-=-=-=-=-=-=-=-=-=
+#=-=-=-=-=-=-=-=-=-=-=
+
+@aggregate('v1','raw_images','raw_images','test_learned_models')
+def learn_filterbank(fhs,configs):
+    fhs = [fh[0] for fh in fhs]
+
+    config = configs[0][0].copy()
+    
+    num_slices = config['model']['num_slices']
+    filterbank = filter_generation.get_filterbank(config['model'])
+    
+    fh,fw,num_filters = filterbank.shape
+    filter_kshape = (fh,fw)
+    
+    counts = np.zeros(num_filters)
+    
+    for fh in fhs:
+        array = image2array(config['model'],fh)[:,:,0]
+     
+        slices = [get_random_slice(array,filter_kshape) for i in range(num_slices)]
+        for s in slices:
+            patch = array[s]
+            distarray = []
+            for i in range(num_filters):
+                d = dist(filterbank[:,:,i],patch)
+                distarray.append(d)
+            distarray = np.array(distarray)
+            imax = distarray.argmax()
+            counts[imax] += 1
+            lr = .0001
+            #lr = 1./counts[imax]
+            filterbank[:,:,imax] = normalize(filterbank[:,:,imax]*(1 - lr) + patch*lr)
+            
+            
+    return cPickle.dumps(filterbank)
+    
+def dist(x,y):
+    return np.sqrt(((x - y)**2).sum())
+   
+def get_initial_filterbank(config):
+    return get_filterbank(config)
+    
+def get_random_slice(array,shape):
+    ashape = array.shape
+    shapediff = [max(0,a-s) for (a,s) in zip(ashape,shape)]
+    rands = [np.random.randint(0,high = d+1) for d in shapediff] 
+    s = tuple([slice(r,r+s) for (r,s) in zip(rands,shape)])
+    return s
+
+def normalize(Y):
+    m = Y.mean()
+    return (Y - m) / np.sqrt(((Y - m)**2).sum())
 
 #=-=-=-=-=-=-=-=-=-=
 #=-=-=-=-=-=-=-=-=-=
@@ -159,36 +220,50 @@ if GPU_SUPPORT:
 #=-=-=-=-=-=-=-=-=-=
 
 def pool(input,conv_mode,config):
-    pooled = {}
-    for cidx in input.keys():
-        pooled[cidx] = v1f.v1like_pool(input[cidx],conv_mode,**config['pool'])
-    return pooled
+    if config:
+        pooled = {}
+        for cidx in input.keys():
+            pooled[cidx] = v1f.v1like_pool(input[cidx],conv_mode,**config)
+        return pooled
+    return input
 
 def activate(input,config):
-    minout = config['activ']['minout'] # sustain activity
-    maxout = config['activ']['maxout'] # saturation
-    activ = {}
-    for cidx in input.keys():
-       activ[cidx] = input[cidx].clip(minout, maxout)
-    return activ
+    if config:
+        minout = config['minout'] # sustain activity
+        maxout = config['maxout'] # saturation
+        activ = {}
+        for cidx in input.keys():
+           activ[cidx] = input[cidx].clip(minout, maxout)
+        return activ
+    else:
+        return input
 
 def norm(input,conv_mode,params):
     output = {}
     for cidx in input.keys():
-       if len(input[cidx].shape) == 3:
-          inobj = input[cidx]
-       else:
-          inobj = input[cidx][:,:,sp.newaxis]
-       output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
+        if len(input[cidx].shape) == 3:
+            inobj = input[cidx]
+        else:
+            inobj = input[cidx][:,:,sp.newaxis]
+        if params:
+            output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
+        else: 
+            output[cidx] = inobj
     return output
+
 
 def convolve(image,filter_fh,model_config,convolve_func):
     def filter_source():
         filter_fh.seek(0)
         return cPickle.loads(filter_fh.read())
-    output = {}
-    for cidx in image.keys():
-        output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,model_config)
+    output = {}     
+    if model_config['filter']['model_name'] != 'pixels':
+        for cidx in image.keys():
+            output[cidx] = convolve_func(image[cidx][:,:,0],filter_source,model_config)
+    else:
+        for cidx in image.keys():
+            output[cidx] = image[cidx][:,:,0]
+            
     return output
 
 
@@ -200,9 +275,6 @@ def get_config(config_fname):
     execfile(config_path, {},config)
     
     return config['config']
-
-
-    
 
 
 def random_id():

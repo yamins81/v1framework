@@ -13,10 +13,17 @@ conv = scipy.signal.convolve
 PROFILE = False
 
 def preprocess(arr,config):
-    orig_imga,orig_imga_conv = image_preprocessing(arr,config) 
+    if config.get('preproc'):
+        orig_imga,orig_imga_conv = image_preprocessing(arr,config) 
+    else:
+        orig_imga = arr
+        orig_imga_conv = orig_imga.copy()
     output = {}
     for cidx in xrange(orig_imga_conv.shape[2]):
-        output[cidx] = map_preprocessing(orig_imga_conv[:,:,cidx],config) 
+        if config.get('preproc'):
+            output[cidx] = map_preprocessing(orig_imga_conv[:,:,cidx],config) 
+        else:
+            output[cidx] = orig_imga_conv[:,:,cidx]
     return output,orig_imga
 
 
@@ -68,7 +75,7 @@ def array_from_image(img):
     
 # -------------------------------------------------------------------------
 @clockit_onprofile(PROFILE)
-def get_image2(img_fname, resize=None):
+def get_image2(img_fname, resize=None,resize_method=None):
     """ Return a resized image as a numpy array
 
     Inputs:
@@ -125,44 +132,51 @@ def get_image2(img_fname, resize=None):
 
 
 def image2array(rep,fobj):
-    resize_type = rep['preproc'].get('resize_type', 'input')
-    if resize_type == 'output':
-        if 'max_edge' not in rep['preproc']:
-            raise NotImplementedError
-        # add whatever is needed to get output = max_edge
-        new_max_edge = rep['preproc']['max_edge']
-
-        preproc_lsum = rep['preproc']['lsum_ksize']
-        new_max_edge += preproc_lsum-1
-            
-        normin_kshape = rep['normin']['kshape']
-        assert normin_kshape[0] == normin_kshape[1]
-        new_max_edge += normin_kshape[0]-1
-
-        filter_kshape = rep['filter']['kshape']
-        assert filter_kshape[0] == filter_kshape[1]
-        new_max_edge += filter_kshape[0]-1
-        
-        normout_kshape = rep['normout']['kshape']
-        assert normout_kshape[0] == normout_kshape[1]
-        new_max_edge += normout_kshape[0]-1
-        
-        pool_lsum = rep['pool']['lsum_ksize']
-        new_max_edge += pool_lsum-1
-
-        rep['preproc']['max_edge'] = new_max_edge
+    if rep.get('preproc'):
+        resize_type = rep['preproc'].get('resize_type', 'input')
+        if resize_type == 'output':
+            if 'max_edge' not in rep['preproc']:
+                raise NotImplementedError
+            # add whatever is needed to get output = max_edge
+            new_max_edge = rep['preproc']['max_edge']
     
-    if 'max_edge' in rep['preproc']:
-        max_edge = rep['preproc']['max_edge']
-        resize_method = rep['preproc']['resize_method']
-        imgarr = get_image(fobj, max_edge=max_edge,
-                           resize_method=resize_method)
+            preproc_lsum = rep['preproc']['lsum_ksize']
+            new_max_edge += preproc_lsum-1
+                
+            if rep.get('normin'):     
+                normin_kshape = rep['normin']['kshape']
+                assert normin_kshape[0] == normin_kshape[1]
+                new_max_edge += normin_kshape[0]-1
+        
+            if rep.get('filter'):
+                filter_kshape = rep['filter']['kshape']
+                assert filter_kshape[0] == filter_kshape[1]
+                new_max_edge += filter_kshape[0]-1
+            
+            if rep.get('normout'):
+                normout_kshape = rep['normout']['kshape']
+                assert normout_kshape[0] == normout_kshape[1]
+                new_max_edge += normout_kshape[0]-1
+            
+            if rep.get('pool'):
+                pool_lsum = rep['pool']['lsum_ksize']
+                new_max_edge += pool_lsum-1
+    
+            rep['preproc']['max_edge'] = new_max_edge
+        
+        if 'max_edge' in rep['preproc']:
+            max_edge = rep['preproc']['max_edge']
+            resize_method = rep['preproc']['resize_method']
+            imgarr = get_image(fobj, max_edge=max_edge,
+                               resize_method=resize_method)
+        else:
+            resize = rep['preproc']['resize']
+            resize_method = rep['preproc']['resize_method']        
+            imgarr = get_image2(fobj, resize=resize,
+                                resize_method=resize_method)
     else:
-        resize = rep['preproc']['resize']
-        resize_method = rep['preproc']['resize_method']        
-        imgarr = get_image2(fobj, resize=resize,
-                            resize_method=resize_method)
-                            
+        img = Image.open(fobj)
+        imgarr = array_from_image(img)
     return imgarr
     
 def image_preprocessing(arr,params):
@@ -174,17 +188,21 @@ def image_preprocessing(arr,params):
         preproc_lsum = 1
     smallest_edge -= (preproc_lsum-1)
             
-    normin_kshape = params['normin']['kshape']
-    smallest_edge -= (normin_kshape[0]-1)
+    if params.get('normin'):      
+        normin_kshape = params['normin']['kshape']
+        smallest_edge -= (normin_kshape[0]-1)
 
-    filter_kshape = params['filter']['kshape']
-    smallest_edge -= (filter_kshape[0]-1)
+    if params.get('filter'):
+        filter_kshape = params['filter']['kshape']
+        smallest_edge -= (filter_kshape[0]-1)
         
-    normout_kshape = params['normout']['kshape']
-    smallest_edge -= (normout_kshape[0]-1)
-        
-    pool_lsum = params['pool']['lsum_ksize']
-    smallest_edge -= (pool_lsum-1)
+    if params.get('normout'):
+        normout_kshape = params['normout']['kshape']
+        smallest_edge -= (normout_kshape[0]-1)
+    
+    if params.get('pool'):
+        pool_lsum = params['pool']['lsum_ksize']
+        smallest_edge -= (pool_lsum-1)
 
     arrh, arrw, _ = arr.shape
 
@@ -301,15 +319,19 @@ def postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,fea
     keys = Pooled.keys()
     fvector_l = []
     for cidx in keys:
-        fvector = include_map_level_features(Normin[cidx],
+        if featsel:
+            fvector = include_map_level_features(Normin[cidx],
                                              Filtered[cidx],
                                              Activated[cidx],
                                              Normout[cidx],
                                              Pooled[cidx],
                                              Pooled[cidx],
                                              featsel)
+        else:
+            fvector = Pooled[cidx]
         fvector_l += [fvector]
-    fvector_l = include_image_level_features(Partially_processed,fvector_l,featsel) 
+    if featsel:
+        fvector_l = include_image_level_features(Partially_processed,fvector_l,featsel) 
     fvector_l = [fvector.ravel() for fvector in fvector_l]
     return fvector_l
 

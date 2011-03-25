@@ -262,6 +262,7 @@ def cross_op(func):
     newdata_list = []
     for data_tuple in data_product:
         filenames = [dt['filename'] for dt in data_tuple]
+
         data_tuple = [dt['config'] for dt in data_tuple]
         fhs = [fs.get_version(filename) for (fs,filename) in zip(in_fs,filenames)]
         config_time = max(ftime,*[get_time(fh.upload_date) for fh in fhs])
@@ -282,7 +283,6 @@ def cross_op(func):
     write_outcerts(func,newdata_list,incertdicts)
 
 
-    
 @activate(op_depends,op_creates)
 def aggregate_op(func):
 
@@ -310,23 +310,24 @@ def aggregate_op(func):
     incertdicts = check_incerts(func)    
     
     data_list = get_data_list(in_cols,inconfig_strings)
+        
     params = func.params
     if params is None:
         params = SON([])   
-
-    aggregate_params = old_params[aggregate_on]
-    aggregate_val = func.args[aggregate_on]
-
-  
+    
+    ind = func.inroots.index(aggregate_on)
+    aggregate_params = incertdicts[ind]['param_names'][aggregate_on]
+    aggregate_val = son_escape(func.in_args[ind])
+    
     D = get_aggregate(data_list,aggregate_val,aggregate_params,aggregate_on,params)
-         
+
     for (dtuples,Ndict) in D.values():
-        
         filenames = [[data['filename'] for data in data_tuple] for data_tuple in dtuples]
-        filehandles = [[fs.get_version(filename) for (fs,fname) in zip(in_fs,fnames)] for fnames in filenames]
+        filehandles = [[fs.get_version(fname) for (fs,fname) in zip(in_fs,fnames)] for fnames in filenames]
         config_time = max([max(ftime,*[get_time(fh.upload_date) for fh in fhs]) for fhs in filehandles])
-               
-        if not already_exists(newconfig,out_cols,config_time,outconfig_str):
+        
+        dtuples = [[dt['config'] for dt in data_tuple] for data_tuple in dtuples]
+        if not already_exists(Ndict,out_cols,config_time,outconfig_string):
             results =  do_rec(filehandles, dtuples, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
                 outdata,res = interpret_res(res,Ndict,outconfig_string)
@@ -335,7 +336,7 @@ def aggregate_op(func):
     if func.cleanup:
         func.cleanup()      
         
-    newdata_list = [x[0] for x in D.values()]    
+    newdata_list = [x[1] for x in D.values()]    
     write_outcerts(func,newdata_list,incertdicts)
 
 
@@ -344,20 +345,20 @@ def get_aggregate(config_list,aggregate_val,aggregate_params,aggregate_on,params
     D = {}
     for config_tuple in config_list:
         N = []
-        config_tuple = [c['config'] for c in config_tuple]
         for c in config_tuple:
-            nonagg_params = set(c.keys()).difference(aggregate_params)
-            nonagg_values = SON([(p,c[p]) for p in nonagg_params])
+            c['config'].update(params) 
+            nonagg_params = set(c['config'].keys()).difference(aggregate_params)
+            nonagg_values = SON([(p,c['config'][p]) for p in nonagg_params])
             N.append(nonagg_values)
         Ndict = dict_union(N)
         Ndict[aggregate_on + '__aggregate__'] = aggregate_val 
-        Ndict.update(params)
         
-        r = repr(NDict)
+        
+        r = repr(Ndict)
         if r in D:
-            D[r].append((config_tuple,Ndict))
+            D[r][0].append(config_tuple)
         else:
-            D[r] = [(config_tuple,Ndict)]
+            D[r] = ([config_tuple],Ndict)
             
     return D
 
@@ -392,7 +393,6 @@ def get_op_gen(op,oplist):
             
             func.config_generator = lambda : func.generator(*args)
             func.out_args = SON([(outroot,args) for outroot in outroots])
-            print('OA',func.out_args)
             
         else:
             if len(op) > 2 and 'params' in op[2]:
@@ -464,7 +464,6 @@ def createCertificateDict(path,d,tol=10000000000):
     
   
 def do_rec(in_fhs,config,func,pass_args):
-    print(config)
     if in_fhs:
         results = func(in_fhs,config,**pass_args)          
     else:
@@ -503,7 +502,12 @@ def FuncTime(func):
 def reach_in(attr,q):
     q1 = SON([])
     for k in q:
-        q1[attr + '.' + k] = q[k]
+        if k == '$or':
+            q1[k] = [reach_in(attr,l) for l in q[k]]
+        elif k.startswith('$'):
+            q1[k] = q[k]
+        else:
+            q1[attr + '.' + k] = q[k]
     return q1   
     
 
@@ -561,7 +565,19 @@ def get_most_recent_files(coll,q,kwargs=None):
     c = coll.find(q,**kwargs).sort([("filename", 1), ("uploadDate", -1)])    
     cl = list(c)
     return get_recent(cl)
-    
-    
+        
 def get_recent(filespecs):
     return [f for (i,f) in enumerate(filespecs) if i == 0 or filespecs[i-1]['filename'] != f['filename']]
+    
+def son_key_escape(k):
+    return k.replace('$','\$').replace('.','__')
+
+def son_escape(x):
+    if isinstance(x,SON):
+        return SON([(son_key_escape(k),son_escape(v)) for (k,v) in x.items()])    
+    elif isinstance(x,list):
+        return [son_escape(y) for y in x]
+    elif isinstance(x,tuple):
+        return tuple([son_escape(y) for y in x])
+    else:
+        return x    

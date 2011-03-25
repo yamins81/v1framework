@@ -66,7 +66,19 @@ def train_test(query,dbname, colname, ntrain,ntest,ntrain_pos = None,classifier 
     return outdata, outresults
 
 
-from dbutils import get_most_recent_files
+def combine_things(a,b):
+    for k in b:
+        if k == '$where' and k in a:
+            a[k] = a[k].strip('; ') + ' && ' + b[k]
+                
+        elif k == '$or' and k in a:
+            pass
+            
+        else:
+            a[k] = b[k]
+    
+
+from dbutils import get_most_recent_files, dict_union
 def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
 
     if universe is None:
@@ -77,7 +89,7 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
     data = db[collectionname + '.files']
     fs = gridfs.GridFS(db,collection=collectionname)
 
-    task_query.update(universe)
+    combine_things(task_query,universe)
     
     task_data = get_most_recent_files(data,task_query)
     task_fnames = [x['filename'] for x in task_data]
@@ -89,11 +101,11 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
     N_nontask = len(nontask_data)
 
     assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples " + str([N_task,N_nontask])
-        
+      
     if ntrain_pos is not None:
         ntrain_neg = ntrain - ntrain_pos
-        assert ntrain_pos <= N_task
-        assert ntrain_pos <= ntrain
+        assert ntrain_pos <= N_task, "Not enough positive training examples, there are: " + str(N_task)
+        assert ntrain_neg <= N_nontask, "Not enough negative training examples, there are: " + str(N_nontask)
         
         perm_pos = sp.random.permutation(len(task_data))
         perm_neg = sp.random.permutation(len(nontask_data))
