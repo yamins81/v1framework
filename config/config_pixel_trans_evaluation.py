@@ -71,7 +71,23 @@ config = {
       ('ntrain_pos',8),
       ('universe',SON([('image.tx',SON([('$gte',-.282),('$lte',.320)])),('image.ty',SON([('$gte',-.282),('$lte',.320)])),('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
       ('query',SON([('image.sx',1),('image.sy',1)]))
-   ]),   
+   ]), 
+   SON([
+      ('N',40), 
+      ('ntrain',256),
+      ('ntest',32),
+      ('ntrain_pos',128),
+      ('universe',SON([('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
+      ('query',SON([('image.sx',1),('image.sy',1)]))
+   ]), 
+   SON([
+      ('N',40), 
+      ('ntrain',400),
+      ('ntest',32),
+      ('ntrain_pos',200),
+      ('universe',SON([('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
+      ('query',SON([('image.sx',1),('image.sy',1)]))
+   ]),    
    ]  
 }
 

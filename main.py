@@ -27,13 +27,22 @@ def test_extract_really_random(depends_on = '../config/config_testreallyrandom.p
 def test_extract_random_gabor(depends_on = '../config/config_testrandomgabor.py'):
     v1_feature_extraction_protocol(depends_on,write=True)
 
-  
 @protocolize()
 def pixel_trans_extraction(depends_on = '../config/config_pixel_trans.py'):
     v1_feature_extraction_protocol(depends_on,write=True)
 
 @protocolize()
 def pixel_trans_evaluation(depends_on = ('../config/config_pixel_trans.py','../config/config_pixel_trans_evaluation.py')):
+    D = v1_evaluation_protocol(depends_on[1],depends_on[0])    
+    actualize(D)
+  
+@protocolize()
+def pixel_trans_large_extraction(depends_on = '../config/config_pixel_trans_large.py'):
+    v1_feature_extraction_protocol(depends_on,write=True)
+  
+  
+@protocolize()
+def pixel_trans_large_evaluation(depends_on = ('../config/config_pixel_trans_large.py','../config/config_pixel_trans_large_evaluation.py')):
     D = v1_evaluation_protocol(depends_on[1],depends_on[0])    
     actualize(D)    
  
