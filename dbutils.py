@@ -12,6 +12,7 @@ import cPickle
 from starflow.utils import activate
 import pymongo as pm
 from bson import SON,BSON
+import numpy as np
 
 
 
@@ -151,16 +152,16 @@ def inject_op(func,incertpaths,outcertpaths,params):
 
     for config in configs:
         assert isinstance(config,SON)
-        if not already_exists(config,out_cols,config_time,func.outconfig_string):
+        if not already_exists(config,out_cols,config_time,func):
             results = do_rec(None,  config, func, pass_args)
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,config,func.outconfig_string)
+                outdata,res = interpret_res(res,config,func)
                 fs.put(res,**outdata)
                 
     if func.cleanup:
         func.cleanup()   
         
-    write_outcerts(func,configs,incertdicts,outcertpaths)
+    write_outcerts(func,configs,incertdicts,outcertpaths,db)
 
         
 @activate(op_depends,op_creates)
@@ -190,7 +191,7 @@ def dot_op(func,incertpaths,outcertpaths,params):
     
     incertdicts = load_incerts(func,incertpaths,outcertpaths,params)
 
-    data_list = get_data_list(in_cols,func.inconfig_strings)
+    data_list = get_data_list(in_cols,func)
     data_list = zip(*data_list)
 
     newdata_list = []
@@ -204,16 +205,16 @@ def dot_op(func,incertpaths,outcertpaths,params):
         newdata.update(params)
         newdata_list.append(newdata)
  
-        if not already_exists(newdata,out_cols,config_time,func.outconfig_string):
+        if not already_exists(newdata,out_cols,config_time,func):
             results =  do_rec(fhs, newdata, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,newdata,func.outconfig_string)
+                outdata,res = interpret_res(res,newdata,func)
                 fs.put(res,**outdata)
                  
     if func.cleanup:
         func.cleanup()     
         
-    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths,db)
     
 
     
@@ -243,11 +244,13 @@ def cross_op(func,incertpaths,outcertpaths,params):
 
     incertdicts = load_incerts(func,incertpaths,outcertpaths,params) 
            
-    data_list = get_data_list(in_cols,func.inconfig_strings)
-    data_product = itertools.product(*data_list)
+    data_list = get_data_list(in_cols,func)
+ 
+    data_product = list(itertools.product(*data_list))
     
     newdata_list = []
     for data_tuple in data_product:
+        
         filenames = [dt['filename'] for dt in data_tuple]
 
         data_tuple = [dt['config'] for dt in data_tuple]
@@ -258,16 +261,18 @@ def cross_op(func,incertpaths,outcertpaths,params):
         flat_data = dict_union(data_tuple)        
         newdata_list.append(flat_data)
 
-        if not already_exists(flat_data,out_cols,config_time,func.outconfig_string):
+        if not already_exists(flat_data,out_cols,config_time,func):
+            
             results = do_rec(fhs, data_tuple, func, pass_args)
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,flat_data,func.outconfig_string)
+                outdata,res = interpret_res(res,flat_data,func)
                 fs.put(res,**outdata)
+
      
     if func.cleanup:
         func.cleanup()  
         
-    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths,db)
 
 
 @activate(op_depends,op_creates)
@@ -294,7 +299,7 @@ def aggregate_op(func,incertpaths,outcertpaths,params):
 
     incertdicts = load_incerts(func,incertpaths,outcerpaths,params)    
     
-    data_list = get_data_list(in_cols,func.inconfig_strings)
+    data_list = get_data_list(in_cols,func)
         
     params = func.params
     if params is None:
@@ -312,17 +317,17 @@ def aggregate_op(func,incertpaths,outcertpaths,params):
         config_time = max([max(ftime,*[get_time(fh.upload_date) for fh in fhs]) for fhs in filehandles])
         
         dtuples = [[dt['config'] for dt in data_tuple] for data_tuple in dtuples]
-        if not already_exists(Ndict,out_cols,config_time,func.outconfig_string):
+        if not already_exists(Ndict,out_cols,config_time,func):
             results =  do_rec(filehandles, dtuples, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,Ndict,func.outconfig_string)
+                outdata,res = interpret_res(res,Ndict,func)
                 fs.put(res,**outdata)
          
     if func.cleanup:
         func.cleanup()      
         
     newdata_list = [x[1] for x in D.values()]    
-    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths,db)
 
 
 def get_aggregate(config_list,aggregate_val,aggregate_params,aggregate_on,params):
@@ -399,6 +404,10 @@ def get_op_gen(op,oplist):
             
 
 #######utils
+def random_id():
+    return hashlib.sha1(str(np.random.randint(10,size=(32,)))).hexdigest()    
+
+
 def check_args(args):
     BSON.encode(args,check_keys=True)
 
@@ -418,10 +427,13 @@ def load_incerts(func,incertpaths,outcertpaths,params):
         outargs = dict_union(in_args)
         outargs.update(params)
         
+        func.inrun_hashes = [d['run_hash'] for d in incertdicts]
+        
     else:
         incertdicts = None
         outargs = SON([(outroot,params) for outroot in func.outroots])
     
+    func.outrun_hash = random_id()
     func.out_args = outargs
     func.outconfig_string = get_config_string(func.out_args)
     assert outcertpaths == [get_cert_path(func.dbname, root, func.outconfig_string) for root in func.outroots]
@@ -429,7 +441,7 @@ def load_incerts(func,incertpaths,outcertpaths,params):
     return incertdicts
 
    
-def write_outcerts(func,configs,incertdicts,outcertpaths):
+def write_outcerts(func,configs,incertdicts,outcertpaths,db):
     if incertdicts:
         old_param_names = dict_union([op['param_names'] for op in incertdicts])
     else:
@@ -439,8 +451,14 @@ def write_outcerts(func,configs,incertdicts,outcertpaths):
     for (outcertpath,outroot) in zip(outcertpaths,func.outroots):
         param_names = old_param_names.copy()
         param_names[outroot] = new_param_names
-        createCertificateDict(outcertpath,{'db':func.dbname, 'out_args': func.out_args, 'root':outroot, 'config_hash':func.outconfig_string, 'param_names':param_names})    
+        remove_incorrect(db,outroot,func.outconfig_string,func.outrun_hash)
+        createCertificateDict(outcertpath,{'run_hash':func.outrun_hash,'db':func.dbname, 'out_args': func.out_args, 'root':outroot, 'config_hash':func.outconfig_string, 'param_names':param_names})    
         
+        
+def remove_incorrect(db,root,config_hash,run_hash):
+    coll = db[root + '.files']
+    coll.update({'__config_hash__':config_hash,'__run_hash__':{'$ne':run_hash}},{'$pull':{'__config_hash__':config_hash}},multi=True)
+
 
 def createCertificateDict(path,d,tol=10000000000):
     d['__certificate__'] = random.randint(0,tol)
@@ -499,8 +517,9 @@ def reach_in(attr,q):
     return q1   
     
 
-def interpret_res(res,data,cstr):
-    
+def interpret_res(res,data,func):
+    cstr = func.outconfig_string
+    run_hash = func.outrun_hash
     datacopy = data.copy()
     
     if not isinstance(res,str):
@@ -511,13 +530,16 @@ def interpret_res(res,data,cstr):
     else:
         file_res = res
         
-    outdata = {'config' : datacopy, '__hash__' : [cstr]}
+    outdata = {'config' : datacopy, '__config_hash__' : [cstr],'__run_hash__':[run_hash]}
     outdata['filename'] = get_filename(data) 
 
     return outdata,file_res
     
     
-def already_exists(config,coll_list,t, cstr):
+def already_exists(config,coll_list,t, func):
+    cstr = func.outconfig_string
+    run_hash = func.outrun_hash
+    
     q = reach_in('config',config)
     #d = datetime.datetime.fromtimestamp(t)
     d = datetime.datetime(*t[:6])
@@ -530,8 +552,7 @@ def already_exists(config,coll_list,t, cstr):
     
     if all_exist:
         for (coll,rec) in zip(coll_list,recs):
-            if cstr not in rec['__hash__']:
-                coll.update(q,{'$addToSet':{'__hash__':cstr}})   #the relevant mongo thing
+            coll.update(q,{'$addToSet':{'__config_hash__':cstr},'$addToSet':{'__run_hash__':run_hash}},multi=True)   #the relevant mongo thing
     
     return all_exist
 
@@ -544,8 +565,10 @@ def get_config_string(configs):
 def get_filename(config):
     return hashlib.sha1(repr(config)).hexdigest()    
 
-def get_data_list(in_cols,inconfig_strings):
-    return [get_most_recent_files(in_col,{'__hash__':cstr},kwargs={'fields':['config','filename']}) for (in_col,cstr) in zip(in_cols,inconfig_strings)]
+def get_data_list(in_cols,func): 
+    inconfig_strings = func.inconfig_strings
+    inrun_hashes = func.inrun_hashes
+    return [get_most_recent_files(in_col,{'__config_hash__':cstr,'__run_hash__':run_hash},kwargs={'fields':['config','filename']}) for (in_col,cstr,run_hash) in zip(in_cols,inconfig_strings,inrun_hashes)]
 
 def get_most_recent_files(coll,q,kwargs=None):
     if kwargs is None:

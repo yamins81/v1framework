@@ -9,7 +9,7 @@ from bson import SON
 from starflow.protocols import protocolize, actualize
 from starflow.utils import activate
 
-from dbutils import get_config_string,  reach_in, get_filename, DBAdd, createCertificateDict
+from dbutils import get_config_string,  reach_in, get_filename, DBAdd, createCertificateDict, son_escape
 
 from v1like_extract import v1_feature_extraction_protocol, v1_initialize, get_config
 
@@ -99,14 +99,14 @@ def v1_evaluation_protocol(task_config_path,feature_config_path,use_cpu=False):
     hash = get_config_string(E[-1][2][0].out_args)
     
     feature_config = get_config(feature_config_path)
-    config = get_config(task_config_path)
+    task_config = get_config(task_config_path)
     
     D = []
-    for (i,task) in enumerate(config['train_test']):
+    for task in config['train_test']:
         c = (feature_config,task)       
         newhash = get_config_string(c)
         outfile = '../.performance_certificates/' + newhash
-        op = ('svm_evaluation_' + str(i),train_test_loop,[(outfile,feature_creates,task_config_path,feature_config_path,hash),{'task_index':i}])
+        op = ('svm_evaluation_' + newhash,train_test_loop,(outfile,feature_creates,task,feature_config_path,hash))
         D.append(op)
 
     return D    
@@ -115,19 +115,15 @@ def v1_evaluation_protocol(task_config_path,feature_config_path,use_cpu=False):
 import pymongo as pm
 import gridfs    
 @activate(lambda x : x[1] + (x[2],),lambda x : x[0])        
-def train_test_loop(outfile,extract_creates,task_config_path,feature_config_path,hash,task_index = None):
+def train_test_loop(outfile,extract_creates,task_config,feature_config_path,hash):
 
     feature_config = get_config(feature_config_path)
         
-    base_query = SON([('__hash__',hash)])
+    base_query = SON([('__config_hash__',hash)])
     
     image_params = SON([('image',feature_config['image'])])
     models_params = feature_config['models']
-    
-    config = get_config(task_config_path)
-    
-    task_config = config['train_test'][task_index]
-    
+
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
     ntrain_pos = task_config.get('ntrain_pos')
@@ -153,9 +149,9 @@ def train_test_loop(outfile,extract_creates,task_config_path,feature_config_path
         
         data = SON([('task_config_path',task_config_path),
                     ('feature_config_path',feature_config_path),
-                    ('task_index',task_index),('model',m),
-                    ('query',repr(task_config)),
-                    ('image__aggregate__',repr(feature_config['image']))])
+                    ('model',m),
+                    ('task',son_escape(task_config)),
+                    ('image__aggregate__',son_escape(feature_config['image']))])
         filename = get_filename(data)
         data.update(results)
         data['filename'] = filename
