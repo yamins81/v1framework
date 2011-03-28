@@ -16,7 +16,7 @@ from v1like_extract import v1_feature_extraction_protocol, v1_initialize, get_co
 from traintest import train_test
 
 @protocolize()
-def test_extract_cairo(depends_on = '../config/config_model2.py'):
+def test_extract_cairo(depends_on = '../config/config_cairo_test_extract.py'):
     v1_feature_extraction_protocol(depends_on,write=True)
 
 @protocolize()

@@ -32,7 +32,7 @@ def DBAdd(initialize,args = ()):
     """
     oplist = initialize(*args)   
     db_ops_initialize(oplist)
-    D = [(a[0],db_update,(a[1],initialize,args)) for a in oplist]       
+    D = [(a['step'],a['func'].meta_action,(a['func'],a.get('incertpaths'),a['outcertpaths'],a.get('params'))) for a in oplist]  
     return D
     
 
@@ -115,30 +115,26 @@ def op_depends(x):
     """
         generates paths of read certificates
     """
-    f = x[0]
-    deps = [get_cert_path(f.dbname, r, get_config_string(args)) for (r,args) in zip(f.inroots,f.in_args)]
-    return tuple(deps)    
+    return tuple(x[1])
 
 
 def op_creates(x):
     """
         generates paths of write certificates
     """
-    f = x[0]  
-    config_string = get_config_string(f.out_args) 
-    creates = [get_cert_path(f.dbname, root, config_string) for root  in f.outroots]
-    return tuple(creates)
+    return tuple(x[2])
 
 
 @activate(lambda x : (), op_creates)
-def inject_op(func):
+def inject_op(func,incertpaths,outcertpaths,params):
     """
        use "func" to inject new data into a source data collection
     """
-    configs = func.config_generator()
-        
-    config_str = get_config_string(func.out_args)    
-        
+    configs = func.generator(*params)
+    
+    assert incertpaths is None
+    incertdicts = load_incerts(func,None,outcertpaths,params)
+            
     outroots = func.outroots
     dbname = func.dbname
     conn = pm.Connection(document_class=SON)
@@ -155,21 +151,20 @@ def inject_op(func):
 
     for config in configs:
         assert isinstance(config,SON)
-        if not already_exists(config,out_cols,config_time,config_str):
+        if not already_exists(config,out_cols,config_time,func.outconfig_string):
             results = do_rec(None,  config, func, pass_args)
-    
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,config,config_str)
+                outdata,res = interpret_res(res,config,func.outconfig_string)
                 fs.put(res,**outdata)
                 
     if func.cleanup:
         func.cleanup()   
         
-    write_outcerts(func,configs,None)
+    write_outcerts(func,configs,incertdicts,outcertpaths)
 
         
 @activate(op_depends,op_creates)
-def dot_op(func):
+def dot_op(func,incertpaths,outcertpaths,params):
     """
         takes "zip" of source collection parameters in computing output collections
     """
@@ -190,16 +185,12 @@ def dot_op(func):
     else:
         pass_args = {}
 
-    params = func.params
     if params is None:
         params = SON([])
     
-    inconfig_strings = [get_config_string(a) for a in func.in_args]
-    outconfig_string = get_config_string(func.out_args)
-    
-    incertdicts = check_incerts(func)    
-        
-    data_list = get_data_list(in_cols,inconfig_strings)
+    incertdicts = load_incerts(func,incertpaths,outcertpaths,params)
+
+    data_list = get_data_list(in_cols,func.inconfig_strings)
     data_list = zip(*data_list)
 
     newdata_list = []
@@ -213,21 +204,21 @@ def dot_op(func):
         newdata.update(params)
         newdata_list.append(newdata)
  
-        if not already_exists(newdata,out_cols,config_time,outconfig_string):
+        if not already_exists(newdata,out_cols,config_time,func.outconfig_string):
             results =  do_rec(fhs, newdata, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,newdata,outconfig_string)
+                outdata,res = interpret_res(res,newdata,func.outconfig_string)
                 fs.put(res,**outdata)
                  
     if func.cleanup:
         func.cleanup()     
         
-    write_outcerts(func,newdata_list,incertdicts)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
     
 
     
 @activate(op_depends,op_creates)
-def cross_op(func):
+def cross_op(func,incertpaths,outcertpaths,params):
     """
         takes "product" of source collection parameters in computing output collections
     """
@@ -247,16 +238,12 @@ def cross_op(func):
     else:
         pass_args = {}
 
-
-    inconfig_strings = [get_config_string(a) for a in func.in_args]
-    outconfig_string = get_config_string(func.out_args)
-    incertdicts = check_incerts(func)    
-    
-    data_list = get_data_list(in_cols,inconfig_strings)
-    params = func.params
     if params is None:
         params = SON([])
-            
+
+    incertdicts = load_incerts(func,incertpaths,outcertpaths,params) 
+           
+    data_list = get_data_list(in_cols,func.inconfig_strings)
     data_product = itertools.product(*data_list)
     
     newdata_list = []
@@ -271,20 +258,20 @@ def cross_op(func):
         flat_data = dict_union(data_tuple)        
         newdata_list.append(flat_data)
 
-        if not already_exists(flat_data,out_cols,config_time,outconfig_string):
+        if not already_exists(flat_data,out_cols,config_time,func.outconfig_string):
             results = do_rec(fhs, data_tuple, func, pass_args)
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,flat_data,outconfig_string)
+                outdata,res = interpret_res(res,flat_data,func.outconfig_string)
                 fs.put(res,**outdata)
      
     if func.cleanup:
         func.cleanup()  
         
-    write_outcerts(func,newdata_list,incertdicts)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
 
 
 @activate(op_depends,op_creates)
-def aggregate_op(func):
+def aggregate_op(func,incertpaths,outcertpaths,params):
 
     aggregate_on = func.aggregate_on
     
@@ -304,12 +291,10 @@ def aggregate_op(func):
     else:
         pass_args = {}
   
- 
-    inconfig_strings = [get_config_string(a) for a in func.in_args]
-    outconfig_string = get_config_string(func.out_args)
-    incertdicts = check_incerts(func)    
+
+    incertdicts = load_incerts(func,incertpaths,outcerpaths,params)    
     
-    data_list = get_data_list(in_cols,inconfig_strings)
+    data_list = get_data_list(in_cols,func.inconfig_strings)
         
     params = func.params
     if params is None:
@@ -327,17 +312,17 @@ def aggregate_op(func):
         config_time = max([max(ftime,*[get_time(fh.upload_date) for fh in fhs]) for fhs in filehandles])
         
         dtuples = [[dt['config'] for dt in data_tuple] for data_tuple in dtuples]
-        if not already_exists(Ndict,out_cols,config_time,outconfig_string):
+        if not already_exists(Ndict,out_cols,config_time,func.outconfig_string):
             results =  do_rec(filehandles, dtuples, func, pass_args) 
             for (fs,res) in zip(out_fs,results):
-                outdata,res = interpret_res(res,Ndict,outconfig_string)
+                outdata,res = interpret_res(res,Ndict,func.outconfig_string)
                 fs.put(res,**outdata)
          
     if func.cleanup:
         func.cleanup()      
         
     newdata_list = [x[1] for x in D.values()]    
-    write_outcerts(func,newdata_list,incertdicts)
+    write_outcerts(func,newdata_list,incertdicts,outcertpaths)
 
 
 def get_aggregate(config_list,aggregate_val,aggregate_params,aggregate_on,params):
@@ -374,50 +359,42 @@ def get_dep(x,att):
         args = get_argd(x[2]) 
         deps += getattr(x[1],att)(args)
     return tuple(deps)
-
-@activate(lambda x : get_dep(x,'__dependor__'), lambda x : get_dep(x,'__creator__'))
-def db_update(func,initialize,args):
-    oplist = initialize(*args)
-    db_ops_initialize(oplist)
-    meta_action = func.meta_action
-    meta_action(func)
+    
     
 def get_op_gen(op,oplist):
-    func = op[1]
-    if not hasattr(func,'out_args'):
+    
+    if op.get('outcertpaths') is None:
+        func = op['func']
+        params = op.get('params')
         inroots = func.inroots
         outroots = func.outroots
         if func.action_name == 'inject':
-            args = op[2]['args']  
-            #check_args(args)
-            
-            func.config_generator = lambda : func.generator(*args)
-            func.out_args = SON([(outroot,args) for outroot in outroots])
-            
+            args = op['params']  
+            out_args = SON([(outroot,params) for outroot in outroots])
+                 
         else:
-            if len(op) > 2 and 'params' in op[2]:
-                params = op[2]['params']
-            else:
-                params = SON([])
-            
-            func.params = params
-            
+            params = op.get('params',SON([])) 
+  
             parents = []
             for ir in inroots:
                 try:
-                    parent = [op0 for op0 in oplist if ir in op0[1].outroots][0]
+                    parent = [op0 for op0 in oplist if ir in op0['func'].outroots][0]
                 except IndexError:
-                    raise IndexError, 'No parent found for at least one collection in ' + repr(op0[1].outroots) 
+                    raise IndexError, 'No parent found for at least one collection in ' + repr(op0['func'].outroots) 
                 else:
                     parents.append(parent)
   
             for parent in parents:
                 get_op_gen(parent,oplist)
                 
-            func.in_args = [parent[1].out_args for parent in parents]
-            outargs = dict_union(func.in_args)
-            outargs.update(params)
-            func.out_args = outargs
+            in_args = [parent['out_args'] for parent in parents]
+            op['incertpaths'] = [get_cert_path(func.dbname,inroot,get_config_string(in_arg)) for (inroot,in_arg) in zip(inroots,in_args)]
+            out_args = dict_union(in_args)
+            out_args.update(params)
+            
+       
+        op['out_args'] = out_args
+        op['outcertpaths'] = [get_cert_path(func.dbname,outroot,get_config_string(out_args)) for outroot in func.outroots]
 
             
 
@@ -431,27 +408,38 @@ def db_ops_initialize(oplist):
         get_op_gen(op,oplist)
         
 
-def check_incerts(func):    
-    config_strings = [get_config_string(a) for a in func.in_args]
-    incertpaths = [get_cert_path(func.dbname, root, s) for (root,s) in zip(func.inroots,config_strings)]
-    incertdicts =  [cPickle.load(open(incertpath)) for incertpath in incertpaths]
-    assert all([d['db'] == func.dbname and d['root'] == coll and d['configs'] == s for (coll,s,d) in zip(func.inroots,config_strings,incertdicts)])
+def load_incerts(func,incertpaths,outcertpaths,params):   
+    
+    if incertpaths:
+        incertdicts =  [cPickle.load(open(incertpath)) for incertpath in incertpaths]   
+        in_args = [d['out_args'] for d in incertdicts]
+        func.inconfig_strings = [get_config_string(a) for a in in_args]
+        assert all([d['db'] == func.dbname and d['root'] == coll and d['config_hash'] == s for (coll,s,d) in zip(func.inroots,func.inconfig_strings,incertdicts)])
+        outargs = dict_union(in_args)
+        outargs.update(params)
+        
+    else:
+        incertdicts = None
+        outargs = SON([(outroot,params) for outroot in func.outroots])
+    
+    func.out_args = outargs
+    func.outconfig_string = get_config_string(func.out_args)
+    assert outcertpaths == [get_cert_path(func.dbname, root, func.outconfig_string) for root in func.outroots]
+    
     return incertdicts
 
    
-def write_outcerts(func,configs,incertdicts):
+def write_outcerts(func,configs,incertdicts,outcertpaths):
     if incertdicts:
         old_param_names = dict_union([op['param_names'] for op in incertdicts])
     else:
         old_param_names = SON([])
-    config_string = get_config_string(func.out_args)
-    new_param_names = uniqify(ListUnion([x.keys() for x in configs]))
-    
-    outcertpaths = [get_cert_path(func.dbname, root, config_string) for root in func.outroots]
+        
+    new_param_names = uniqify(ListUnion([x.keys() for x in configs])) 
     for (outcertpath,outroot) in zip(outcertpaths,func.outroots):
         param_names = old_param_names.copy()
         param_names[outroot] = new_param_names
-        createCertificateDict(outcertpath,{'db':func.dbname, 'root':outroot, 'configs':config_string, 'param_names':param_names})    
+        createCertificateDict(outcertpath,{'db':func.dbname, 'out_args': func.out_args, 'root':outroot, 'config_hash':func.outconfig_string, 'param_names':param_names})    
         
 
 def createCertificateDict(path,d,tol=10000000000):

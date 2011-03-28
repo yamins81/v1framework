@@ -57,9 +57,9 @@ def v1_initialize(config_path,use_cpu):
         if model_params['filter']['model_name'] in ['really_random','random_gabor']:
             model_params['id'] = config_path
     
-    return [('generate_images', render_image, {'args':(image_params,)}),                         
-            ('generate_models', get_filterbank, {'args':(models_params,)}),            
-            ('extract_features',extract_func)]
+    return [{'step':'generate_images','func':render_image, 'params':(image_params,)},                         
+            {'step':'generate_models', 'func':get_filterbank,'params':(models_params,)},            
+            {'step':'extract_features','func':extract_func}]
 
 
 

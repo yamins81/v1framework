@@ -106,8 +106,8 @@ config = {
       ('height' , 256),
       ('objects' , [cairo_objects.SQUARE]),
       ('patterns' , [cairo_objects.SOLID_RED]),
-      ('tx' , SON([('gt' , -.2) , ('lt' , 0.2) , ('delta' , .05) ])),
-      ('ty' , SON([('gt' , -.2) , ('lt' , 0.2) , ('delta' , .05)])),
+      ('tx' , SON([('$gt' , -.2) , ('$lt' , 0.2) , ('delta' , .05) ])),
+      ('ty' , SON([('$gt' , -.2) , ('$lt' , 0.2) , ('delta' , .05)])),
    ]) 
 
 }
