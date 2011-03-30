@@ -1,6 +1,12 @@
 import v1like_math as v1m
 import numpy as np
 import itertools
+import rendering
+import processing
+
+def normalize(Y):
+    m = Y.mean()
+    return (Y - m) / np.sqrt(((Y - m)**2).sum())
 
 def get_filterbank(config):
     config = config['filter']
@@ -10,6 +16,9 @@ def get_filterbank(config):
     if model_name == 'really_random':
         num_filters = config['num_filters']
         filterbank = np.random.random((fh,fw,num_filters))
+        if config.get('normalize',True):
+            for i in range(filterbank.shape[2]):
+                filterbank[:,:,i] = normalize(filterbank[:,:,i])
         
     elif model_name == 'random_gabor':
         num_filters = config['num_filters']
@@ -44,5 +53,20 @@ def get_filterbank(config):
                                
     elif model_name == 'pixels':
         return np.ones((fh,fw,1))
+    
+    elif model_name == 'cairo_generated':
+        specs = config.get('specs')
+        if not specs:
+            specs = [spec['image'] for spec in rendering.cairo_config_gen(config['spec_gen'])]
+        filterbank = np.empty((fh,fw,len(specs)))
+        for (i,spec) in enumerate(specs):
+            im_fh = rendering.cairo_render(spec,returnfh=True)
+            arr = processing.image2array({},im_fh)
+            arr = arr[:,:,:2].max(2)
+            arrx0 = arr.shape[0]/2
+            arry0 = arr.shape[1]/2
+            dh = fh/2; dw = fw/2
+            filterbank[:,:,i] = normalize(arr[arrx0-dh:arrx0+(fh - dh),arry0-dw:arry0+(fw-dw)])
+                   
 
     return filterbank

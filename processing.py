@@ -317,6 +317,7 @@ def map_preprocessing(imga0,params):
 def postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,featsel):     
         
     keys = Pooled.keys()
+    keys.sort()
     fvector_l = []
     for cidx in keys:
         if featsel:
@@ -330,9 +331,10 @@ def postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,fea
         else:
             fvector = Pooled[cidx]
         fvector_l += [fvector]
+
     if featsel:
         fvector_l = include_image_level_features(Partially_processed,fvector_l,featsel) 
-    fvector_l = [fvector.ravel() for fvector in fvector_l]
+    fvector_l = [sp.concatenate([fvector[:,:,ind] for ind in range(fvector.shape[2])]) for fvector in fvector_l]
     return fvector_l
 
      

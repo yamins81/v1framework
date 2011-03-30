@@ -31,15 +31,34 @@ def pad(data,shape):
         else:
             sel1.append ( slice(0, s) )
             sel2.append ( slice((d-s)/2 , (d-s)/2 + s))
-            
+    
     newdata[tuple(sel1)] = data[sel2]
     
     return newdata
 
+def pad2(data,shape):
+
+    newdata = np.zeros(shape,dtype=data.dtype)      
+    
+    sel1 = []
+    sel2 = []
+         
+    for (d,s) in zip(data.shape,shape):
+        if s > d:    
+            sel1.append ( slice(0, d) )  
+            sel2.append ( slice(0, d) )
+        else:
+            sel1.append ( slice(0, s) )
+            sel2.append ( slice(0, s) )
+    
+    newdata[tuple(sel1)] = data[sel2]
+    
+    return newdata    
+
 def fft(data,shape=None,inverse=False):
 
     if shape:
-        data = pad(data,shape)
+        data = pad2(data,shape)
                         
     plan  = PLANS.get(data.shape)
     if not plan:

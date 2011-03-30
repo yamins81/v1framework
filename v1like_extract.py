@@ -106,10 +106,6 @@ def get_filterbank(config):
       
 ######extraction
 def extract_features(fhs,config,convolve_func):
-
-    print('\n')
-    print(config)
-    print('\n')
     
     image_config = config[0]
     model_config = config[1]['model']
@@ -128,7 +124,6 @@ def extract_features(fhs,config,convolve_func):
     
     #filtering
     filtered = convolve(norm_in, filter_fh, model_config, convolve_func)
-
 
     #nonlinear activation
     activ = activate(filtered,model_config.get('activ'))
@@ -226,17 +221,19 @@ def pool(input,conv_mode,config):
             pooled[cidx] = v1f.v1like_pool(input[cidx],conv_mode,**config)
         return pooled
     return input
-
+        
 def activate(input,config):
     if config:
         minout = config['minout'] # sustain activity
         maxout = config['maxout'] # saturation
         activ = {}
         for cidx in input.keys():
-           activ[cidx] = input[cidx].clip(minout, maxout)
-        return activ
+            #activ[cidx] = input[cidx].clip(minout, maxout) 
+            activ[cidx] = (input[cidx] - minout).clip(0, maxout-minout)
+        return activ 
     else:
         return input
+        
 
 def norm(input,conv_mode,params):
     output = {}

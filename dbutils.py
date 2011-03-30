@@ -26,13 +26,19 @@ def initialize_certificates(creates = CERTIFICATE_ROOT):
 
 #####high-level functions
 
+def do_initialization(initialize,args):
+    oplist = initialize(*args)   
+    db_ops_initialize(oplist)
+    return oplist
+
+
 def DBAdd(initialize,args = ()):
     """
         main DB protocol generator.   this (and the decorators) are the main
         thing used by the user
     """
-    oplist = initialize(*args)   
-    db_ops_initialize(oplist)
+    oplist = do_initialization(initialize,args)  
+
     D = [(a['step'],a['func'].meta_action,(a['func'],a.get('incertpaths'),a['outcertpaths'],a.get('params'))) for a in oplist]  
     return D
     
@@ -470,6 +476,7 @@ def createCertificateDict(path,d,tol=10000000000):
     
   
 def do_rec(in_fhs,config,func,pass_args):
+    print('Computing',func.__name__,config)
     if in_fhs:
         results = func(in_fhs,config,**pass_args)          
     else:
@@ -551,8 +558,9 @@ def already_exists(config,coll_list,t, func):
     assert (not any(recs)) or all_exist
     
     if all_exist:
+        print('Exists',q)
         for (coll,rec) in zip(coll_list,recs):
-            coll.update(q,{'$addToSet':{'__config_hash__':cstr},'$addToSet':{'__run_hash__':run_hash}},multi=True)   #the relevant mongo thing
+            coll.update(q,{'$addToSet':{'__config_hash__':cstr},'$addToSet':{'__run_hash__':run_hash}})   #the relevant mongo thing
     
     return all_exist
 

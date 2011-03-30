@@ -62,7 +62,7 @@ def cairo_config_gen(args):
     return params
     
 
-def cairo_render(params):
+def cairo_render(params,returnfh=False):
     
     object = params['object']
     pattern = params['pattern']
@@ -97,10 +97,10 @@ def cairo_render(params):
                  ('width' , width), ('height' , height)
                 ])
                            
-    return cairo_render_image(params)
+    return cairo_render_image(params,returnfh=returnfh)
 
 
-def cairo_render_image(params):
+def cairo_render_image(params,returnfh=False):
 
     WIDTH, HEIGHT = params['width'], params['height']
     
@@ -141,7 +141,11 @@ def cairo_render_image(params):
     surface.write_to_png(fh) # Output to PNG
     
     fh.seek(0)
-    s = fh.read()
-    return s
+    
+    if returnfh:
+        return fh
+    else:
+        s = fh.read()
+        return s
 
 

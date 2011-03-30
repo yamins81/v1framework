@@ -9,7 +9,7 @@ from bson import SON
 from starflow.protocols import protocolize, actualize
 from starflow.utils import activate
 
-from dbutils import get_config_string,  reach_in, get_filename, DBAdd, createCertificateDict, son_escape
+from dbutils import get_config_string,  reach_in, get_filename, DBAdd, createCertificateDict, son_escape, do_initialization
 
 from v1like_extract import v1_feature_extraction_protocol, v1_initialize, get_config
 
@@ -92,17 +92,39 @@ def pixel_rot_no_preproc2_evaluation(depends_on = ('../config/config_pixel_rot_n
     D = v1_evaluation_protocol(depends_on[1],depends_on[0])    
     actualize(D)
 
+@protocolize()
+def cairofilters_sq_vs_rect_extraction(depends_on = '../config/config_cairofilters_sq_vs_rect.py'):
+    v1_feature_extraction_protocol(depends_on,write=True)
+
+
+
+@protocolize()
+def cairofilters_sq_vs_rect_trans_evaluation(depends_on = ('../config/config_cairofilters_sq_vs_rect.py','../config/config_cairofilters_sq_vs_rect_trans_evaluation.py')):
+    D = v1_evaluation_protocol(depends_on[1],depends_on[0])    
+    actualize(D)
+
+@protocolize()
+def cairofilters_sq_vs_rect_norm_extraction(depends_on = '../config/config_cairofilters_sq_vs_rect_norm.py'):
+    v1_feature_extraction_protocol(depends_on,write=True)
+
+@protocolize()
+def cairofilters_sq_vs_rect_norm_trans_evaluation(depends_on = ('../config/config_cairofilters_sq_vs_rect_norm.py','../config/config_cairofilters_sq_vs_rect_norm_trans_evaluation.py')):
+    D = v1_evaluation_protocol(depends_on[1],depends_on[0])    
+    actualize(D)
+
+
+
 
 def v1_evaluation_protocol(task_config_path,feature_config_path,use_cpu=False):
-    E = DBAdd(v1_initialize,args = (feature_config_path,use_cpu))
-    feature_creates = E[-1][1].__creator__(E[-1][2])
-    hash = get_config_string(E[-1][2][0].out_args)
+    oplist = do_initialization(v1_initialize,args = (feature_config_path,use_cpu))
+    feature_creates = tuple(oplist[-1]['outcertpaths'])
+    hash = get_config_string(oplist[-1]['out_args'])
     
     feature_config = get_config(feature_config_path)
     task_config = get_config(task_config_path)
     
     D = []
-    for task in config['train_test']:
+    for task in task_config['train_test']:
         c = (feature_config,task)       
         newhash = get_config_string(c)
         outfile = '../.performance_certificates/' + newhash
@@ -114,7 +136,7 @@ def v1_evaluation_protocol(task_config_path,feature_config_path,use_cpu=False):
 
 import pymongo as pm
 import gridfs    
-@activate(lambda x : x[1] + (x[2],),lambda x : x[0])        
+@activate(lambda x : x[1],lambda x : x[0])        
 def train_test_loop(outfile,extract_creates,task_config,feature_config_path,hash):
 
     feature_config = get_config(feature_config_path)
@@ -147,8 +169,7 @@ def train_test_loop(outfile,extract_creates,task_config,feature_config_path,hash
         
         splitpickle = cPickle.dumps(splitdata)
         
-        data = SON([('task_config_path',task_config_path),
-                    ('feature_config_path',feature_config_path),
+        data = SON([('feature_config_path',feature_config_path),
                     ('model',m),
                     ('task',son_escape(task_config)),
                     ('image__aggregate__',son_escape(feature_config['image']))])
@@ -159,7 +180,7 @@ def train_test_loop(outfile,extract_creates,task_config,feature_config_path,hash
 
         fs.put(splitpickle,**data)
         
-    createCertificateDict(outfile,{'task_config':task_config,'feature_config':feature_config,'feature_path':feature_config_path,'task_path':task_config_path})    
+    createCertificateDict(outfile,{'task_config':task_config,'feature_config':feature_config,'feature_config_path':feature_config_path})    
 
     
 #=-=-=-=-=-=-=-=-=

@@ -29,7 +29,7 @@ def classify(train_features,
 
     #train
     model = classifier_train(train_features, train_ys,
-                            test_features,sphere=sphere)
+                            test_features,sphere=sphere,svm_eps=10**(-4))
 
     #test
     weights = model.coef_.ravel()
