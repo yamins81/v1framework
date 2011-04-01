@@ -114,7 +114,6 @@ def cairofilters_sq_vs_rect_norm_trans_evaluation(depends_on = ('../config/confi
 
 
 
-
 def v1_evaluation_protocol(task_config_path,feature_config_path,use_cpu=False):
     oplist = do_initialization(v1_initialize,args = (feature_config_path,use_cpu))
     feature_creates = tuple(oplist[-1]['outcertpaths'])

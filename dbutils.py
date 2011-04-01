@@ -530,7 +530,6 @@ def interpret_res(res,data,func):
     datacopy = data.copy()
     
     if not isinstance(res,str):
-        print("HERE")
         assert isinstance(res,dict)
         file_res = res.pop('__file__','')
         datacopy.update(res)
@@ -539,6 +538,7 @@ def interpret_res(res,data,func):
         
     outdata = {'config' : datacopy, '__config_hash__' : [cstr],'__run_hash__':[run_hash]}
     outdata['filename'] = get_filename(data) 
+
 
     return outdata,file_res
     

@@ -100,8 +100,13 @@ def model_config_generator(models): return [SON([('model',m)]) for m in models]
     
 @inject('v1','models', model_config_generator)
 def get_filterbank(config):
-    filterbank = filter_generation.get_filterbank(config['model'])
-    return cPickle.dumps(filterbank)
+    result = filter_generation.get_filterbank(config['model'])
+    if isinstance(result,dict):
+        assert 'filterbank' in result
+        result['__file__'] = cPickle.dumps(result.pop('filterbank'))
+        return result
+    else:
+        return cPickle.dumps(result)
     
       
 ######extraction

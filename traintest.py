@@ -139,6 +139,64 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
     return {'train_data': train_data, 'test_data' : test_data, 'train_features' : train_features,'train_labels':train_labels,'test_features':test_features,'test_labels':test_labels}
 
 
+def generate_split2(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
+
+    if universe is None:
+        universe = SON([])
+
+    connection = pm.Connection(document_class=SON)
+    db = connection[dbname]
+    data = db[collectionname + '.files']
+    fs = gridfs.GridFS(db,collection=collectionname)
+
+    combine_things(task_query,universe)
+    
+    task_data = get_most_recent_files(data,task_query)
+    task_fnames = [x['filename'] for x in task_data]
+    N_task = len(task_data)
+    
+    nontask_query = {'filename':{'$nin':task_fnames}}
+    nontask_query.update(universe)
+    nontask_data = get_most_recent_files(data,nontask_query)
+    N_nontask = len(nontask_data)
+
+    assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples " + str([N_task,N_nontask])
+      
+    if ntrain_pos is not None:
+        ntrain_neg = ntrain - ntrain_pos
+        assert ntrain_pos <= N_task, "Not enough positive training examples, there are: " + str(N_task)
+        assert ntrain_neg <= N_nontask, "Not enough negative training examples, there are: " + str(N_nontask)
+        
+        perm_pos = sp.random.permutation(len(task_data))
+        perm_neg = sp.random.permutation(len(nontask_data))
+        
+        train_data = [task_data[i] for i in perm_pos[:ntrain_pos]] + [nontask_data[i] for i in perm_neg[:ntrain_neg]]    
+        
+        all_test = [task_data[i] for i in perm_pos[ntrain_pos:]] + [nontask_data[i] for i in perm_neg[ntrain_neg:]]
+        
+        new_perm = sp.random.permutation(len(all_test))
+        
+        test_data = [all_test[i] for i in new_perm[:ntest]]
+        
+    
+    else:
+        
+        all_data = task_data + nontask_data
+         
+        perm = sp.random.permutation(len(all_data))
+         
+        train_data = [all_data[i] for i in perm[:ntrain]]
+    
+        test_data = [all_data[i] for i in perm[ntrain:ntrain + ntest]]
+        
+     
+    train_labels = sp.array([x['filename'] in task_fnames for x in train_data])
+    test_labels = sp.array([x['filename'] in task_fnames for x in test_data])
+    
+   
+    return {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+
+
 def validate(idseq):
     ids = ListUnion(idseq)
     ids1 = [id[1] for id in ids]

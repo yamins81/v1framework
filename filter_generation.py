@@ -3,6 +3,7 @@ import numpy as np
 import itertools
 import rendering
 import processing
+from bson import SON
 
 def normalize(Y):
     m = Y.mean()
@@ -22,18 +23,29 @@ def get_filterbank(config):
         
     elif model_name == 'random_gabor':
         num_filters = config['num_filters']
-        min_wl = config['min_wavelength']
-        max_wl = config['max_wavelength']  
         xc = fw/2
         yc = fh/2
         filterbank = np.empty((fh,fw,num_filters))
+        orients = []
+        freqs = []
+        phases = []
+        df = config.get('divfreq')
         for i in range(num_filters):
-            orient = 2*np.pi*np.random.random()
-            freq = 1./np.random.randint(min_wl,high = max_wl)
-            phase = 2*np.pi*np.random.random()
+            orient = config.get('orient',2*np.pi*np.random.random())
+            orients.append(orient)
+            if not df:
+                freq = 1./np.random.randint(config['min_wavelength'],high = config['max_wavelength'])
+            else:
+                freq = 1./df
+            freqs.append(freq)
+            phase = config.get('phase',2*np.pi*np.random.random())
+            phases.append(phase)
+            
             filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
-                               (fw,fh))     
+                               (fw,fh))   
+        
+        return SON([('filterbank',filterbank),('orients',orients),('phases',phases),('freqs',freqs)])
                                
     elif model_name == 'gridded_gabor':
         norients = config['norients']
@@ -53,6 +65,22 @@ def get_filterbank(config):
                                
     elif model_name == 'pixels':
         return np.ones((fh,fw,1))
+
+    elif model_name == 'specific_gabor':
+        orients = config['orients']
+        divfreqs = config['divfreqs']
+        phases = config['phases']
+        xc = fw/2
+        yc = fh/2
+        freqs = [1./d for d in divfreqs]
+        values = zip(freqs,orients,phases)
+        num_filters = len(values)
+        filterbank = np.empty((fh,fw,num_filters))
+        for (i,(freq,orient,phase)) in enumerate(values):
+            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
+                               freq,orient,phase,
+                               (fw,fh)) 
+        
     
     elif model_name == 'cairo_generated':
         specs = config.get('specs')
