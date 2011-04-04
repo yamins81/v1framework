@@ -32,88 +32,123 @@ else:
 
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_test(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_test.py'):
+    """basic test of pull protocol with gabor filters, low density transformation image set of squares versus rectangles
+    Result: gabor filters do great"""
     D = v1_pull_protocol(depends_on,)
     actualize(D)
 
-@protocolize()
-def pull_gridded_gabors_sq_vs_rect_test_small(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_test_small.py'):
-    D = v1_pull_protocol(depends_on,)
-    actualize(D)
-    
-def v1_pull_im_protocol(config_path,write=False):
-    D = DBAdd(pull_initialize,args = (config_path,))
-    if write:
-        actualize(D)
-    return D
 
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_evaluation.py'):
+    """test of standard 96-filter gridded gabor filterbank on high density transformations set of squares versus rectangles
+    Result: gabor filters do great"""
     D = v1_pull_protocol(depends_on)
     actualize(D)
     
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_smallfilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_smallfilters_evaluation.py'):
+    """test of 48-filter gridded gabor filterbank on high density transformations set of squares versus rectangles
+    Result: still great"""
     D = v1_pull_protocol(depends_on)
     actualize(D)    
     
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_verysmallfilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_verysmallfilters_evaluation.py'):
+    """test of 9-filter gridded gabor filterbank on high density transformations set of squares versus rectangles
+    Result: STILL great"""
     D = v1_pull_protocol(depends_on)
     actualize(D)        
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_extremelysmallfilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_extremelysmallfilters_evaluation.py'):
+    """test of 4-filter gridded gabor filterbank on high density transformations set of squares versus rectangles
+    Result: STILL quite good"""
     D = v1_pull_protocol(depends_on)
     actualize(D)         
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_veryveryfewfilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_veryveryfewfilters_evaluation.py'):
+    """test of two-filter gridded gabor filterbank on high density transformations set of squares versus rectangles
+    Result: STILL pretty good"""
     D = v1_pull_protocol(depends_on)
     actualize(D)  
     
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_onefilter(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_onefilter_evaluation.py'):
+    """test of 1-filter 'gridded' gabor filterbank on high density transformations set of squares versus rectangles
+    Result: not great""" 
     D = v1_pull_protocol(depends_on)
     actualize(D)     
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_varioustwofilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_varioustwofilters_evaluation.py'):
+    """test of two-filter orthogonal orientation gridded gabor filterbanks of various kshapes and frequencies on high density transformations set of
+    squares versus rectangles.
+    RESULT: most do quite well.   Smaller kshape and higher frequencies in this test do better. """
     D = v1_pull_protocol(depends_on)
     actualize(D)      
-    
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_rect_various_twofrequency_filterbanks(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_various_twofrequency_filterbanks.py'):
+    """test of two-frequency gridded gabor filterbanks of various kshapes and fixed single orientation on high density transformations set of
+    squares versus rectangles.
+    RESULT: Varied """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)      
+        
 
 @protocolize()
 def pull_random_gabors_sq_vs_rect_onefilter_screen(depends_on = '../config/config_pull_random_gabors_sq_vs_rect_onefilter_screen.py'):
+    """screening 10 random one-filter gabors on high density transformations set of squares versus rectangles
+    Result: all suck """
     D = v1_pull_protocol(depends_on)
     actualize(D)
     
     
 @protocolize()
 def pull_random_gabors_sq_vs_rect_twofilter_screen(depends_on = '../config/config_pull_random_gabors_sq_vs_rect_twofilter_screen.py'):
+    """screening 10 randomly-oriented two-gabors filterbanks with fixed frequency and pahse on high density transformations set of squares versus rectangles
+    Result: all suck""" 
     D = v1_pull_protocol(depends_on)
     actualize(D)    
     
 @protocolize()
 def pull_gabor_sq_vs_rect_twofilter_pump_training(depends_on = '../config/config_pull_gabor_sq_vs_rect_twofilter_pump_training.py'):
+    """taking one of the best (but still bad) performing random two-filter gabors and pumping up traning examples on high density transformations 
+    set of squares versus rectangles
+    Result: still bad"""
     D = v1_pull_protocol(depends_on)
     actualize(D)    
     
-
 @protocolize()
 def pull_cairofilters_sq_vs_rect_various_activations(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_various_activations.py'):
+    """tuning activation threshold on handcrafted cairo filters on high density transformations set of squares versus rectangles"""
     D = v1_pull_protocol(depends_on)
     actualize(D)  
     
 @protocolize()
 def pull_cairofilters_sq_vs_rect_various_activations_finetuning(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_various_activations_finetuning.py'):
+    """finetuning activation threshold on handcrafted cairo filters on high density transformations set of squares versus rectangles"""
     D = v1_pull_protocol(depends_on)
     actualize(D)      
     
 @protocolize()
 def pull_cairofilters_sq_vs_rect_various_activations_finefinetuning(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_various_activations_finefinetuning.py'):
+    """finefinetuning activation threshold on handcrafted cairo filters on high density transformations set of squares versus rectangles"""
+    D = v1_pull_protocol(depends_on)
+    actualize(D)   
+    
+    
+    
+@protocolize()
+def pull_activation_tuned_cairofilters_sq_vs_rect(depends_on = '../config/config_pull_activation_tuned_cairofilters_sq_vs_rect.py'):
+    """pumped-up trainining curve evaluation on  handcrafted cairo filters with optimized activation valued from finefinetuning on high density transformations set of squares versus rectangles
+       result: you can pump up performance into > 95%. 
+    """
+    
     D = v1_pull_protocol(depends_on)
     actualize(D)          
     

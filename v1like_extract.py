@@ -11,6 +11,7 @@ from bson import SON
 import numpy as np
 import scipy as sp
 from starflow.protocols import protocolize, actualize
+from starflow.utils import is_string_like
 
 import v1like_funcs as v1f 
 import filter_generation
@@ -254,10 +255,15 @@ def norm(input,conv_mode,params):
     return output
 
 
-def convolve(image,filter_fh,model_config,convolve_func):
+def convolve(image,filter,model_config,convolve_func):
     def filter_source():
-        filter_fh.seek(0)
-        return cPickle.loads(filter_fh.read())
+        if isinstance(filter,file)
+            filter.seek(0)
+            return cPickle.loads(filter.read())
+        elif is_string_like(filter):
+            return cPickle.loads(open(filter).read())
+        else:
+            return filter
     output = {}     
     if model_config['filter']['model_name'] != 'pixels':
         for cidx in image.keys():

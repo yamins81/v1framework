@@ -11,11 +11,28 @@ import scipy as sp
 
 import cairo_objects 
 
+import config_modifiers
 
+class SpecificGaborModifier(config_modifiers.Modifier):
+    
+    def get_modifications(self,k,val):
+        
+        if k in ['orients','divfreqs','phases']:      
+            L = [val[0] + self.modifier_params[k]['delta'],val[0] - self.modifier_params[k]['delta'],val[k]]
+            return [[l] for l in L]
+        
+        elif k == 'kshape':
+            L = [val[0] + self.modifier_params[k]['delta'],val[0] - self.modifier_params[k]['delta'],val[k]]
+            return [[l,l] for l in L]
+            
+        else:
+            return Modifier.get_modifications(self,k,val)
+         
+    
 # dict with all representation parameters
-config = {
+config = SON([
 
-'models': [SON([
+('initial_model', SON([
 
 #global
 ('color_space' , 'rgb'),
@@ -44,13 +61,13 @@ config = {
 
 # - linear filtering
 ('filter',SON([
-    ('model_name','gridded_gabor'),
+    ('model_name','specific_gabor'),
     # kernel shape of the gabors
     ('kshape' , [32,32]),
     # list of orientations
-    ('norients' , 16),
+    ('orients' , [0]),
     # list of frequencies
-    ('divfreqs' , [2, 3, 4, 6, 11, 18]),
+    ('divfreqs' , [4]),
     # list of phases
     ('phases' ,  [0]),
     ]) ),
@@ -73,33 +90,42 @@ config = {
     ])),
 
 
-]),],
+])),
 
-'image' : SON([
+('image' , SON([
       ('generator' , 'cairo'),
       ('width' , 64),
       ('height' , 64),
       ('objects' , [cairo_objects.SQUARE]),
       ('patterns' , [cairo_objects.SOLID_RED]),
-      ('tx' , SON([('$gt' , -.2) , ('$lt' , .201) , ('delta' , .04)])),
-      ('ty' , SON([('$gt' , -.2) , ('$lt' , .201) , ('delta' , .04)])),
+      ('tx' , SON([('$gt' , -.4) , ('$lt' , .401) , ('delta' , .02)])),
+      ('ty' , SON([('$gt' , -.4) , ('$lt' , .401) , ('delta' , .02)])),
       ('sx' , SON([('$gt' , .5) , ('$lt' , 2.1) , ('delta' , .5)])),
       ('sy' , SON([('$gt' , .5) , ('$lt' , 2.1) , ('delta' , .5)])),
    ]) 
+)
 
 ,
 
-'train_test' : [
+('evaluation_task' , 
    SON([
-      ('N',40), 
-      ('ntrain',128),
+      ('N',10), 
+      ('ntrain',64),
       ('ntest',32),
-      ('ntrain_pos',64),
-      ('universe',SON([('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
+      ('ntrain_pos',32),
+      ('universe',SON([('image.tx',SON([('$lt',.25),('$gt',-.25)])),('image.ty',SON([('$lt',.25),('$gt',-.25)])),('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
       ('query',SON([('image.sx',1),('image.sy',1)]))
-   ]),
-  
+   ])
+)
+,
 
-   ]
-}
+('modifier',SpecificGaborModifier),
+
+('modifier_args',SON([('model.filter.orients', SON([('delta',.1)])),
+                      ('model.filter.divfreqs',SON([('delta',2)])),
+                      ('model.filter.kshape', SON([('delta',2)])),
+                     ])
+)
+
+])
 
