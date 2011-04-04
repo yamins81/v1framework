@@ -1,6 +1,6 @@
 import numpy as np 
 
-class BaseModifier(object):
+class BaseModifier():
     def __init__(self,modifier_params):
         self.params = modifier_params.keys()
         self.modifier_params = modifier_params

@@ -18,9 +18,11 @@ import traintest
 from v1like_extract import get_config
 import svm
 
-from dbutils import get_config_string, get_filename, reach_in, DBAdd, createCertificateDict, son_escape, do_initialization, get_most_recent_files
+from dbutils import get_config_string, get_filename, reach_in, DBAdd, createCertificateDict, son_escape, do_initialization, get_most_recent_files, hgetattr, hsetattr
 
-from main_pull import generate_splits, pull_initialize
+from main_pull import generate_splits, pull_initialize, get_from_cache, put_in_cache
+
+FEATURE_CACHE = {}
 
 try:
     import v1_pyfft
@@ -53,20 +55,21 @@ def v1_greedy_optimization_protocol(config_path,use_cpu = False,write=False):
     config = get_config(config_path)
     
     task = config['evaluation_task']
-    initial_model = config['initial_model']
+    initial_model = config['model']
     
     modifier_args = config['modifier_args']
     modifier_class = config.get('modifier')
+    rep_limit = config.get('rep_limit')
     
-    if modifier is None:
+    if modifier_class is None:
         modifier = config_modifiers.BaseModifier(modifier_args)
     else:
         modifier = modifier_class(modifier_args)
               
-	newhash = get_config_string(config)
-	outfile = '../.optimization_certificates/' + newhash
-	op = ('optimization_' + newhash,greedy_optimization,(outfile,task,image_certificate,initial_model,convolve_func,modifier_args,modifier))
-	D.append(op)
+    newhash = get_config_string(config)
+    outfile = '../.optimization_certificates/' + newhash
+    op = ('optimization_' + newhash,greedy_optimization,(outfile,task,image_certificate,initial_model,convolve_func,rep_limit,modifier_args,modifier))
+    D.append(op)
 
     if write:
         actualize(D)
@@ -80,14 +83,15 @@ def image_initialize(config_path):
     return [{'step':'generate_images','func':v1e.render_image, 'params':(image_params,)},                                    
            ]
 
+import filter_generation
 
 @activate(lambda x : x[2],lambda x : x[0])
-def greedy_optimization(outfile,task,image_certificate_file,initial_model,convolve_func,modifier_args,modifier):
+def greedy_optimization(outfile,task,image_certificate_file,initial_model,convolve_func,rep_limit, modifier_args,modifier):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn['v1']
     
-    perf_fs = gridfs.GridFS(db,'optimized_performance')
+    opt_fs = gridfs.GridFS(db,'optimized_performance')
     
     image_coll = db['raw_images.files']
     image_fs = gridfs.GridFS(db,'raw_images')
@@ -105,94 +109,103 @@ def greedy_optimization(outfile,task,image_certificate_file,initial_model,convol
     filterbanks = []
     perfs = []
     model_configs = []
-	
-	while model_config:
-		model_configs.append(model_config)
-		perf,filterbank = get_performance(task,image_hash,image_coll,model_config,convolve_func)
-		perfs.append(perf)	
-		filterbanks.append(filterbank)
-		model_config = greedy_modify_config(model_configs,perfs,modifier)
-	
-	best_model = model_config[np.array(perfs).argmax()]
-	best_performance = perfs.max()
-		
-	out_record = SON([('initial_model',model_config['config']['model']),
-					   ('model_filename',model_config['filename']),
-					   ('task',son_escape(task)),
-					   ('images',son_escape(image_args)),
-					   ('images_hash',image_hash),
-					   ('models_hash',model_hash),
-					   ('modifier_args',modifier_args),
-					   ('modifier',modifier.__class__)
-					 ])   
-	filename = get_filename(out_record)
-	out_record['filename'] = filename
-	out_record.update(SON([('performances',perfs)]))
-	out_record.update(SON([('best_model',best_model)]))
-	out_record.update(SON([('best_performance',best_performance)]))
-	out_record.update(SON([('num_steps',len(model_configs))]))
-	out_record.update(SON([('models',model_configs)]))
-	outdata = cPickle.dumps(filterbanks)
-		
-	perf_fs.put(outdata,**out_record)
+    model_config = initial_model
+    
+    i = 0
+    while model_config and ((i < rep_limit) or rep_limit is None):
+        model_configs.append(model_config)
+        i += 1
+        perf,filterbank = get_performance(task,image_hash,image_fs,model_config,convolve_func)
+        print('\n\n')
+        print(perf, model_config)
+        
+        if perf['test_accuracy'] > (max([p['test_accuracy'] for p in perfs]) if perfs else -10):
+           print('\n\n') 
+           print("NEWBEST",perf['test_accuracy'])
+        print('\n\n')
+        perfs.append(perf)  
+        filterbanks.append(filterbank)
+        model_config = greedy_modify_config(model_configs,perfs,modifier)
+    
+    perfargmax = np.array([p['test_accuracy'] for p in perfs]).argmax()
+    best_model = model_configs[perfargmax]
+    best_performance = perfs[perfargmax]
+        
+    out_record = SON([('initial_model',initial_model),
+                       ('task',son_escape(task)),
+                       ('images',son_escape(image_args)),
+                       ('images_hash',image_hash),
+                       ('modifier_args',son_escape(modifier_args)),
+                       ('modifier',modifier.__class__.__module__ + '.' + modifier.__class__.__name__)
+                     ])   
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record.update(SON([('performances',perfs)]))
+    out_record.update(SON([('best_model',best_model)]))
+    out_record.update(SON([('best_performance',best_performance)]))
+    out_record.update(SON([('num_steps',len(model_configs))]))
+    out_record.update(SON([('models',model_configs)]))
+    outdata = cPickle.dumps(filterbanks)
+        
+    opt_fs.put(outdata,**out_record)
      
     if convolve_func == v1f.v1like_filter_pyfft:
         v1_pyfft.cleanup_pyfft() 
       
-    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+    createCertificateDict(outfile,{'image_file':image_certificate_file})
 
-
+import numpy as np
 def greedy_modify_config(model_configs,perfs,modifier):
     
-    perfargmax = np.array(perfs).argmax()
+    perfvals = [p['test_accuracy'] for p in perfs]
+    perfargmax = np.array(perfvals).argmax()
     perfmax = model_configs[perfargmax]
-    perfmax0 = model_configs[np.array(perfs[:perfargmax]).argmax()] if perfargmax else None
+
+    possible_next_configs = get_consistent_deltas(perfmax,modifier)
     
-    possible_next_configs = get_consistent_deltas(perfmax0,perfmax,modifier)
+    perfargmax0 = np.array(perfvals[:perfargmax]).argmax() if perfargmax > 0 else None
+    print perfvals, perfargmax, perfargmax0
+    if perfargmax0 is not None:
+        perfmax0 = model_configs[perfargmax0] 
+        possible_next_configs = greedy_order(possible_next_configs,perfmax0,perfmax,modifier)
     
-    untried_next_configs = [x for x in possible_next_configs if x not in model_configs[perfargmax:]]
+    untried_next_configs = [x for x in possible_next_configs if x not in model_configs]
     
     if untried_next_configs:
         return untried_next_configs[0]
         
-        
-from copy import deepcopy      
-def get_consistent_deltas(perfmax0,perfmax,modifier):
+def greedy_order(configs,x0,x1,modifier):
+    dist_vec = np.array([modifier.get_vector(x0,x1,k) for k in modifier.params])
+    dist_vecs = [np.array([modifier.get_vector(x1,y,k) for k in modifier.params]) for y in configs]
+    dist_dots = np.array([np.dot(dist_vec,d_vec) for d_vec in dist_vecs])
+    
+    ordering = dist_dots.argsort()[::-1]
+    
+    configs = [configs[ind] for ind in ordering]
+    
+    return configs
+    
+
+from copy import deepcopy    
+import itertools
+def get_consistent_deltas(perfmax,modifier):
     
     possibles = []
     
-    D = itertools.product([modifier.get_modifications(k,hgetattr(perfmax,k)) for k in modifier.params])
+    LL = [modifier.get_modifications(k,hgetattr(perfmax,k)) for k in modifier.params]
+
+    D = itertools.product(*LL)
     
     for d in D:
         c_copy = deepcopy(perfmax)
-        for (ind,k) in enumerate(modification_params.keys()):
+        for (ind,k) in enumerate(modifier.params):
             hsetattr(c_copy,k,d[ind]) 
        
-        if c_copy != perfmax0 and c_copy != perfmax:
-            possibles.append(c_copy)
+        possibles.append(c_copy)
             
     return possibles
     
     
-def hsetattr(d,k,v):
-    kl = k.split('.')
-    h_do_setattr(d,kl,v)
-    
-def h_do_setattr(d,kl,v):
-    if len(kl) == 1:
-        d[kl[0]] = v
-    else:
-        h_do_setattr(d[kl[0]],kl[1:],v)
-        
-def hgetattr(d,k,v):
-    kl = k.split('.')
-    h_do_getattr(d,kl,v)
-    
-def h_do_getattr(d,kl,v):
-    if len(kl) == 1:
-        return d[kl[0]]
-    else:
-        h_do_getattr(d[kl[0]],kl[1:],v) 
  
 
 def get_performance(task,image_hash,image_fs,model_config,convolve_func):
@@ -202,28 +215,28 @@ def get_performance(task,image_hash,image_fs,model_config,convolve_func):
     split_results = []  
     splits = generate_splits(task,image_hash) 
     filterbank = filter_generation.get_filterbank(model_config)
-	for (ind,split) in enumerate(splits):
-		print ('split', ind)
-		train_data = split['train_data']
-		test_data = split['test_data']
-		
-		train_filenames = [t['filename'] for t in train_data]
-		test_filenames = [t['filename'] for t in test_data]
-		assert set(train_filenames).intersection(test_filenames) == set([])
-		
-		train_features = sp.row_stack([extract_features(im, image_fs, filterbank, model_config, convolve_func) for im in train_data])
-		test_features = sp.row_stack([extract_features(im, image_fs, filterbank, model_config, convolve_func) for im in test_data])
-		train_labels = split['train_labels']
-		test_labels = split['test_labels']
+    for (ind,split) in enumerate(splits):
+        print ('split', ind)
+        train_data = split['train_data']
+        test_data = split['test_data']
+        
+        train_filenames = [t['filename'] for t in train_data]
+        test_filenames = [t['filename'] for t in test_data]
+        assert set(train_filenames).intersection(test_filenames) == set([])
+        
+        train_features = sp.row_stack([extract_features(im, image_fs, filterbank, model_config, convolve_func) for im in train_data])
+        test_features = sp.row_stack([extract_features(im, image_fs, filterbank, model_config, convolve_func) for im in test_data])
+        train_labels = split['train_labels']
+        test_labels = split['test_labels']
 
-		res = svm.classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
+        res = svm.classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
 
-		split_results.append(res)
+        split_results.append(res)
 
-	model_results = SON([])
-	for stat in stats:
-		if stat in split_results[0] and split_results[0][stat] != None:
-			model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
+    model_results = SON([])
+    for stat in stats:
+        if stat in split_results[0] and split_results[0][stat] != None:
+            model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
 
 
     return model_results, filterbank
@@ -240,7 +253,7 @@ def extract_features(image_config, image_fs, filterbank, model_config, convolve_
         image_fh = image_fs.get_version(image_config['filename'])
         
         
-        m_config = model_config['config']['model']
+        m_config = model_config
         conv_mode = m_config['conv_mode']
         
         #preprocessing
@@ -266,6 +279,6 @@ def extract_features(image_config, image_fs, filterbank, model_config, convolve_
         fvector_l = v1e.postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,m_config.get('featsel'))
         
         output = sp.concatenate(fvector_l).ravel()
-        put_in_cache((image_config,model_config),output,FEATURE_CACHE)
+        put_in_cache((image_config,m_config),output,FEATURE_CACHE)
     
     return output

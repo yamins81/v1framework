@@ -257,7 +257,7 @@ def norm(input,conv_mode,params):
 
 def convolve(image,filter,model_config,convolve_func):
     def filter_source():
-        if isinstance(filter,file)
+        if isinstance(filter,file):
             filter.seek(0)
             return cPickle.loads(filter.read())
         elif is_string_like(filter):

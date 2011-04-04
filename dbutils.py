@@ -600,3 +600,24 @@ def son_escape(x):
         return tuple([son_escape(y) for y in x])
     else:
         return x    
+        
+def hsetattr(d,k,v):
+    kl = k.split('.')
+    h_do_setattr(d,kl,v)
+    
+def h_do_setattr(d,kl,v):
+    if len(kl) == 1:
+        d[kl[0]] = v
+    else:
+        h_do_setattr(d[kl[0]],kl[1:],v)
+        
+def hgetattr(d,k):
+    kl = k.split('.')
+    return h_do_getattr(d,kl)
+    
+def h_do_getattr(d,kl):
+    if len(kl) == 1:
+        return d[kl[0]]
+    else:
+        return h_do_getattr(d[kl[0]],kl[1:]) 
+        
