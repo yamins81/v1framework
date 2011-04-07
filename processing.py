@@ -336,6 +336,18 @@ def postprocess(Normin,Filtered,Activated,Normout,Pooled,Partially_processed,fea
         fvector_l = include_image_level_features(Partially_processed,fvector_l,featsel) 
     fvector_l = [sp.concatenate([fvector[:,:,ind] for ind in range(fvector.shape[2])]) for fvector in fvector_l]
     return fvector_l
+    
+def simple_postprocess(obj):     
+        
+    keys = obj.keys()
+    keys.sort()
+    fvector_l = []
+    for cidx in keys:
+        fvector = obj[cidx]
+        fvector_l += [fvector]
+
+    fvector_l = [sp.concatenate([fvector[:,:,ind] for ind in range(fvector.shape[2])]) for fvector in fvector_l]
+    return fvector_l    
 
      
 def include_image_level_features(orig_imga,fvector_l,featsel):

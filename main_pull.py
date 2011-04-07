@@ -29,6 +29,9 @@ except:
     GPU_SUPPORT = False
 else:
     GPU_SUPPORT = True
+    
+
+###gridded gabors square vs. rect    
 
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_test(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_test.py'):
@@ -98,8 +101,9 @@ def pull_gridded_gabors_sq_vs_rect_various_twofrequency_filterbanks(depends_on =
     RESULT: Varied """
     D = v1_pull_protocol(depends_on)
     actualize(D)      
-        
-
+   
+###random gabors square vs. rect    
+   
 @protocolize()
 def pull_random_gabors_sq_vs_rect_onefilter_screen(depends_on = '../config/config_pull_random_gabors_sq_vs_rect_onefilter_screen.py'):
     """screening 10 random one-filter gabors on high density transformations set of squares versus rectangles
@@ -115,6 +119,7 @@ def pull_random_gabors_sq_vs_rect_twofilter_screen(depends_on = '../config/confi
     D = v1_pull_protocol(depends_on)
     actualize(D)    
     
+    
 @protocolize()
 def pull_gabor_sq_vs_rect_twofilter_pump_training(depends_on = '../config/config_pull_gabor_sq_vs_rect_twofilter_pump_training.py'):
     """taking one of the best (but still bad) performing random two-filter gabors and pumping up traning examples on high density transformations 
@@ -123,6 +128,8 @@ def pull_gabor_sq_vs_rect_twofilter_pump_training(depends_on = '../config/config
     D = v1_pull_protocol(depends_on)
     actualize(D)    
     
+
+###cairofilter activation tuning    
 @protocolize()
 def pull_cairofilters_sq_vs_rect_various_activations(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_various_activations.py'):
     """tuning activation threshold on handcrafted cairo filters on high density transformations set of squares versus rectangles"""
@@ -141,8 +148,6 @@ def pull_cairofilters_sq_vs_rect_various_activations_finefinetuning(depends_on =
     D = v1_pull_protocol(depends_on)
     actualize(D)   
     
-    
-    
 @protocolize()
 def pull_activation_tuned_cairofilters_sq_vs_rect(depends_on = '../config/config_pull_activation_tuned_cairofilters_sq_vs_rect.py'):
     """pumped-up trainining curve evaluation on  handcrafted cairo filters with optimized activation valued from finefinetuning on high density transformations set of squares versus rectangles
@@ -152,6 +157,220 @@ def pull_activation_tuned_cairofilters_sq_vs_rect(depends_on = '../config/config
     D = v1_pull_protocol(depends_on)
     actualize(D)          
     
+    
+###cairofilers
+@protocolize()
+def pull_cairofilters_sq_vs_rect_test2(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_test2.py'):
+    """
+    Testing a slightly improved single-filter handcrafterd filterbank, related to original object.
+    RESULT: Does better than original, with somewhat fewer training examples
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)  
+    
+    
+@protocolize()
+def pull_cairofilters_sq_vs_rect_test3(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_test3.py'):
+    """
+    Testing a slightly more improved single-filter handcrafterd filterbank, related to original object.
+    RESULT: Does slightly even better, with somewhat fewer training examples
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)    
+
+
+###the orthogonality thing    
+@protocolize()
+def pull_gabors_sq_vs_rect_onespecialfilter(depends_on = '../config/config_pull_gabors_sq_vs_rect_onespecialfilter.py'):
+    """
+    Test to see if you could remove one of the two orthogonal copies of the best
+    performing two-orthogonal-filter gabor (from greedy search). 
+    
+    RESULT: You can't.  That is, even though there's a good hyperplane defined
+    with just the one filter, the SVM algorithm doesn't see it easily (you'd
+    need a lot of test examples) but the second, orthogonal plane makes the
+    separation much wider, so the SVM DOES see it.   At least with separating
+    things like a square vs. a rectangle -- where there's a clear separation in
+    edge space, there's a kind of "two filter orthogonality" principle.
+
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)  
+    
+    
+@protocolize()
+def pull_cairofilters_sq_vs_rect_test4(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_test4.py'):
+    """
+    Test using the two filter orthogonality principle with the original hand-crafted cairo-generated 
+    filters that needed a lot of test examples to do well 
+    
+    RESULT: It works!  Just by adding a copy of the same filter, orthogonally in orientation space, 
+    you get high performance with low numbers of training examples
+        
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)        
+
+@protocolize()
+def pull_cairofilters_sq_vs_rect_test5(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_test5.py'):
+    """
+    Improvement on  two filter orthogonality principle with the better hand-crafted cairo-generated 
+    filters using a primitive center-surround idea. 
+
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)   
+
+@protocolize()
+def pull_cairofilters_sq_vs_rect_test6(depends_on = '../config/config_pull_cairofilters_sq_vs_rect_test6.py'):
+    """
+    Improvement on  two filter orthogonality principle with the better hand-crafted cairo-generated 
+    filters using a slightly improved center-surround idea. 
+ 
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)
+    
+    
+###center surround    
+@protocolize()
+def pull_center_surround_sq_vs_rect(depends_on = '../config/config_pull_center_surround_sq_vs_rect.py'):
+    """
+    Using center surround construction procedure + orthogonal filter principle.
+    RESULT:  it works pretty well.
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)       
+    
+@protocolize()
+def pull_center_surround_sq_vs_rect_test2(depends_on = '../config/config_pull_center_surround_sq_vs_rect_test2.py'):
+    """
+    same as other test but with different normin.kshape
+    RESULT: it works about the same. 
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)      
+    
+
+### transform-averaging the features before SVM    
+@protocolize()
+def pull_center_surround_sq_vs_rect_averaged(depends_on = '../config/config_pull_center_surround_sq_vs_rect_averaged.py'):
+    """
+    Implementing the idea that since the invariant hperplane should be itself invariant, you can just do this before the 
+    SVM and get just as good results -- actually, better, since you can get esults with many fewer training examples
+    RESULT: It works! You can reduce training example load quite a bit. 
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)  
+
+@protocolize()
+def pull_center_surround_sq_vs_rect_averaged_test2(depends_on = '../config/config_pull_center_surround_sq_vs_rect_averaged_test2.py'):
+    """
+    same as other test, but different normin.kshape
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)      
+ 
+
+
+###gabors on circles vs squares
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_test(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_test.py'):
+    """
+    circle vs square with translation on reduced-density dataset with very small objects with standard 96-gabor filterbank
+    RESULT: The objects are so small and therefore low-resolutio that thre's not enogh data after input normalization and it totally fails. 
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D) 
+    
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_test2(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_test2.py'):
+    """
+    attempt to rescue from previous test with larger objects.  
+    RESULT: It works, you get 100% performance, e.g. standard 96-gabor filterbank works well. 
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)     
+ 
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle.py'):
+    """
+    "real" test with much higher translation-density dataset to separate circles from squares with standard 96-gabor filterbank 
+    RESULT: 100% test accuracy
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+    
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters.py'):
+    """
+    reduced 48-gabor filter, otherwise same as previous
+    RESULT: 100%
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)     
+    
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters_2(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters_2.py'):
+    """
+    reduced 12-gabor filter, otherwise same as previous
+    RESULT: 100%
+    
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)      
+  
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters_3(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters_3.py'):
+    """
+    reduced 2-gabor filter with one frequency and two orientations, otherwise same as previous
+    RESULT: terrible.  
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)        
+ 
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters_4(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters_4.py'):
+    """
+    4-gabor filter with two frequencies and two orientations
+    RESULT: great.  
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)         
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters_5(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters_5.py'):
+    """
+    same as pull_gridded_gabors_sq_vs_circle_fewer_filters_3, but with very different single frequency
+    RESULT: just as terrible
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)         
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_fewer_filters_6(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_fewer_filters_6.py'):
+    """
+    two-gabor filterbank with one orientation and two frequencies
+    RESULT: Great
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)         
+
+@protocolize()
+def pull_gridded_gabors_sq_vs_circle_various_twofrequency_filterbanks(depends_on = '../config/config_pull_gridded_gabors_sq_vs_circle_various_twofrequency_filterbanks.py'):
+    """
+    exploring the two-frequency one-orientation space
+    RESULTS: all pretty good, with some interesting trend.   SO upshot is that
+    the way gabors solve cirlces vs squares, which after all are not cleanly separated in edge-space, 
+    is to separate them in frequency space. 
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)         
  
 def v1_pull_evaluation_protocol(im_config_path,task_config_path,use_cpu = False,write=False):
     
@@ -261,8 +480,8 @@ def train_test_pull(outfile,task,image_certificate_file,model_certificate_file,c
             test_filenames = [t['filename'] for t in test_data]
             assert set(train_filenames).intersection(test_filenames) == set([])
             
-            train_features = sp.row_stack([extract_features(im, image_fs, m, model_fs, convolve_func) for im in train_data])
-            test_features = sp.row_stack([extract_features(im, image_fs, m, model_fs, convolve_func) for im in test_data])
+            train_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in train_data])
+            test_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in test_data])
             train_labels = split['train_labels']
             test_labels = split['test_labels']
 
@@ -337,15 +556,34 @@ def extract_features(image_config, image_fs, model_config, model_fs,convolve_fun
         norm_out = v1e.norm(activ,conv_mode,m_config.get('normout'))
         #pooling
         pooled = v1e.pool(norm_out,conv_mode,m_config.get('pool'))
-            
-        #postprocessing
-        fvector_l = v1e.postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,m_config.get('featsel'))
         
-        output = sp.concatenate(fvector_l).ravel()
+        if m_config.get('flatten',True):
+            fvector_l = v1e.postprocess(norm_in,filtered,activ,norm_out,pooled,orig_imga,m_config.get('featsel'))
+            output = sp.concatenate(fvector_l).ravel()
+        else:
+            output = pooled
         put_in_cache((image_config,model_config),output,FEATURE_CACHE)
     
     return output
     
+
+def transform_average(input,config):
+    if config:
+        averaged = []
+        K = input.keys()
+        K.sort()
+        for cidx in K:
+            averaged.append(average_transform(input[cidx],config))
+        averaged = sp.concatenate(averaged)
+        print(averaged)
+        return averaged
+    return input
+
+def average_transform(input,config):
+    if config['transform_name'] == 'translation':
+        return input.sum(1).sum(0)
+    else:
+        raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
     
 def generate_splits(task_config,image_hash):
     

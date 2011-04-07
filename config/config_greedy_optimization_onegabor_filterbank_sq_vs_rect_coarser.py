@@ -119,7 +119,7 @@ config = SON([
 
 ('evaluation_task' , 
    SON([
-      ('N',10), 
+      ('N',15), 
       ('ntrain',32),
       ('ntest',16),
       ('ntrain_pos',16),
@@ -132,8 +132,8 @@ config = SON([
 ('modifier',OneGaborModifier),
 
 ('modifier_args',SON([('filter.orients', SON([('delta',.1),('min',-math.pi/2),('max',math.pi/2)])),
-                      ('filter.divfreqs',SON([('delta',1),('min',2),('max',20)])),
-                      ('filter.kshape', SON([('delta',1),('min',15),('max',40)])),
+                      ('filter.divfreqs',SON([('delta',4),('min',2),('max',20)])),
+                      ('filter.kshape', SON([('delta',5),('min',15),('max',40)])),
                      ])
 ),
 ('rep_limit',50)

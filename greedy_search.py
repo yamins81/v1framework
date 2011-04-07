@@ -32,13 +32,36 @@ else:
     GPU_SUPPORT = True
 
 
+###TODO: Make search process more sophisticated, right now it sucks.  
+
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_onefilter(depends_on = '../config/config_greedy_optimization_onegabor_filterbank_sq_vs_rect.py'):
     """
+    Greedy search for better single-gabor sq vs rectangle.   
+    RESULT:  it's all bad  
     """ 
     D = v1_greedy_optimization_protocol(depends_on)
     actualize(D)     
     
+@protocolize()
+def pull_gridded_gabors_sq_vs_rect_onefilter_coarser(depends_on = '../config/config_greedy_optimization_onegabor_filterbank_sq_vs_rect_coarser.py'):
+    """
+    Greedy search for better single-gabor sq vs rectangle, with coarser step in search
+    RESULT:  it's all bad 
+    """ 
+    D = v1_greedy_optimization_protocol(depends_on)
+    actualize(D)     
+
+
+@protocolize()
+def optimize_gridded_gabors_sq_vs_rect_twofilter(depends_on = '../config/config_greedy_optimization_twogabor_filterbank_sq_vs_rect.py'):
+    """
+    Greedy search for best two-orthogonal-gabor filterbank sq vs rectangle
+    RESULT:  you get to v. high performance quickly (and this could really benefit from better search procedure to optimize further)
+    """ 
+    D = v1_greedy_optimization_protocol(depends_on)
+    actualize(D)     
+
 
 def v1_greedy_optimization_protocol(config_path,use_cpu = False,write=False):
 
@@ -109,24 +132,41 @@ def greedy_optimization(outfile,task,image_certificate_file,initial_model,convol
     filterbanks = []
     perfs = []
     model_configs = []
-    model_config = initial_model
+    center_config = initial_model
     
     i = 0
-    while model_config and ((i < rep_limit) or rep_limit is None):
-        model_configs.append(model_config)
-        i += 1
-        perf,filterbank = get_performance(task,image_hash,image_fs,model_config,convolve_func)
-        print('\n\n')
-        print(perf, model_config)
-        
-        if perf['test_accuracy'] > (max([p['test_accuracy'] for p in perfs]) if perfs else -10):
-           print('\n\n') 
-           print("NEWBEST",perf['test_accuracy'])
-        print('\n\n')
-        perfs.append(perf)  
-        filterbanks.append(filterbank)
-        model_config = greedy_modify_config(model_configs,perfs,modifier)
+    improving = True
     
+    
+    while ((i < rep_limit) or rep_limit is None):
+        i += 1
+        print('Round', i)
+        next_configs = [m for m in get_consistent_deltas(center_config,modifier) if m not in model_configs]
+
+        if next_configs:
+            next_results = [get_performance(task,image_hash,image_fs,m,convolve_func) for m in next_configs]
+            next_perfs = [x[0] for x in next_results]
+            next_filterbanks = [x[1] for x in next_results]
+            next_perf_ac_max = np.array([x['test_accuracy'] for x in next_perfs]).max()
+            perf_ac_max = max([x['test_accuracy'] for x in perfs]) if perfs else 0
+            if next_perf_ac_max > perf_ac_max:
+                next_perf_ac_argmax = np.array([x['test_accuracy'] for x in next_perfs]).argmax()
+                center_config = next_configs[next_perf_ac_argmax]  
+                print('\n\n')
+                print('new best performance is', next_perf_ac_max, 'from model', center_config)
+                print('\n\n')
+                perfs.extend(next_perfs)  
+                model_configs.extend(next_configs)
+                filterbanks.extend(next_filterbanks)
+            else:
+                print('Breaking because no further optimization could be done.  Best existing performance was', perf_ac_max, 'while best next performance was', next_perf_ac_max)
+                break
+            
+        else:
+            print('Breaking because no next configs')
+            break
+        
+
     perfargmax = np.array([p['test_accuracy'] for p in perfs]).argmax()
     best_model = model_configs[perfargmax]
     best_performance = perfs[perfargmax]
@@ -199,6 +239,7 @@ def get_consistent_deltas(perfmax,modifier):
     for d in D:
         c_copy = deepcopy(perfmax)
         for (ind,k) in enumerate(modifier.params):
+            print k, d[ind]
             hsetattr(c_copy,k,d[ind]) 
        
         possibles.append(c_copy)

@@ -31,15 +31,15 @@ def renderman_config_gen(args):
     return params
 
 def renderman_render(config):
-	 params_list = [{'model_params':[config['image']]}]     
-	 tmp = tempfile.mkdtemp()
-	 os.chdir(tmp)
-	 os.system('wget ' + IMAGE_URL + 'params_list=' + json.dumps(params_list))
-	 zipfile = [x for x in os.listdir('.') if x.endswith('.zip')][0]
-	 zipname = zip[:-4]
-	 os.system('tar -xzvf ' + zipfile)
-	 imagefile = [os.path.join(zipname,x) for x in os.listdir(zipname) if x.endswith('.tif')][0]
-	 return open(imagefile).read()
+     params_list = [{'model_params':[config['image']]}]     
+     tmp = tempfile.mkdtemp()
+     os.chdir(tmp)
+     os.system('wget ' + IMAGE_URL + 'params_list=' + json.dumps(params_list))
+     zipfile = [x for x in os.listdir('.') if x.endswith('.zip')][0]
+     zipname = zip[:-4]
+     os.system('tar -xzvf ' + zipfile)
+     imagefile = [os.path.join(zipname,x) for x in os.listdir(zipname) if x.endswith('.tif')][0]
+     return open(imagefile).read()
 
 
 def cairo_config_gen(args):
@@ -64,40 +64,79 @@ def cairo_config_gen(args):
 
 def cairo_render(params,returnfh=False):
     
-    object = params['object']
-    pattern = params['pattern']
+
     height = params['height']
     width = params['width']
     
-
-    if params.get('sx') or params.get('sy'):
-        S = SON([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
-        InvS = SON([('type','scale'),('args',(1./params.get('sx',1),1./params.get('sy',1)))])
-        object = [S] + object + [InvS]
-
- 
-    if params.get('rxy'):
-        Rot = SON([('type','rotate'),('args',(params.get('rxy'),))]) 
-        InvRot = SON([('type','rotate'),('args',(-params.get('rxy'),))])
-        object = [Rot] + object + [InvRot]    
-
-    if params.get('tx') != None or params.get('ty') != None:
-        Tr = SON([('type','translate'),('args',(params.get('tx',0),-params.get('ty',0)))])
-        InvTr = SON([('type','translate'),('args',(-params.get('tx',0),params.get('ty',0)))])
-        object = [Tr] + object + [InvTr]
-       
+    if params.get('object'):
+        object = params['object']
+        pattern = params['pattern']
+    
+        if params.get('sx') or params.get('sy'):
+            S = SON([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
+            InvS = SON([('type','scale'),('args',(1./params.get('sx',1),1./params.get('sy',1)))])
+            object = [S] + object + [InvS]
+    
+     
+        if params.get('rxy'):
+            Rot = SON([('type','rotate'),('args',(params.get('rxy'),))]) 
+            InvRot = SON([('type','rotate'),('args',(-params.get('rxy'),))])
+            object = [Rot] + object + [InvRot]    
+    
+        if params.get('tx') != None or params.get('ty') != None:
+            Tr = SON([('type','translate'),('args',(params.get('tx',0),-params.get('ty',0)))])
+            InvTr = SON([('type','translate'),('args',(-params.get('tx',0),params.get('ty',0)))])
+            object = [Tr] + object + [InvTr]
+           
+            
         
+        Tr = SON([('type','translate'),('args',(.5,.5))])
+        InvTr = SON([('type','translate'),('args',(-.5,-.5))])
+        object = [Tr] + object + [InvTr]
+              
+        
+        render_params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object)])]),
+                     ('width' , width), ('height' , height)
+                    ])
+        
+        
+        
+    elif params.get('objects'):
+        render_params = SON([('objs' , []),
+                     ('width' , width), ('height' , height)
+                    ])
+        for objp in params['objects']:
+            object = objp['object']
+            pattern = objp['pattern']
+        
+            if objp.get('sx') or objp.get('sy'):
+                S = SON([('type','scale'),('args',(objp.get('sx',1),objp.get('sy',1)))])
+                InvS = SON([('type','scale'),('args',(1./objp.get('sx',1),1./objp.get('sy',1)))])
+                object = [S] + object + [InvS]
+        
+         
+            if objp.get('rxy'):
+                Rot = SON([('type','rotate'),('args',(objp.get('rxy'),))]) 
+                InvRot = SON([('type','rotate'),('args',(-objp.get('rxy'),))])
+                object = [Rot] + object + [InvRot]    
+        
+            if objp.get('tx') != None or objp.get('ty') != None:
+                Tr = SON([('type','translate'),('args',(objp.get('tx',0),-objp.get('ty',0)))])
+                InvTr = SON([('type','translate'),('args',(-objp.get('tx',0),objp.get('ty',0)))])
+                object = [Tr] + object + [InvTr]
+               
+                
+            
+            Tr = SON([('type','translate'),('args',(.5,.5))])
+            InvTr = SON([('type','translate'),('args',(-.5,-.5))])
+            object = [Tr] + object + [InvTr]
+                  
+            
+            render_params['objs'].append(SON([('pattern' , pattern), ('segments' , object)]))
+                         
+        
+    return cairo_render_image(render_params,returnfh=returnfh)                     
     
-    Tr = SON([('type','translate'),('args',(.5,.5))])
-    InvTr = SON([('type','translate'),('args',(-.5,-.5))])
-    object = [Tr] + object + [InvTr]
-          
-    
-    params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object)])]),
-                 ('width' , width), ('height' , height)
-                ])
-                           
-    return cairo_render_image(params,returnfh=returnfh)
 
 
 def cairo_render_image(params,returnfh=False):

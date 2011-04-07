@@ -1,4 +1,5 @@
 import v1like_math as v1m
+import v1like_funcs as v1f
 import numpy as np
 import itertools
 import rendering
@@ -8,8 +9,86 @@ from bson import SON
 def normalize(Y):
     m = Y.mean()
     return (Y - m) / np.sqrt(((Y - m)**2).sum())
+    
+import rendering, processing
+import scipy as sp
+
+def center_surround(model_config):
+
+    conv_mode = model_config['conv_mode']
+    
+    L = np.empty(tuple(model_config['filter']['kshape']) + (2*len( model_config['filter']['base_images'] ),))
+    
+    for (ind,image_config) in enumerate(model_config['filter']['base_images']):
+		image_fh = rendering.cairo_render(image_config,returnfh=True)
+		
+		#preprocessing
+		array = processing.image2array(model_config ,image_fh)
+	  
+		preprocessed,orig_imga = processing.preprocess(array,model_config )
+				
+		norm_in = norm(preprocessed,conv_mode,model_config.get('normin'))
+	
+		array = make_array(norm_in) 
+		array = array[:,:,:2].max(2).astype(np.float)
+		
+		arr_box = cut_bounding_box(array)
+		s = model_config['filter']['kshape'] 
+		
+		X = np.zeros(s)
+		h,w = np.array(s) - np.array(arr_box.shape)
+		X[h/2:h/2 + arr_box.shape[0], w/2:w/2 + arr_box.shape[1]] = arr_box
+		  
+		X = normalize(X)
+		
+		L[:,:,2*ind] = X
+		L[:,:,2*ind + 1] = X.T
+		
+    return L
+   
+    
+def make_array(x):
+    s = x[0].shape[:2]
+    K = x.keys()  
+    K.sort()
+    K = K[:1]
+    arr = np.empty(s + (len(K),))
+    
+    for k in K:
+        arr[:,:,k] = x[k][:,:,0]
+    return arr
+
+def cut_bounding_box(arr,theta = None,buffer = 0):
+    if theta is not None:
+        arr = np.where(arr > theta,arr,0)
+        
+    xnz = arr.sum(1).nonzero()[0]
+    if len(xnz) > 0:
+        x0,x1 = xnz[0],xnz[-1]
+        ynz = arr.sum(0).nonzero()[0]
+        y0,y1 = ynz[0],ynz[-1]
+    
+        return arr[x0-buffer:x1+1+buffer,y0-buffer:y1+1+buffer]
+    else:
+        raise ValueError, 'Empty Bounding box'
+
+
+def norm(input,conv_mode,params):
+    output = {}
+    for cidx in input.keys():
+        if len(input[cidx].shape) == 3:
+            inobj = input[cidx]
+        else:
+            inobj = input[cidx][:,:,sp.newaxis]
+        if params:
+            output[cidx] = v1f.v1like_norm(inobj, conv_mode, **params)
+        else: 
+            output[cidx] = inobj
+    return output
+
 
 def get_filterbank(config):
+    model_config = config
     config = config['filter']
     model_name = config['model_name']
     fh, fw = config['kshape']
@@ -89,12 +168,15 @@ def get_filterbank(config):
         filterbank = np.empty((fh,fw,len(specs)))
         for (i,spec) in enumerate(specs):
             im_fh = rendering.cairo_render(spec,returnfh=True)
-            arr = processing.image2array({},im_fh)
-            arr = arr[:,:,:2].max(2)
+            arr = processing.image2array({'color_space':'rgb'},im_fh).astype(np.int32)
+            arr = arr[:,:,0] - arr[:,:,1]
             arrx0 = arr.shape[0]/2
             arry0 = arr.shape[1]/2
             dh = fh/2; dw = fw/2
             filterbank[:,:,i] = normalize(arr[arrx0-dh:arrx0+(fh - dh),arry0-dw:arry0+(fw-dw)])
-                   
+    
+    elif model_name == 'center_surround':
+        
+        return center_surround(model_config)
 
     return filterbank

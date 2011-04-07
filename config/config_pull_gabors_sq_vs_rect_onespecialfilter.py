@@ -11,38 +11,11 @@ import scipy as sp
 
 import cairo_objects 
 
-import config_modifiers
 
-import math
-
-from dbutils import hgetattr, hsetattr
-
-class OneGaborModifier(config_modifiers.BaseModifier):
-    __module__ = 'config.config_greedy_optimization_onegabor_filterbank_sq_vs_rect' 
-    def get_modifications(self,k,val):
-        
-        if k in ['filter.orients','filter.divfreqs','filter.phases']:    
-            L = [val[0] + self.modifier_params[k]['delta'],val[0] - self.modifier_params[k]['delta'],val[0]]
-            
-            return [[l] for l in L if self.modifier_params[k]['min'] <= l <= self.modifier_params[k]['max']]
-        
-        elif k == 'filter.kshape':
-            L = [val[0] + self.modifier_params[k]['delta'],val[0] - self.modifier_params[k]['delta'],val[0]]
-            return [[l,l] for l in L if self.modifier_params[k]['min'] <= l <= self.modifier_params[k]['max']]
-            
-        else:
-            raise ValueError, k + ' is not a recognized value'
-         
-    def get_vector(self,x0,x1,k):
-        if k in ['filter.orients','filter.divfreqs','filter.phases','filter.kshape']:
-            return 1 if (hgetattr(x1,k)[0] > hgetattr(x0,k)[0] ) else (-1 if (hgetattr(x1,k)[0] <  hgetattr(x0,k)[0]) else 0)
-        else:
-            raise ValueError, k + ' is not a recognized value'    
-    
 # dict with all representation parameters
-config = SON([
+config = {
 
-('model', SON([
+'models': [SON([
 
 #global
 ('color_space' , 'rgb'),
@@ -71,13 +44,13 @@ config = SON([
 
 # - linear filtering
 ('filter',SON([
-    ('model_name','specific_gabor'),
+    ('model_name','gridded_gabor'),
     # kernel shape of the gabors
     ('kshape' , [32,32]),
     # list of orientations
-    ('orients' , [0]),
+    ('norients' , 1),
     # list of frequencies
-    ('divfreqs' , [10]),
+    ('divfreqs' , [14]),
     # list of phases
     ('phases' ,  [0]),
     ]) ),
@@ -100,9 +73,9 @@ config = SON([
     ])),
 
 
-])),
+]),],
 
-('image' , SON([
+'image' : SON([
       ('generator' , 'cairo'),
       ('width' , 64),
       ('height' , 64),
@@ -113,30 +86,22 @@ config = SON([
       ('sx' , SON([('$gt' , .5) , ('$lt' , 2.1) , ('delta' , .5)])),
       ('sy' , SON([('$gt' , .5) , ('$lt' , 2.1) , ('delta' , .5)])),
    ]) 
-)
+
 
 ,
 
-('evaluation_task' , 
+'train_test' : [
+
    SON([
       ('N',10), 
-      ('ntrain',32),
-      ('ntest',16),
-      ('ntrain_pos',16),
+      ('ntrain',64),
+      ('ntest',32),
+      ('ntrain_pos',32),
       ('universe',SON([('image.tx',SON([('$lt',.25),('$gt',-.25)])),('image.ty',SON([('$lt',.25),('$gt',-.25)])),('$or',[SON([('image.sx',1),('image.sy',1)]),SON([('image.sx',.5),('image.sy',2)])])])),
       ('query',SON([('image.sx',1),('image.sy',1)]))
    ])
-)
-,
+   
 
-('modifier',OneGaborModifier),
-
-('modifier_args',SON([('filter.orients', SON([('delta',.1),('min',-math.pi/2),('max',math.pi/2)])),
-                      ('filter.divfreqs',SON([('delta',1),('min',2),('max',20)])),
-                      ('filter.kshape', SON([('delta',1),('min',15),('max',40)])),
-                     ])
-),
-('rep_limit',50)
-
-])
+   ]
+}
 

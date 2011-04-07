@@ -17,11 +17,11 @@ import math
 
 from dbutils import hgetattr, hsetattr
 
-class OneGaborModifier(config_modifiers.BaseModifier):
-    __module__ = 'config.config_greedy_optimization_onegabor_filterbank_sq_vs_rect' 
+class TwoGaborModifier(config_modifiers.BaseModifier):
+    __module__ = 'config.config_greedy_optimization_twogabor_filterbank_sq_vs_rect' 
     def get_modifications(self,k,val):
         
-        if k in ['filter.orients','filter.divfreqs','filter.phases']:    
+        if k  == 'filter.divfreqs':
             L = [val[0] + self.modifier_params[k]['delta'],val[0] - self.modifier_params[k]['delta'],val[0]]
             
             return [[l] for l in L if self.modifier_params[k]['min'] <= l <= self.modifier_params[k]['max']]
@@ -34,7 +34,7 @@ class OneGaborModifier(config_modifiers.BaseModifier):
             raise ValueError, k + ' is not a recognized value'
          
     def get_vector(self,x0,x1,k):
-        if k in ['filter.orients','filter.divfreqs','filter.phases','filter.kshape']:
+        if k in ['filter.divfreqs','filter.kshape']:
             return 1 if (hgetattr(x1,k)[0] > hgetattr(x0,k)[0] ) else (-1 if (hgetattr(x1,k)[0] <  hgetattr(x0,k)[0]) else 0)
         else:
             raise ValueError, k + ' is not a recognized value'    
@@ -71,11 +71,11 @@ config = SON([
 
 # - linear filtering
 ('filter',SON([
-    ('model_name','specific_gabor'),
+    ('model_name','gridded_gabor'),
     # kernel shape of the gabors
     ('kshape' , [32,32]),
     # list of orientations
-    ('orients' , [0]),
+    ('norients' , 2),
     # list of frequencies
     ('divfreqs' , [10]),
     # list of phases
@@ -119,7 +119,7 @@ config = SON([
 
 ('evaluation_task' , 
    SON([
-      ('N',10), 
+      ('N',15), 
       ('ntrain',32),
       ('ntest',16),
       ('ntrain_pos',16),
@@ -129,11 +129,10 @@ config = SON([
 )
 ,
 
-('modifier',OneGaborModifier),
+('modifier',TwoGaborModifier),
 
-('modifier_args',SON([('filter.orients', SON([('delta',.1),('min',-math.pi/2),('max',math.pi/2)])),
-                      ('filter.divfreqs',SON([('delta',1),('min',2),('max',20)])),
-                      ('filter.kshape', SON([('delta',1),('min',15),('max',40)])),
+('modifier_args',SON([('filter.divfreqs',SON([('delta',2),('min',2),('max',20)])),
+                      ('filter.kshape', SON([('delta',2),('min',15),('max',40)])),
                      ])
 ),
 ('rep_limit',50)
