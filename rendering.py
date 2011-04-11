@@ -52,11 +52,12 @@ def cairo_config_gen(args):
     sy = ranger('sy')
     objects = args['objects']  
     patterns = args['patterns']
+    action_lists = args['action_lists']
     width = [args['width']]
     height = [args['height']]
 
-    param_names = ['tx','ty','rxy','sx','sy','object','pattern','width','height']
-    ranges = [tx, ty, rxy, sx, sy, objects, patterns, width, height]
+    param_names = ['tx','ty','rxy','sx','sy','object','pattern','actions','width','height']
+    ranges = [tx, ty, rxy, sx, sy, objects, patterns, action_lists, width, height]
     params = [SON([('image' , SON(filter(lambda x: x[1] is not None, zip(param_names,p))))]) for p in itertools.product(*ranges)]  
 
     return params
@@ -71,6 +72,7 @@ def cairo_render(params,returnfh=False):
     if params.get('object'):
         object = params['object']
         pattern = params['pattern']
+        actions = params.get('actions',['fill'])
     
         if params.get('sx') or params.get('sy'):
             S = SON([('type','scale'),('args',(params.get('sx',1),params.get('sy',1)))])
@@ -95,7 +97,7 @@ def cairo_render(params,returnfh=False):
         object = [Tr] + object + [InvTr]
               
         
-        render_params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object)])]),
+        render_params = SON([('objs' , [SON([('pattern' , pattern), ('segments' , object) , ('actions',actions)])]),
                      ('width' , width), ('height' , height)
                     ])
         
@@ -108,6 +110,7 @@ def cairo_render(params,returnfh=False):
         for objp in params['objects']:
             object = objp['object']
             pattern = objp['pattern']
+            actions = objp.get('actions',['fill'])
         
             if objp.get('sx') or objp.get('sy'):
                 S = SON([('type','scale'),('args',(objp.get('sx',1),objp.get('sy',1)))])
@@ -132,7 +135,7 @@ def cairo_render(params,returnfh=False):
             object = [Tr] + object + [InvTr]
                   
             
-            render_params['objs'].append(SON([('pattern' , pattern), ('segments' , object)]))
+            render_params['objs'].append(SON([('pattern' , pattern), ('segments' , object), ('actions',actions)]))
                          
         
     return cairo_render_image(render_params,returnfh=returnfh)                     
@@ -171,7 +174,7 @@ def cairo_render_image(params,returnfh=False):
             segment_args = segment.get('args',())
             getattr(ctx,segment_type)(*segment_args)
     
-        actions = obj.get('actions',['fill'])
+        actions = obj['actions']
         for action in actions:  
             getattr(ctx,action)()
 

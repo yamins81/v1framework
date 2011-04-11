@@ -84,7 +84,14 @@ def pull_gridded_gabors_sq_vs_rect_onefilter(depends_on = '../config/config_pull
     """test of 1-filter 'gridded' gabor filterbank on high density transformations set of squares versus rectangles
     Result: not great""" 
     D = v1_pull_protocol(depends_on)
-    actualize(D)     
+    actualize(D)
+    
+@protocolize()
+def pull_gridded_gabors_sq_vs_rect_various_onefilter(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_various_onefilter.py'):
+    """test of 1-filter 'gridded' gabor filterbank on high density transformations set of squares versus rectangles
+    Result: not great""" 
+    D = v1_pull_protocol(depends_on)
+    actualize(D)    
     
 @protocolize()
 def pull_gridded_gabors_sq_vs_rect_varioustwofilters(depends_on = '../config/config_pull_gridded_gabors_sq_vs_rect_varioustwofilters_evaluation.py'):
@@ -272,6 +279,67 @@ def pull_center_surround_sq_vs_rect_averaged_test2(depends_on = '../config/confi
     actualize(D)      
  
 
+@protocolize()
+def pull_center_surround_sq_vs_rect_averaged_nonorthogonalized(depends_on = '../config/config_pull_center_surround_sq_vs_rect_averaged_nonorthogonalized.py'):
+    """
+    center surround with averaging but not orthogonalization
+    RESULT: bad
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)      
+
+@protocolize()
+def pull_center_surround_sq_vs_rect_averaged_orthogonalized(depends_on = '../config/config_pull_center_surround_sq_vs_rect_averaged_orthogonalized.py'):
+    """
+    center surround with averaging and orthogonalization
+    RESULT: great at small and large example sizes
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)  
+ 
+@protocolize()
+def pull_center_surround_sq_vs_rect_nonaveraged_orthogonalized(depends_on = '../config/config_pull_center_surround_sq_vs_rect_nonaveraged_orthogonalized.py'):
+    """
+    center surround with averaging and orthogonalization
+    RESULT: great at large-ish example sizes, but not so good small ones
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D) 
+    
+@protocolize()
+def pull_center_surround_sq_vs_rect_nonaveraged_nonorthogonalized_svm_constants(depends_on = '../config/config_pull_center_surround_sq_vs_rect_nonaveraged_nonorthogonalized_svm_constants.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D) 
+    
+@protocolize()
+def pull_center_surround_sq_vs_rect_nonaveraged_nonorthogonalized_libsvm(depends_on = '../config/config_pull_center_surround_sq_vs_rect_nonaveraged_nonorthogonalized_libsvm.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)     
+
+
+###center surround on circles vs squares
+@protocolize()
+def pull_center_surround_sq_vs_circle(depends_on = '../config/config_pull_center_surround_sq_vs_circle.py'):
+    """
+    
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)   
+
+@protocolize()
+def pull_center_surround_sq_vs_circle_averaged(depends_on = '../config/config_pull_center_surround_sq_vs_circle_averaged.py'):
+    """
+    
+    """
+    D = v1_pull_protocol(depends_on)
+    actualize(D)   
+
 
 ###gabors on circles vs squares
 
@@ -367,10 +435,236 @@ def pull_gridded_gabors_sq_vs_circle_various_twofrequency_filterbanks(depends_on
     exploring the two-frequency one-orientation space
     RESULTS: all pretty good, with some interesting trend.   SO upshot is that
     the way gabors solve cirlces vs squares, which after all are not cleanly separated in edge-space, 
-    is to separate them in frequency space. 
+    is to separate them in frequency space.  It's sort of a complement to the
+    two-orthogonal filter priniple for the square-vs-rectangle (edge-separated) case. 
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)    
+    
+    
+###gabors circle vs ellipse
+
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+    
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+    
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters_2(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters_2.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)    
+    
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters_3(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters_3.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+    
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters_4(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters_4.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)      
+ 
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters_5(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters_5.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewer_filters_6(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewer_filters_6.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+    
+@protocolize()
+def pull_gridded_gabors_circle_vs_ellipse_fewfilter_screening(depends_on = '../config/config_pull_gridded_gabors_circle_vs_ellipse_fewfilter_screening.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)    
+ 
+@protocolize()
+def pull_center_surround_circle_vs_ellipse(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+    
+@protocolize()
+def pull_center_surround_circle_vs_ellipse_orthogonalized(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse_orthogonalized.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+    
+@protocolize()
+def pull_center_surround_circle_vs_ellipse_orthogonalized_2(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse_orthogonalized.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+    
+@protocolize()
+def pull_center_surround_circle_vs_ellipse_orthogonalized_3(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse_orthogonalized_3.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+    
+@protocolize()
+def pull_center_surround_circle_vs_ellipse_averaged_orthogonalized_3(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse_averaged_orthogonalized_3.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)     
+    
+@protocolize()
+def pull_center_surround_circle_vs_ellipse_orthogonalized_smaller(depends_on = '../config/config_pull_center_surround_circle_vs_ellipse_orthogonalized_smaller.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D) 
+    
+     
+     
+#=-=-=-=-=-=-=-=
+#sq vs outline
+
+@protocolize()
+def pull_gridded_gabors_square_vs_outline(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)    
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_2(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_2.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)        
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_3(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_3.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D) 
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D) 
+    
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_2(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_2.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D) 
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_3(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_3.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_4(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_4.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_5(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_5.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+    
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_6(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_6.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)  
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_7(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_7.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)     
+@protocolize()
+def pull_gridded_gabors_square_vs_outline_fewer_filters_8(depends_on = '../config/config_pull_gridded_gabors_square_vs_outline_fewer_filters_8.py'):
+    """
+
     """
     D = v1_pull_protocol(depends_on,)
     actualize(D)         
+        
+    
+@protocolize()
+def pull_center_surround_square_vs_outline(depends_on = '../config/config_pull_center_surround_square_vs_outline.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)
+@protocolize()
+def pull_center_surround_square_vs_outline_smaller(depends_on = '../config/config_pull_center_surround_square_vs_outline_smaller.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)    
+@protocolize()
+def pull_center_surround_square_vs_outline_averaged(depends_on = '../config/config_pull_center_surround_square_vs_outline_averaged.py'):
+    """
+
+    """
+    D = v1_pull_protocol(depends_on,)
+    actualize(D)       
+  
  
 def v1_pull_evaluation_protocol(im_config_path,task_config_path,use_cpu = False,write=False):
     
@@ -462,51 +756,59 @@ def train_test_pull(outfile,task,image_certificate_file,model_certificate_file,c
     image_args = image_certdict['out_args']
     
     stats = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']    
-    classifier_kwargs = task.get('classifier_kwargs',{})
+    
     
     model_configs = get_most_recent_files(model_coll,{'__run_hash__':model_hash})
     
     if convolve_func == v1f.v1like_filter_pyfft:
         v1_pyfft.setup_pyfft()
-    for m in model_configs:
-        split_results = []
-        splits = generate_splits(task,image_hash) 
-        for (ind,split) in enumerate(splits):
-            print ('split', ind)
-            train_data = split['train_data']
-            test_data = split['test_data']
-            
-            train_filenames = [t['filename'] for t in train_data]
-            test_filenames = [t['filename'] for t in test_data]
-            assert set(train_filenames).intersection(test_filenames) == set([])
-            
-            train_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in train_data])
-            test_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in test_data])
-            train_labels = split['train_labels']
-            test_labels = split['test_labels']
-
-            res = svm.classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
- 
-            split_results.append(res)
     
-        model_results = SON([])
-        for stat in stats:
-            if stat in split_results[0] and split_results[0][stat] != None:
-                model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
-
-        out_record = SON([('model',m['config']['model']),
-                       ('model_filename',m['filename']),
-                       ('task',son_escape(task)),
-                       ('images',son_escape(image_args)),
-                       ('images_hash',image_hash),
-                       ('models_hash',model_hash)
-                     ])   
-        filename = get_filename(out_record)
-        out_record['filename'] = filename
-        out_record.update(model_results)
-        out_data = cPickle.dumps(SON([('split_results',split_results),('splits',splits)]))
-        
-        perf_fs.put(out_data,**out_record)
+    if isinstance(task,list):
+        task_list = task
+    else:
+        task_list = [task]
+    
+    for task in task_list:
+		classifier_kwargs = task.get('classifier_kwargs',{})    
+		for m in model_configs:
+			split_results = []
+			splits = generate_splits(task,image_hash) 
+			for (ind,split) in enumerate(splits):
+				print ('split', ind)
+				train_data = split['train_data']
+				test_data = split['test_data']
+				
+				train_filenames = [t['filename'] for t in train_data]
+				test_filenames = [t['filename'] for t in test_data]
+				assert set(train_filenames).intersection(test_filenames) == set([])
+				
+				train_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in train_data])
+				test_features = sp.row_stack([transform_average(extract_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average')) for im in test_data])
+				train_labels = split['train_labels']
+				test_labels = split['test_labels']
+	
+				res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+	 
+				split_results.append(res)
+		
+			model_results = SON([])
+			for stat in stats:
+				if stat in split_results[0] and split_results[0][stat] != None:
+					model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
+	
+			out_record = SON([('model',m['config']['model']),
+						   ('model_filename',m['filename']),
+						   ('task',son_escape(task)),
+						   ('images',son_escape(image_args)),
+						   ('images_hash',image_hash),
+						   ('models_hash',model_hash)
+						 ])   
+			filename = get_filename(out_record)
+			out_record['filename'] = filename
+			out_record.update(model_results)
+			out_data = cPickle.dumps(SON([('split_results',split_results),('splits',splits)]))
+			
+			perf_fs.put(out_data,**out_record)
  
     if convolve_func == v1f.v1like_filter_pyfft:
         v1_pyfft.cleanup_pyfft() 

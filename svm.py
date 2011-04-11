@@ -9,9 +9,11 @@ SVM classifier module
     
 
 def classify(train_features,
-                     train_labels,
-                     test_features,
-                     test_labels, sphere=True):
+             train_labels,
+             test_features,
+             test_labels, 
+             classifier_kwargs
+            ):
 
     '''Classify data and return
         accuracy
@@ -28,8 +30,7 @@ def classify(train_features,
     test_ys = sp.array([label_to_id[i] for i in test_labels])
 
     #train
-    model = classifier_train(train_features, train_ys,
-                            test_features,sphere=sphere,svm_eps=10**(-4))
+    model = classifier_train(train_features, train_ys, test_features,**classifier_kwargs)
 
     #test
     weights = model.coef_.ravel()
@@ -40,7 +41,7 @@ def classify(train_features,
 
     #raw data to be saved for future use
     cls_data = {'test_prediction' : test_prediction,  
-                'test_lables' : test_labels, 
+                'test_labels' : test_labels, 
                 'coef' : model.coef_, 
                 'intercept' : model.intercept_
                }
@@ -198,11 +199,9 @@ def multi_classify(train_features,
 def classifier_train(train_features,
                      train_labels,
                      test_features,
-                     svm_eps = 1e-5,
-                     svm_C = 10**4,
                      classifier_type = "liblinear",
-                     multi_class=False,
-                     sphere = True
+                     sphere = True,
+                     **kwargs
                      ):
     """ Classifier training using SVMs
 
@@ -212,19 +211,21 @@ def classifier_train(train_features,
     svm_eps = eps of svm
     svm_C = C parameter of svm
     classifier_type = liblinear or libsvm"""
-
+       
     #sphering
     if sphere:
         train_features, test_features = __sphere(train_features, test_features)
 
     if classifier_type == 'liblinear':
-        clf = svm.LinearSVC(eps = svm_eps, C = svm_C,multi_class=multi_class)
+        clf = svm.LinearSVC(**kwargs)
     if classifier_type == 'libSVM':
-        clf = svm.SVC(eps = svm_eps, C = svm_C, probability = True)
+        clf = svm.SVC(**kwargs)
     elif classifier_type == 'LRL1':
-        clf = LogisticRegression(C=svm_C, penalty = 'l1')
+        clf = LogisticRegression(**kwargs)
     elif classifier_type == 'LRL2':
-        clf = LogisticRegression(C=svm_C, penalty = 'l1')
+        clf = LogisticRegression(**kwargs)
+    elif classifiter_type == 'MCC':
+        clf = CorrelationClassifier(**kwargs)
 
     clf.fit(train_features, train_labels)
     
@@ -276,3 +277,28 @@ def liblinear_prediction_function(farray , clas, labels):
         
         return (1 - np.sign(np.dot(farray,weights) + bias) )/2
         
+
+#=-=-=-=-=-=-=-=
+#maximum correlation
+#=-=-=-=-=-=-=-=
+
+class CorrelationClassifier():
+
+    def __init__(self):
+        pass
+        
+    def fit(self,train_features,train_labels):
+        self.labels = uniqify(train_labels)
+        self.coef_ = np.array([train_features[train_labels == label].mean(0) for label in self.labels]).T
+        self.intercept_ = -.5*(self.coef_ ** 2).sum(1)
+             
+    def predict(self,test_features):
+        prediction = self.prediction_function(test_features)
+        return [self.labels[i] for i in prediction]
+          
+    def prediction_function(self,test_features):
+        return self.decision_function(test_features).argmax(1)
+        
+    def decision_function(self,test_features):
+        return np.dot(test_features,self.coef_) + self.intercept_
+    

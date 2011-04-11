@@ -13,38 +13,95 @@ def normalize(Y):
 import rendering, processing
 import scipy as sp
 
-def center_surround(model_config):
+def center_surround_orth(model_config):
 
     conv_mode = model_config['conv_mode']
     
     L = np.empty(tuple(model_config['filter']['kshape']) + (2*len( model_config['filter']['base_images'] ),))
     
     for (ind,image_config) in enumerate(model_config['filter']['base_images']):
-		image_fh = rendering.cairo_render(image_config,returnfh=True)
-		
-		#preprocessing
-		array = processing.image2array(model_config ,image_fh)
-	  
-		preprocessed,orig_imga = processing.preprocess(array,model_config )
-				
-		norm_in = norm(preprocessed,conv_mode,model_config.get('normin'))
-	
-		array = make_array(norm_in) 
-		array = array[:,:,:2].max(2).astype(np.float)
-		
-		arr_box = cut_bounding_box(array)
-		s = model_config['filter']['kshape'] 
-		
-		X = np.zeros(s)
-		h,w = np.array(s) - np.array(arr_box.shape)
-		X[h/2:h/2 + arr_box.shape[0], w/2:w/2 + arr_box.shape[1]] = arr_box
-		  
-		X = normalize(X)
-		
-		L[:,:,2*ind] = X
-		L[:,:,2*ind + 1] = X.T
-		
+        image_fh = rendering.cairo_render(image_config,returnfh=True)
+        
+        #preprocessing
+        array = processing.image2array(model_config ,image_fh)
+      
+        preprocessed,orig_imga = processing.preprocess(array,model_config )
+                
+        norm_in = norm(preprocessed,conv_mode,model_config.get('normin'))
+    
+        array = make_array(norm_in) 
+        array = array[:,:,:2].max(2).astype(np.float)
+        
+        arr_box = cut_bounding_box(array)
+        s = model_config['filter']['kshape'] 
+        
+        X = np.zeros(s)
+
+        (hx,wx) = X.shape
+        (ha,wa) = arr_box.shape
+
+
+        hx0 = max((hx - ha) / 2, 0)
+        hx1 = min(ha + hx0,hx)
+        ha0 = max((ha - hx) / 2, 0)
+        ha1 = min(hx + ha0, ha)
+        wx0 = max((wx - wa) / 2, 0)
+        wx1 = min(wa + wx0,wx)
+        wa0 = max((wa - wx) / 2, 0)
+        wa1 = min(wx + wa0, wa)       
+        
+        X[hx0:hx1, wx0:wx1] = arr_box[ha0:ha1, wa0:wa1]
+          
+        X = normalize(X)
+        
+        L[:,:,2*ind] = X
+        L[:,:,2*ind + 1] = X.T
+        
     return L
+
+def center_surround(model_config):
+    conv_mode = model_config['conv_mode']
+    
+    L = np.empty(tuple(model_config['filter']['kshape']) + (len( model_config['filter']['base_images'] ),))
+    
+    for (ind,image_config) in enumerate(model_config['filter']['base_images']):
+        image_fh = rendering.cairo_render(image_config,returnfh=True)
+        
+        #preprocessing
+        array = processing.image2array(model_config ,image_fh)
+      
+        preprocessed,orig_imga = processing.preprocess(array,model_config )
+                
+        norm_in = norm(preprocessed,conv_mode,model_config.get('normin'))
+    
+        array = make_array(norm_in) 
+        array = array[:,:,:2].max(2).astype(np.float)
+        
+        arr_box = cut_bounding_box(array)
+        s = model_config['filter']['kshape'] 
+        
+        X = np.zeros(s)
+        
+        (hx,wx) = X.shape
+        (ha,wa) = arr_box.shape
+
+        hx0 = max((hx - ha) / 2, 0)
+        hx1 = min(ha + hx0,hx)
+        ha0 = max((ha - hx) / 2, 0)
+        ha1 = min(hx + ha0, ha)
+        wx0 = max((wx - wa) / 2, 0)
+        wx1 = min(wa + wx0,wx)
+        wa0 = max((wa - wx) / 2, 0)
+        wa1 = min(wx + wa0, wa)       
+        
+        X[hx0:hx1, wx0:wx1] = arr_box[ha0:ha1, wa0:wa1]
+  
+        X = normalize(X)        
+        L[:,:,ind] = X
+
+        
+    return L
+       
    
     
 def make_array(x):
@@ -177,6 +234,9 @@ def get_filterbank(config):
     
     elif model_name == 'center_surround':
         
-        return center_surround(model_config)
+        if config.get('orth',True):
+            return center_surround_orth(model_config)
+        else:
+            return center_surround(model_config)
 
     return filterbank
