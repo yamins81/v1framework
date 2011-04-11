@@ -282,6 +282,36 @@ def liblinear_prediction_function(farray , clas, labels):
 #maximum correlation
 #=-=-=-=-=-=-=-=
 
+def uniqify(seq, idfun=None): 
+    '''
+    Relatively fast pure python uniqification function that preservs ordering
+    ARGUMENTS:
+        seq = sequence object to uniqify
+        idfun = optional collapse function to identify items as the same
+    RETURNS:
+        python list with first occurence of each item in seq, in order
+    '''
+    try:
+
+        # order preserving
+        if idfun is None:
+            def idfun(x): return x
+        seen = {}
+        result = []
+        for item in seq:
+            marker = idfun(item)
+            # in old Python versions:
+            # if seen.has_key(marker)
+            # but in new ones:
+            if marker in seen: continue
+            seen[marker] = 1
+            result.append(item)
+    except TypeError:
+        return [x for (i,x) in enumerate(seq) if x not in seq[:i]]
+    else:
+        return result
+
+
 class CorrelationClassifier():
 
     def __init__(self):
@@ -290,7 +320,8 @@ class CorrelationClassifier():
     def fit(self,train_features,train_labels):
         self.labels = uniqify(train_labels)
         self.coef_ = np.array([train_features[train_labels == label].mean(0) for label in self.labels]).T
-        self.intercept_ = -.5*(self.coef_ ** 2).sum(1)
+        self.intercept_ = -.5*(self.coef_ ** 2).sum(0)
+        self.nums = [len((train_labels == label).nonzero()[0]) for label in self.labels]
              
     def predict(self,test_features):
         prediction = self.prediction_function(test_features)
@@ -301,4 +332,28 @@ class CorrelationClassifier():
         
     def decision_function(self,test_features):
         return np.dot(test_features,self.coef_) + self.intercept_
-    
+        
+    def update_fit(self,new_features,new_labels):
+        unique_new_labels = uniqify(new_labels)
+        for new_label in unique_new_labels: 
+            new_f = new_features[new_labels == new_label]
+            new_num = new_f.shape[0]
+            if new_label in self.labels:
+                l_ind = self.labels.index(new_label)
+                num = self.nums[l_ind]
+                self.coef_[:,l_ind] = (num * self.coef_[:,l_ind] + new_num * new_f.mean()) / (num + new_num)
+                self.intercept_[l_ind] = -.5 * (self.coef_[:,l_ind] ** 2).sum()
+                self.nums[l_ind] += new_num
+            else:
+                new_coef = np.empty((self.coef_.shape[0],self.coef_.shape[1] + 1))
+                new_intercept = np.empty((self.intercept_.shape[0] + 1,))
+                new_coef[:,:-1] = self.coef_
+                new_intercept[:-1] = self.intercept_
+                
+                new_coef[:,-1] = new_f.mean()
+                new_intercept[-1] = -.5 * (new_coef[:,-1] **2).sum()
+                
+                self.coef_ = new_coef
+                self.intercept_ = new_intercept
+                self.labels.append(new_label)
+                self.nums.append(new_num) 
