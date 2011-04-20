@@ -17,7 +17,7 @@ import v1like_funcs as v1f
 import filter_generation
 from dbutils import dot,cross,inject, aggregate, DBAdd
 from processing import image2array, preprocess, postprocess
-from rendering import renderman_config_gen, cairo_config_gen, renderman_render, cairo_render
+from rendering import renderman_config_gen, cairo_config_gen, renderman_render, cairo_render, cairo_random_config_gen
 
 #=-=-=-=-=-=-=-=-=-=-=-=-=
 #determine GPU support
@@ -94,6 +94,24 @@ def render_image(config):
          return cairo_render(config)
      else:
          raise ValueError, 'image generator not recognized'
+
+
+def random_image_config_gen(image_params):
+    args = image_params['image']
+    generator = args['generator']
+    if generator == 'renderman':
+        params = renderman_random_config_gen(args)
+    elif generator == 'cairo':
+        params = cairo_random_config_gen(args)
+    else:
+        raise ValueError, 'image generator not recognized'     
+    for p in params:
+        p['image']['generator'] = generator
+    return params   
+    
+@inject('v1','image_configs',random_image_config_gen)
+def generate_random_image_configs(config): 
+     return config
    
    
 ######filter generation   

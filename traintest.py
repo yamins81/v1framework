@@ -73,6 +73,8 @@ def combine_things(a,b):
                 
         elif k == '$or' and k in a:
             pass
+        elif hasattr(b[k],'get') and (b[k].get('$in') or b[k].get('$nin') or b[k].get('$ne')):
+            pass
             
         else:
             a[k] = b[k]
@@ -138,63 +140,102 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
     
     return {'train_data': train_data, 'test_data' : test_data, 'train_features' : train_features,'train_labels':train_labels,'test_features':test_features,'test_labels':test_labels}
 
+import numpy as np
+import tabular as tb    
+import copy
+def generate_split2(dbname,collectionname,task_query,N,ntrain,ntest,ntrain_pos = None, ntest_pos = None, universe = None,use_negate = False):
 
-def generate_split2(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
-
+    task_query = copy.deepcopy(task_query)
+    print('Generating splits ...')
     if universe is None:
         universe = SON([])
 
     connection = pm.Connection(document_class=SON)
     db = connection[dbname]
     data = db[collectionname + '.files']
+
     fs = gridfs.GridFS(db,collection=collectionname)
 
     combine_things(task_query,universe)
     
+    print('T',task_query)
     task_data = get_most_recent_files(data,task_query)
-    task_fnames = [x['filename'] for x in task_data]
+    task_fnames = [str(x['filename']) for x in task_data]
     N_task = len(task_data)
     
-    nontask_query = {'filename':{'$nin':task_fnames}}
-    nontask_query.update(universe)
-    nontask_data = get_most_recent_files(data,nontask_query)
+    if use_negate:
+        task_fnames = np.array(task_fnames)
+        all_data = get_most_recent_files(data,universe)
+        all_fnames = np.array([str(x['filename']) for x in all_data])
+        I = np.invert(tb.isin(all_fnames,task_fnames)).nonzero()[0]
+        nontask_data = [all_data[ind] for ind in I]
+        nontask_fnames = [str(x['filename']) for x in nontask_data]
+        assert set(task_fnames).intersection(nontask_fnames) == set([]), set(task_fnames).intersection(nontask_fnames)
+    else:
+        nontask_query = {'filename':{'$nin':task_fnames}}
+        nontask_query.update(universe)
+        nontask_data = get_most_recent_files(data,nontask_query)
+        
     N_nontask = len(nontask_data)
 
     assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples " + str([N_task,N_nontask])
       
-    if ntrain_pos is not None:
-        ntrain_neg = ntrain - ntrain_pos
-        assert ntrain_pos <= N_task, "Not enough positive training examples, there are: " + str(N_task)
-        assert ntrain_neg <= N_nontask, "Not enough negative training examples, there are: " + str(N_nontask)
+    splits = []  
+    for ind in range(N):
+        print('... split', ind)
+        if ntrain_pos is not None:
+            ntrain_neg = ntrain - ntrain_pos
+            assert ntrain_pos <= N_task, "Not enough positive training examples, there are: " + str(N_task)
+            assert ntrain_neg <= N_nontask, "Not enough negative training examples, there are: " + str(N_nontask)
+            
+            perm_pos = sp.random.permutation(len(task_data))
+            perm_neg = sp.random.permutation(len(nontask_data))
+            
+            train_data = [task_data[i] for i in perm_pos[:ntrain_pos]] + [nontask_data[i] for i in perm_neg[:ntrain_neg]]    
+            
+            if ntest_pos is not None:
+                ntest_neg = ntest - ntest_pos
+                assert ntest_pos <= N_task - ntrain_pos, "Not enough positive test examples, there are: " + str(N_task - ntrain_pos)
+                assert ntest_neg <= N_nontask - ntrain_neg, "Not enough negative test examples, there are: " + str(N_nontask - ntrain_neg)       
+                test_data = [task_data[i] for i in perm_pos[ntrain_pos:ntrain_pos + ntest_pos]] + [nontask_data[i] for i in perm_neg[ntrain_neg:ntrain_neg + ntest_neg]]          
+            else:     
+                nontrain_data = [task_data[i] for i in perm_pos[ntrain_pos:]] + [nontask_data[i] for i in perm_neg[ntrain_neg:]]
+                new_perm = sp.random.permutation(len(nontrain_data))
+                test_data = [nontrain_data[i] for i in new_perm[:ntest]]
+            
         
-        perm_pos = sp.random.permutation(len(task_data))
-        perm_neg = sp.random.permutation(len(nontask_data))
+        else:
+            if ntest_pos is not None:
+                ntest_neg = ntest - ntest_pos
+                assert ntest_pos <= N_task, "Not enough positive test examples, there are: " + str(N_task)
+                assert ntest_neg <= N_nontask, "Not enough negative test examples, there are: " + str(N_nontask)                   
+                perm_pos = sp.random.permutation(len(task_data))
+                perm_neg = sp.random.permutation(len(nontask_data))
+                test_data = [task_data[i] for i in perm_pos[:ntest_pos]] + [nontask_data[i] for i in perm_neg[:ntest_neg]]   
+                nontest_data = [task_data[i] for i in perm_pos[ntest_pos:]] + [nontask_data[i] for i in perm_neg[ntest_neg:]]
+                new_perm = sp.random.permutation(len(nontest_data))
+                train_data = [nontest_data[i] for i in new_perm[:ntrain]]               
+            else:
+                all_data = task_data + nontask_data
+                perm = sp.random.permutation(len(all_data))
+                train_data = [all_data[i] for i in perm[:ntrain]]
+                test_data = [all_data[i] for i in perm[ntrain:ntrain + ntest]]
+            
+        train_filenames = np.array([str(_t['filename']) for _t in train_data])
+        test_filenames = np.array([str(_t['filename']) for _t in test_data])
         
-        train_data = [task_data[i] for i in perm_pos[:ntrain_pos]] + [nontask_data[i] for i in perm_neg[:ntrain_neg]]    
-        
-        all_test = [task_data[i] for i in perm_pos[ntrain_pos:]] + [nontask_data[i] for i in perm_neg[ntrain_neg:]]
-        
-        new_perm = sp.random.permutation(len(all_test))
-        
-        test_data = [all_test[i] for i in new_perm[:ntest]]
-        
-    
-    else:
-        
-        all_data = task_data + nontask_data
+        train_labels = tb.isin(train_filenames,task_fnames)
+        test_labels = tb.isin(test_filenames,task_fnames)
          
-        perm = sp.random.permutation(len(all_data))
-         
-        train_data = [all_data[i] for i in perm[:ntrain]]
-    
-        test_data = [all_data[i] for i in perm[ntrain:ntrain + ntest]]
+        #train_labels = sp.array([x['filename'] in task_fnames for x in train_data])
+        #test_labels = sp.array([x['filename'] in task_fnames for x in test_data])
+
+        assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))
         
-     
-    train_labels = sp.array([x['filename'] in task_fnames for x in train_data])
-    test_labels = sp.array([x['filename'] in task_fnames for x in test_data])
-    
+        split = {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+        splits.append(split)
    
-    return {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+    return splits
 
 
 def validate(idseq):

@@ -30,12 +30,17 @@ def classify(train_features,
     test_ys = sp.array([label_to_id[i] for i in test_labels])
 
     #train
-    model = classifier_train(train_features, train_ys, test_features,**classifier_kwargs)
+    model,fmean,fstd = classifier_train(train_features, train_ys, test_features,**classifier_kwargs)
 
     #test
-    weights = model.coef_.ravel()
-    bias = model.intercept_.ravel()
-    test_predictor = sp.dot(test_features, weights) + bias
+    if classifier_kwargs.get('classifier_type') == 'MCC':
+        weights = model.coef_
+        bias = model.intercept_
+    else:
+        weights = model.coef_.ravel()
+        bias = model.intercept_.ravel()
+    
+    test_predictor = sp.dot(test_features, weights) + bias    
     test_prediction = model.predict(test_features)
     train_prediction = model.predict(train_features)
 
@@ -43,7 +48,9 @@ def classify(train_features,
     cls_data = {'test_prediction' : test_prediction,  
                 'test_labels' : test_labels, 
                 'coef' : model.coef_, 
-                'intercept' : model.intercept_
+                'intercept' : model.intercept_,
+                'train_mean' : fmean,
+                'train_std': fstd
                }
 
     #accuracy
@@ -214,22 +221,20 @@ def classifier_train(train_features,
        
     #sphering
     if sphere:
-        train_features, test_features = __sphere(train_features, test_features)
+        train_features, test_features,fmean,fstd = __sphere(train_features, test_features)
 
     if classifier_type == 'liblinear':
         clf = svm.LinearSVC(**kwargs)
     if classifier_type == 'libSVM':
         clf = svm.SVC(**kwargs)
-    elif classifier_type == 'LRL1':
+    elif classifier_type == 'LRL':
         clf = LogisticRegression(**kwargs)
-    elif classifier_type == 'LRL2':
-        clf = LogisticRegression(**kwargs)
-    elif classifiter_type == 'MCC':
+    elif classifier_type == 'MCC':
         clf = CorrelationClassifier(**kwargs)
 
     clf.fit(train_features, train_labels)
     
-    return clf
+    return clf,fmean, fstd
 
 #sphere data
 def __sphere(train_data, test_data):
@@ -244,7 +249,7 @@ def __sphere(train_data, test_data):
     train_data /= fstd
     test_data /= fstd
 
-    return train_data, test_data
+    return train_data, test_data, fmean, fstd
      
 def max_predictor(weights,bias,labels):
     return lambda v : labels[(sp.dot(v,weights) + bias).argmax(1)]
