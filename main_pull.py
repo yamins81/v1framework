@@ -1121,6 +1121,15 @@ def big_task_gridded_gabors_4(depends_on = '../config/config_big_task_gridded_ga
     """
     config_path = depends_on
     v1_pull_random_images_protocol(config_path,write = True)  
+
+@protocolize()
+def big_task_gridded_gabors_even_better(depends_on = '../config/config_big_task_gridded_gabors_even_better.py'):
+    """
+    
+    """
+    config_path = depends_on
+    v1_pull_random_images_protocol(config_path,write = True)  
+
     
 @protocolize()
 def smaller_gridded_gabors_big_task(depends_on = '../config/config_big_task_smaller_gridded_gabors.py'):
