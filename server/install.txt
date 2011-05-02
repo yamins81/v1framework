@@ -1,0 +1,21 @@
+scikits.learn:
+	had to do:
+		export ATLAS=/usr/lib64
+		export BLAS=/usr/lib64
+	but only needed during install
+	
+starflow
+tabular 
+pyfft
+
+pycairo:  had to install old verion (1.2.2) to work with the ciaro and pixman librarys in the RHEL install
+mongo
+pymongo
+
+=-=-=-=-=-= add to plugin:
+
+pil 1.1.7 installed
+
+starflow install
+
+GPU init thing?  just a matter of changing permissions?
