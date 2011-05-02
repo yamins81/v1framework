@@ -182,6 +182,7 @@ def image2array(rep,fobj):
 def image_preprocessing(arr,params):
 
     arr = sp.atleast_3d(arr)
+
     smallest_edge = min(arr.shape[:2])
     preproc_lsum = params['preproc']['lsum_ksize']
     if preproc_lsum is None:
@@ -206,7 +207,7 @@ def image_preprocessing(arr,params):
 
     arrh, arrw, _ = arr.shape
 
-    if smallest_edge <= 0 and rep['conv_mode'] == 'valid':
+    if smallest_edge <= 0 and params['conv_mode'] == 'valid':
         if arrh > arrw:
             new_w = arrw - smallest_edge + 1
             new_h =  int(np.round(1.*new_w  * arrh/arrw))
