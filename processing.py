@@ -182,6 +182,7 @@ def image2array(rep,fobj):
 def image_preprocessing(arr,params):
 
     arr = sp.atleast_3d(arr)
+
     smallest_edge = min(arr.shape[:2])
     preproc_lsum = params['preproc']['lsum_ksize']
     if preproc_lsum is None:
