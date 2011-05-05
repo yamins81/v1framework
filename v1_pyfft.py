@@ -7,10 +7,14 @@ import numpy as np
 CONTEXT = None
 PLANS = {}
 
-def setup_pyfft():
+def setup_pyfft(device_id=None):
     cuda.init()
     global CONTEXT
-    CONTEXT = make_default_context()
+    if device_id is None:
+        CONTEXT = make_default_context()
+    else:
+        dev = cuda.Device(device_id)
+        CONTEXT = dev.make_context()
 
     
 def cleanup_pyfft():

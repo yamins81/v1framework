@@ -1,3 +1,7 @@
+GPU image
+
+base was starcluster GPU/HVM image
+
 scikits.learn:
 	had to do:
 		export ATLAS=/usr/lib64
@@ -19,3 +23,37 @@ pil 1.1.7 installed
 starflow install
 
 GPU init thing?  just a matter of changing permissions?
+
+
+
+=-=-=-=-=-=-=-=-=-=-=-=
+CPU image 
+
+
+base is starcluster 10.4 ubuntu image
+
+make image:
+    apt-get install libcairo2-dev python-cairo-dev
+    apt-key adv --keyserver keyserver.ubuntu.com --recv 7F0CEB10
+    added to end of /etc/apt/sources.list:
+    	deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen
+    aptitude update
+    aptitude install mongodb-10gen
+    
+    pip install pymongo
+   
+    scikits.learn: pull from repo and build
+    
+    apt-get install nginx 
+    pip install tornado
+    
+    sysv-rc-conf to turn off automatic nginx and mongodb
+     
+    
+from repo or source during plugin:
+    starflow:  pull from repo and build
+    tabular:  pull from repo and build
+
+
+
+

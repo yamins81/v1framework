@@ -1,6 +1,7 @@
 import tempfile
 import os
 import itertools
+import random
 
 from bson import SON
 
@@ -16,6 +17,25 @@ def render_image(config,returnfh=False):
      else:
          raise ValueError, 'image generator not recognized'
          
+
+def config_gen(config):
+    if config['images']['selection'] == 'gridded':
+        return gridded_config_gen(config)
+    elif config['images']['selection'] == 'random':
+        return random_config_gen(config)
+        
+def random_config_gen(config):
+    if config['images']['generator'] == 'cairo':
+        return cairo_random_config_gen(config['images'])
+    elif config['images']['generator'] == 'renderman':
+        return renderman_random_config_gen(config['images'])       
+        
+def gridded_config_gen(config):
+    if config['images']['generator'] == 'cairo':
+        return cairo_config_gen(config['images'])   
+    elif config['images']['generator'] == 'renderman':
+        return renderman_config_gen(config['images'])
+        
 
 IMAGE_URL = 'localhost:8000/render?'
 
@@ -76,7 +96,9 @@ def cairo_config_gen(args):
 
     return params
     
-import random
+   
+
+
 def cairo_random_config_gen(args):
 
     chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])
@@ -182,7 +204,6 @@ def cairo_render(params,returnfh=False):
                          
         
     return cairo_render_image(render_params,returnfh=returnfh)                     
-    
 
 
 def cairo_render_image(params,returnfh=False):

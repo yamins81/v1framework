@@ -578,10 +578,10 @@ def get_data_list(in_cols,func):
     inrun_hashes = func.inrun_hashes
     return [get_most_recent_files(in_col,{'__config_hash__':cstr,'__run_hash__':run_hash},kwargs={'fields':['config','filename']}) for (in_col,cstr,run_hash) in zip(in_cols,inconfig_strings,inrun_hashes)]
 
-def get_most_recent_files(coll,q,kwargs=None):
+def get_most_recent_files(coll,q,skip=0,limit=0,kwargs=None):
     if kwargs is None:
         kwargs = {}
-    c = coll.find(q,**kwargs).sort([("filename", 1), ("uploadDate", -1)])    
+    c = coll.find(q,**kwargs).sort([("filename", 1), ("uploadDate", -1)]).skip(skip).limit(limit) 
     cl = list(c)
     return get_recent(cl)
         
