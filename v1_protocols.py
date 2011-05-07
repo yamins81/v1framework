@@ -115,7 +115,7 @@ def generate_images_parallel(outfile,im_hash,config_gen):
        
     jobids = []
     for (i,x) in enumerate(X):
-        jobid = qsub(generate_and_insert_single_image,(x,im_hash),queueName='images')  
+        jobid = qsub(generate_and_insert_single_image,(x,im_hash),queueName='rendering.q')  
         jobids.append(jobid)
         
     createCertificateDict(outfile,{'image_colname':colname,'args':config_gen})
@@ -324,6 +324,11 @@ def extract_features_parallel(feature_certificate,image_certificate,model_certif
     
     jobids = []
 
+    if convolve_func_name == 'numpy':
+        queueName = 'extraction_cpu.q'
+    elif convolve_func_name == 'pyfft':
+        queueName = 'extraction_gpu.q'
+
     for (ind,limit) in enumerate(limits):
         im_from,im_to,m_from,m_to = limit
         jobid = qsub(extract_features_core,[(image_certificate,
@@ -336,7 +341,7 @@ def extract_features_parallel(feature_certificate,image_certificate,model_certif
                                               'im_limit':im_to-im_from,
                                               'm_skip':m_from,
                                               'm_limit':m_to-m_from}],
-                                            queueName='feature_extraction')
+                                            queueName=queueName)
         jobids.append(jobid)
 
     createCertificateDict(feature_certificate,{'feature_colname':feature_hash,
@@ -494,7 +499,7 @@ def evaluate(outfile,feature_certificate,cpath,task,ext_hash):
             out_record = SON([('model',m['config']['model']),
                               ('model_hash',model_hash), 
                               ('model_filename',m['filename']), 
-                              ('images',son_escape(image_config_gen)),
+                              ('images',son_escape(image_config_gen['images'])),
                               ('image_hash',image_hash),
                               ('task',son_escape(task)),
                          ])
@@ -638,7 +643,7 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
             out_record = SON([('model',m['config']['model']),
                               ('model_hash',model_hash), 
                               ('model_filename',m['filename']), 
-                              ('images',son_escape(image_config_gen)),
+                              ('images',son_escape(image_config_gen['images'])),
                               ('image_hash',image_hash),
                               ('task',son_escape(task)),
                          ])
@@ -777,6 +782,11 @@ def extract_and_evaluate_parallel_launch_batches(batch_certificate_file,image_ce
     
     jobids = []
     
+    if convolve_func_name == 'numpy':
+        queueName = 'extraction_cpu.q'
+    elif convolve_func_name == 'pyfft':
+        queueName = 'extraction_gpu.q'
+        
     for (id,batch) in enumerate(batches):
         batch_coll.insert({'__hash__':ext_hash,'batch_id':id,'batch':batch})
         if convolve_func_name == 'pyfft':
@@ -785,7 +795,7 @@ def extract_and_evaluate_parallel_launch_batches(batch_certificate_file,image_ce
             devnum = None
 
 
-        jobid = qsub(extract_and_evaluate_parallel_run_batch,(ext_hash,id,convolve_func_name),queueName = 'feature_extraction')
+        jobid = qsub(extract_and_evaluate_parallel_run_batch,(ext_hash,id,convolve_func_name),queueName = queueName)
         jobids.append(jobid)
     
     
@@ -914,7 +924,7 @@ def extract_and_evaluate_parallel_combine_splits(outfile,batch_certificate_file,
         out_record = SON([('model',results[eval_id]['model']['config']['model']),
                           ('model_hash',model_hash), 
                           ('model_filename',results[eval_id]['model']['filename']), 
-                          ('images',son_escape(image_config_gen)),
+                          ('images',son_escape(image_config_gen['images'])),
                           ('image_hash',image_hash),
                           ('task',son_escape(task)),
                      ])
