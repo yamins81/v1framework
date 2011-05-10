@@ -251,7 +251,7 @@ def extract_features(feature_certificate,
  
 def get_device_id():
     num_gpus = get_num_gpus()
-    return os.environ.get('JOB_ID',random.randint(0,num_gpus-1)) % num_gpus
+    return int(os.environ.get('JOB_ID',random.randint(0,num_gpus-1))) % num_gpus
     
 def get_num_gpus():
     num = 0
@@ -823,11 +823,6 @@ def extract_and_evaluate_parallel_launch_batches(batch_certificate_file,image_ce
         
     for (id,batch) in enumerate(batches):
         batch_coll.insert({'__hash__':ext_hash,'batch_id':id,'batch':batch})
-        if convolve_func_name == 'pyfft':
-            devnum = (ind  %  numgpus) if (ngpus is not None) else None
-        else:
-            devnum = None
-
 
         jobid = qsub(extract_and_evaluate_parallel_run_batch,(ext_hash,id,convolve_func_name),queueName = queueName)
         jobids.append(jobid)
