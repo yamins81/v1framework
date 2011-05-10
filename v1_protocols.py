@@ -20,6 +20,7 @@ import traintest
 import svm
 import rendering
 import filter_generation
+import starflow.de as de
 
 from dbutils import get_config_string, get_filename, reach_in, createCertificateDict, son_escape, get_most_recent_files
 from v1like_extract import get_config
@@ -41,6 +42,17 @@ def remove_existing(coll,fs, hash):
     for e in existing:
         fs.delete(e['_id'])
 
+def get_code_dir(hash):
+    manager = de.DataEnvironmentManager() 
+    working_de = manager.working_de
+    return os.path.join(working_de.relative_generated_code_dir,DB_NAME.replace('-','_'),hash)
+
+
+def image_protocol_wrap(config_path,parallel=False):
+    D,hash = image_protocol(config_path,write = False,parallel=parallel)
+    actualize(D,outfiledir=get_code_dir(hash))
+
+
 def image_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
@@ -55,7 +67,7 @@ def image_protocol(config_path,write = False,parallel=False):
     
     if write:
         actualize(D)
-    return D
+    return D,image_hash
 
 
 @activate(lambda x : (), lambda x : x[0])    
@@ -126,8 +138,13 @@ def model_config_generator(config):
     models = config['models']
     return [SON([('model',m)]) for m in models]   
     
+
+def model_protocol_wrap(config_path,parallel=False):
+    D,hash = model_protocol(config_path,write = False,parallel=parallel)
+    actualize(D,outfiledir=get_code_dir(hash))
+
     
-def model_protocol(config_path,write = False):
+def model_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
 
@@ -138,7 +155,7 @@ def model_protocol(config_path,write = False):
     
     if write:
         actualize(D)
-    return D
+    return D,model_hash
 
 
 @activate(lambda x : (), lambda x : x[0])    
@@ -170,6 +187,20 @@ def generate_models(outfile,m_hash,config_gen):
 
 #goes through everything in relevant collections and loads and does extraction into named new collection.   either in parallel or not
 #in parallel, it splits things up into batches of some size 
+
+def extract_features_protocol_wrap(image_config_path,
+                                   model_config_path,
+                                   convolve_func_name = 'numpy',
+                                   parallel=False,
+                                   batch_size=1000):
+    D,hash = extract_features_protocol(image_config_path,
+                            model_config_path,
+                            convolve_func_name = convolve_func_name,
+                            write = False,
+                            parallel=parallel,
+                            batch_size=batch_size):
+    actualize(D,outfiledir=get_code_dir(hash))
+
 
 def extract_features_protocol(image_config_path,
                               model_config_path,
@@ -210,7 +241,7 @@ def extract_features_protocol(image_config_path,
     
     if write:
         actualize(D)
-    return D
+    return D, feature_hash
 
 
 @activate(lambda x : (x[1],x[2]), lambda x : x[0])    
@@ -439,8 +470,12 @@ def compute_features_core(image_fh,image_config,filter_fh,model_config,convolve_
     return output
     
  
+def evaluate_protocol_wrap(evaluate_config_path,model_config_path,image_config_path)
+    D,hashes = evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
+    for (d,h) in zip(D,hashes):
+        actualize([d],outfiledir=get_code_dir(h))
 
-def evaluate_protocol(evaluate_config_path,feature_config_path,model_config_path,image_config_path,write=False):
+def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
     
     model_config_gen = get_config(model_config_path)
     image_config_gen = get_config(image_config_path)
@@ -453,16 +488,17 @@ def evaluate_protocol(evaluate_config_path,feature_config_path,model_config_path
     task_config = evaluate_config.pop('train_test')
     
     D = []
+    ext_hashes = []
     for task in task_config:
         overall_config_gen = SON([('models',model_config_gen),('image',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)
         outfile = '../.performance_certificates/' + ext_hash
         op = ('svm_evaluation_' + ext_hash,evaluate,(outfile,feature_certificate,evaluate_config_path,task,ext_hash))
         D.append(op)
-
+        ext_hashes.append(ext_hash)
     if write:
         actualize(D)
-    return D
+    return D,ext_hashes
 
 STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']   
 
@@ -559,6 +595,18 @@ def load_features(filename,fs):
         val = cPickle.loads(fs.get_version(filename).read())
         put_in_cache(filename,val,FEATURE_CACHE)
         return val
+
+def extract_and_evaluate_protocol_wrap(evaluate_config_path,
+                                       model_config_path,
+                                       image_config_path,
+                                       convolve_func_name='numpy')
+    DH = extract_and_evaluate_protocol(evaluate_config_path,model_config_path,
+                                             image_config_path,
+                                             convolve_func_name=convolve_func_name,
+                                             write=False):
+                                             
+    for (h,ops) in DH.items():
+        actualize(ops,outfiledir=get_code_dir(h))
     
 
 def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False):
@@ -575,7 +623,8 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
     task_config = evaluate_config.pop('train_test')
 
      
-    D = [] 
+    D = []
+    DH = {}
     for task in task_config:
         overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)    
@@ -585,6 +634,7 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
             performance_certificate = '../.performance_certificates/' + ext_hash
             op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
             D.append(op)
+            D[ext_hash] = [op]
         else:
             performance_certificate = '../.performance_certificates/' + ext_hash
             batch_certificate = '../.batch_certificates/' + ext_hash
@@ -592,10 +642,11 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
             D.append(op1)
             op2 = ('combine_splits' + ext_hash,extract_and_evaluate_combine_splits,(performance_certificate,batch_certificate,image_certificate,model_certificate,evaluate_config_path,ext_hash))
             D.append(op2)
+            DH[ext_hash] = [op1,op2]
              
     if write:
         actualize(D)
-    return D
+    return DH
     
     
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
