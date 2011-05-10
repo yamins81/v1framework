@@ -9,7 +9,7 @@ import numpy as np
 import cairo
 
 def render_image(config,returnfh=False): 
-     generator = config.pop('generator')
+     generator = config['generator']
      if generator == 'renderman':
          return renderman_render(config,returnfh=returnfh)
      elif generator == 'cairo':
@@ -59,15 +59,42 @@ def renderman_config_gen(args):
     params = [SON([('image' , SON(filter(lambda x: x[1] is not None, zip(param_names,p))))]) for p in itertools.product(*ranges)]  
     return params
 
+import urllib
+import json
+def renderman_random_config_gen(args):
+    chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])    
+    ranger = lambda v : (((chooser(np.arange(v['$gt'],v['$lt'],v['delta'])) if v.get('delta') else (lambda : (v['$lt'] - v['$gt']) * random.random() + v['$gt'])))  if isinstance(v,dict) else v) if v else None
+    num = args['num_images']
+    funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz']]
+
+    if not 'models' in args:
+        models = json.loads(urllib.urlopen("http://50.19.109.25:9999/models?action=distinct&field=id").read())
+    else:
+        models = args['models']
+    funcs1 = [('model_id',chooser(models))]
+    
+    params = []
+    for i in range(num):
+        param = SON([])
+        for (k,f) in funcs:
+            if f:
+                param[k] = f()
+        for (k,f) in funcs1:
+            param[k] = f()
+        params.append(SON([('image',param)]))
+        
+    return params
+
+import renderer
+import os
 def renderman_render(config,returnfh = False):
-     params_list = [{'model_params':[config['image']]}]     
+     params_list = [{'model_params':[config.to_dict()]}]
+     orig_dir = os.getcwd()
+     os.chdir(os.path.join(os.environ['HOME'] , 'render_wd'))
      tmp = tempfile.mkdtemp()
-     os.chdir(tmp)
-     os.system('wget ' + IMAGE_URL + 'params_list=' + json.dumps(params_list))
-     zipfile = [x for x in os.listdir('.') if x.endswith('.zip')][0]
-     zipname = zip[:-4]
-     os.system('tar -xzvf ' + zipfile)
-     imagefile = [os.path.join(zipname,x) for x in os.listdir(zipname) if x.endswith('.tif')][0]
+     renderer.render(tmp,[{'model_params':[config.to_dict()]}])
+     imagefile = [os.path.join(tmp,x) for x in os.listdir(tmp) if x.endswith('.tif')][0]
+     os.chdir(orig_dir)
      
      fh = open(imagefile)
      if returnfh:
@@ -100,30 +127,23 @@ def cairo_config_gen(args):
 
 
 def cairo_random_config_gen(args):
-
-    chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])
-    
+    chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])    
     ranger = lambda v : (((chooser(np.arange(v['$gt'],v['$lt'],v['delta'])) if v.get('delta') else (lambda : (v['$lt'] - v['$gt']) * random.random() + v['$gt'])))  if isinstance(v,dict) else v) if v else None
-    
     num = args['num_images']
-
     funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','rxy','sx','sy']]
-    
-    funcs1 = [(k, chooser(args[k[0]])) for k in [('objects','object'),('patterns','pattern'),('action_lists','actions')] if k[0] in args]
-
+    funcs1 = [(k, chooser(args[k[0]])) for k in [('objects','object'),
+                                                 ('patterns','pattern'),
+                                                 ('action_lists','actions')] if k[0] in args]
     params = []
     for i in range(num):
         param = SON([])
         param['height'] = args['height']
         param['width'] = args['width']
-        
         for (k,f) in funcs:
             if f:
                 param[k] = f()
-                        
         for (k,f) in funcs1:
             param[k[1]] = f()
-        
         params.append(SON([('image',param)]))
         
     return params

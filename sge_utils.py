@@ -17,12 +17,13 @@ def callfunc(fn,argfile):
     else:
         pos_args = args
         kwargs = {}
-        
+
+    os.remove(argfile)    
     fn(*pos_args,**kwargs)
     
 SGE_SUBMIT_PATTERN = re.compile("Your job ([\d]+) ")
 
-def qsub(fn,args,queueName='all.q'):
+def qsub(fn,args,opstring=''):
 
     module_name = fn.__module__
     fnname = fn.__name__
@@ -38,18 +39,17 @@ def qsub(fn,args,queueName='all.q'):
                                                          'FNNAME':fnname,
                                                          'ARGFILE':argfile})
     f.write(call_script)
-    f.close()    
-
-    p = subprocess.Popen('qsub -l qname=' + queueName + ' ' + scriptfile,shell=True,stdout=subprocess.PIPE)
+    f.close()
+    
+    p = subprocess.Popen('qsub ' + opstring + ' ' + scriptfile,shell=True,stdout=subprocess.PIPE)
     sts = os.waitpid(p.pid,0)[1]
 
     if sts == 0:
         output = p.stdout.read()
-        jobid = int(SGE_SUBMIT_PATTERN.search(output).groups()[0])
+        jobid = SGE_SUBMIT_PATTERN.search(output).groups()[0]
     else:
         raise 
 
-    os.remove(argfile)
     os.remove(scriptfile)
     
     return jobid
@@ -57,6 +57,7 @@ def qsub(fn,args,queueName='all.q'):
 call_script_template = """#!/bin/bash
 #$$ -V
 #$$ -cwd
+#$$ -S /bin/bash
 
 python -c "import $MODNAME, sge_utils; sge_utils.callfunc($MODNAME.$FNNAME,'$ARGFILE')"
 

@@ -1,5 +1,3 @@
-from sge_utils import qsub
-
 import sys
 import cPickle
 import hashlib
@@ -19,12 +17,13 @@ from starflow.utils import activate
 import v1like_extract as v1e
 import v1like_funcs as v1f
 import traintest
-from v1like_extract import get_config
 import svm
 import rendering
 import filter_generation
 
 from dbutils import get_config_string, get_filename, reach_in, createCertificateDict, son_escape, get_most_recent_files
+from v1like_extract import get_config
+from sge_utils import qsub
 
 DB_NAME = 'v1-test'
 
@@ -42,14 +41,13 @@ def remove_existing(coll,fs, hash):
     for e in existing:
         fs.delete(e['_id'])
 
-def image_protocol(config_path,write = False):
+def image_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
 
     image_hash = get_config_string(config['images'])
     image_certificate = '../.image_certificates/' + image_hash
 
-    parallel = config['images'].get('generate_parallel',False)
     if  not parallel:
         D = [('generate_images',generate_images,(image_certificate,image_hash,config))]
     else:
@@ -115,10 +113,11 @@ def generate_images_parallel(outfile,im_hash,config_gen):
        
     jobids = []
     for (i,x) in enumerate(X):
-        jobid = qsub(generate_and_insert_single_image,(x,im_hash),queueName='rendering.q')  
+        x['image']['generator'] = config_gen['images']['generator'] 
+        jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render -e /home/render')  
         jobids.append(jobid)
         
-    createCertificateDict(outfile,{'image_colname':colname,'args':config_gen})
+    createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
     return {'child_jobs':jobids}
     
@@ -172,7 +171,12 @@ def generate_models(outfile,m_hash,config_gen):
 #goes through everything in relevant collections and loads and does extraction into named new collection.   either in parallel or not
 #in parallel, it splits things up into batches of some size 
 
-def extract_features_protocol(image_config_path,model_config_path,feature_config_path,convolve_func_name = 'numpy', write = False):
+def extract_features_protocol(image_config_path,
+                              model_config_path,
+                              convolve_func_name = 'numpy',
+                              write = False,
+                              parallel=False,
+                              batch_size=1000):
 
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -185,17 +189,24 @@ def extract_features_protocol(image_config_path,model_config_path,feature_config
     overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images'])])
     feature_hash = get_config_string(overall_config_gen)
     feature_certificate = '../.feature_certificates/' + feature_hash
-    
-    feature_config = get_config(feature_config_path)
-    feature_config.update(overall_config_gen)
-    parallel = feature_config.get('feature_extraction',{}).get('generate_parallel',False)
-    batch_size = feature_config.get('feature_extraction',{}).get('batch_size',1000)
- 
-  
+       
     if not parallel:
-        D = [('extract_features',extract_features,(feature_certificate,image_certificate,model_certificate,feature_config,feature_hash,convolve_func_name))]
+        D = [('extract_features',
+              extract_features,(feature_certificate,
+                                image_certificate,
+                                model_certificate,
+                                overall_config_gen,
+                                feature_hash,
+                                convolve_func_name))]
     else:
-        D = [('extract_features',extract_features_parallel,(feature_certificate,image_certificate,model_certificate,feature_config,feature_hash,convolve_func_name,batch_size))]
+        D = [('extract_features',
+              extract_features_parallel,(feature_certificate,
+                                         image_certificate,
+                                         model_certificate,
+                                         overall_config_gen,
+                                         feature_hash,
+                                         convolve_func_name,
+                                         batch_size))]
     
     if write:
         actualize(D)
@@ -203,7 +214,12 @@ def extract_features_protocol(image_config_path,model_config_path,feature_config
 
 
 @activate(lambda x : (x[1],x[2]), lambda x : x[0])    
-def extract_features(feature_certificate,image_certificate,model_certificate,feature_config,feature_hash,convolve_func_name):
+def extract_features(feature_certificate,
+                     image_certificate,
+                     model_certificate,
+                     feature_config,
+                     feature_hash,
+                     convolve_func_name):
 
     image_certdict = cPickle.load(open(image_certificate))
     image_hash = image_certdict['image_hash']
@@ -220,7 +236,12 @@ def extract_features(feature_certificate,image_certificate,model_certificate,fea
     
     remove_existing(f_coll,f_fs,feature_hash)
         
-    extract_features_core(image_certificate,model_certificate,feature_hash,image_hash,model_hash,convolve_func_name)
+    extract_features_core(image_certificate,
+                          model_certificate,
+                          feature_hash,
+                          image_hash,
+                          model_hash,
+                          convolve_func_name)
      
     createCertificateDict(feature_certificate,{'feature_hash':feature_hash,
                                                'image_hash':image_hash,
@@ -243,7 +264,14 @@ def get_num_gpus():
             num += 1
     return num
     
-def extract_features_core(image_certificate,model_certificate,feature_hash,image_hash,model_hash,convolve_func_name,im_query=None,m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
+def extract_features_core(image_certificate,
+                          model_certificate,
+                          feature_hash,
+                          image_hash,
+                          model_hash,
+                          convolve_func_name,
+                          im_query=None,
+                          m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
     if im_query is None:
         im_query = {}
     if m_query is None:
@@ -290,8 +318,8 @@ def extract_features_core(image_certificate,model_certificate,feature_hash,image
             
         
 def get_feature_batches(im_hash,m_hash,im_col,m_col,batch_size):
-    im_count = im_col.count({'__hash__':im_hash})
-    m_count = m_col.count({'__hash__':m_hash})
+    im_count = im_col.find({'__hash__':im_hash}).count()
+    m_count = m_col.find({'__hash__':m_hash}).count()
      
     im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(max(im_count/batch_size,1))]
     m_batches = [(j,j+1) for j in range(m_count)]
@@ -299,9 +327,14 @@ def get_feature_batches(im_hash,m_hash,im_col,m_col,batch_size):
     return [(imb[0],imb[1],mb[0],mb[1]) for imb in im_batches for mb in m_batches]
     
 
-        
 @activate(lambda x : (x[1],x[2]), lambda x : x[0])    
-def extract_features_parallel(feature_certificate,image_certificate,model_certificate,feature_config,feature_hash,convolve_func_name,batch_size):
+def extract_features_parallel(feature_certificate,
+                              image_certificate,
+                              model_certificate,
+                              feature_config,
+                              feature_hash,
+                              convolve_func_name,
+                              batch_size):
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
     
@@ -329,6 +362,7 @@ def extract_features_parallel(feature_certificate,image_certificate,model_certif
     elif convolve_func_name == 'pyfft':
         queueName = 'extraction_gpu.q'
 
+    opstring = '-l qname=' + queueName + ' -o /home/render -e /home/render'
     for (ind,limit) in enumerate(limits):
         im_from,im_to,m_from,m_to = limit
         jobid = qsub(extract_features_core,[(image_certificate,
@@ -341,7 +375,7 @@ def extract_features_parallel(feature_certificate,image_certificate,model_certif
                                               'im_limit':im_to-im_from,
                                               'm_skip':m_from,
                                               'm_limit':m_to-m_from}],
-                                            queueName=queueName)
+                                            opstring=opstring)
         jobids.append(jobid)
 
     createCertificateDict(feature_certificate,{'feature_colname':feature_hash,
