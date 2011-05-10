@@ -3,6 +3,7 @@ import re
 import tempfile
 import cPickle
 import string
+import os
 
 def callfunc(fn,argfile):
     args = cPickle.loads(open(argfile).read())
@@ -39,7 +40,6 @@ def qsub(fn,args,queueName='all.q'):
     f.write(call_script)
     f.close()    
 
-    return
     p = subprocess.Popen('qsub -l qname=' + queueName + ' ' + scriptfile,shell=True,stdout=subprocess.PIPE)
     sts = os.waitpid(p.pid,0)[1]
 
