@@ -4,6 +4,11 @@ from starflow.protocols import protocolize
 @protocolize()
 def parallel_image_test(depends_on = '../config_test/image_test_parallel.py'):
     v1_protocols.image_protocol(depends_on, write = True,parallel=True)
+
+@protocolize()
+def image_test_large(depends_on = '../config_test/image_test_large.py'):
+    v1_protocols.image_protocol(depends_on, write = True)
+        
         
 
 @protocolize()
@@ -33,6 +38,18 @@ def extraction_test_parallel(depends_on = ('../config_test/model_test.py',
                                            write = True,
                                            parallel=True,
                                            batch_size=5)
+
+
+@protocolize()
+def extraction_test_parallel_large(depends_on = ('../config_test/model_test.py',
+                                           '../config_test/image_test_large.py')):
+    v1_protocols.extract_features_protocol('../config_test/image_test_large.py',
+                                           '../config_test/model_test.py',
+                                           convolve_func_name = 'pyfft',
+                                           write = True,
+                                           parallel=True,
+                                           batch_size=100)
+        
 
                                            
 @protocolize()                                       
