@@ -1,3 +1,6 @@
+import subprocess
+import re
+
 def callfunc(fn,argfile):
     args = cPickle.loads(open(argfile).read())
     
@@ -13,8 +16,7 @@ def callfunc(fn,argfile):
         
     fn(*pos_args,**kwargs)
     
-import subprocess
-import re
+
 
 SGE_SUBMIT_PATTERN = re.compile("Your job ([\d]+) ")
 
