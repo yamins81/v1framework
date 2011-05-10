@@ -1,3 +1,9 @@
+import subprocess
+import re
+import tempfile
+import cPickle
+import string
+
 def callfunc(fn,argfile):
     args = cPickle.loads(open(argfile).read())
     
@@ -13,27 +19,28 @@ def callfunc(fn,argfile):
         
     fn(*pos_args,**kwargs)
     
-import subprocess
-import re
-
 SGE_SUBMIT_PATTERN = re.compile("Your job ([\d]+) ")
 
 def qsub(fn,args,queueName='all.q'):
 
-    module_name = f.__module__
-    fnname = f.__name__
+    module_name = fn.__module__
+    fnname = fn.__name__
     
-    f = tempfile.NamedTemporaryFile()
+    f = tempfile.NamedTemporaryFile(delete=False)
     argfile = f.name
     cPickle.dump(args,f)
     f.close()
 
-    f = tempfile.NamedTemporaryFile()
+    f = tempfile.NamedTemporaryFile(delete=False)
     scriptfile = f.name
+    call_script = string.Template(call_script_template).substitute({'MODNAME':module_name,
+                                                         'FNNAME':fnname,
+                                                         'ARGFILE':argfile})
     f.write(call_script)
     f.close()    
-        
-    p = subprocess.Popen('qsub -l qname=' + queueName + ' ' + scriptfile + ' ' + module_name + ' ' + fnname + ' ' + argfile,shell=True,stdout=subprocess.PIPE)
+
+    return
+    p = subprocess.Popen('qsub -l qname=' + queueName + ' ' + scriptfile,shell=True,stdout=subprocess.PIPE)
     sts = os.waitpid(p.pid,0)[1]
 
     if sts == 0:
@@ -47,11 +54,10 @@ def qsub(fn,args,queueName='all.q'):
     
     return jobid
     
-call_script = """
-#!/bin/bash
-#$ -V
-#$ -cwd
+call_script_template = """#!/bin/bash
+#$$ -V
+#$$ -cwd
 
-python -c "import $1, sge_utils; sge_utils.callfunc($1.$2,$3)"
+python -c "import $MODNAME, sge_utils; sge_utils.callfunc($MODNAME.$FNNAME,'$ARGFILE')"
 
 """
