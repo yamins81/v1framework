@@ -198,7 +198,7 @@ def extract_features_protocol_wrap(image_config_path,
                             convolve_func_name = convolve_func_name,
                             write = False,
                             parallel=parallel,
-                            batch_size=batch_size):
+                            batch_size=batch_size)
     actualize(D,outfiledir=get_code_dir(hash))
 
 
@@ -333,8 +333,11 @@ def extract_features_core(image_certificate,
         device_id = get_device_id() 
         v1_pyfft.setup_pyfft(device_id = device_id)         
 
-    for image_config in get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit):
-        for model_config in get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit):              
+    L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
+    L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
+    print(len(L1),len(L2))
+    for image_config in L1:
+        for model_config in L2:              
             print('extracting',image_config,model_config)
             features = compute_features(image_config, image_fs, model_config, model_fs,convolve_func)
             features_string = cPickle.dumps(features)
@@ -409,9 +412,9 @@ def extract_features_parallel(feature_certificate,
                                             opstring=opstring)
         jobids.append(jobid)
 
-    createCertificateDict(feature_certificate,{'feature_colname':feature_hash,
-                                               'image_colname':image_hash,
-                                               'model_colname':model_hash,
+    createCertificateDict(feature_certificate,{'feature_hash':feature_hash,
+                                               'image_hash':image_hash,
+                                               'model_hash':model_hash,
                                                'args':feature_config})
 
     return {'child_jobs':jobids}
@@ -470,8 +473,8 @@ def compute_features_core(image_fh,image_config,filter_fh,model_config,convolve_
     return output
     
  
-def evaluate_protocol_wrap(evaluate_config_path,model_config_path,image_config_path)
-    D,hashes = evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
+def evaluate_protocol_wrap(evaluate_config_path,model_config_path,image_config_path):
+    D,hashes = evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False)
     for (d,h) in zip(D,hashes):
         actualize([d],outfiledir=get_code_dir(h))
 
@@ -569,7 +572,7 @@ def evaluate(outfile,feature_certificate,cpath,task,ext_hash):
             out_record = SON([('model',m['config']['model']),
                               ('model_hash',model_hash), 
                               ('model_filename',m['filename']), 
-                              ('images',son_escape(image_config_gen['images'])),
+                              ('images',son_escape(image_config_gen)),
                               ('image_hash',image_hash),
                               ('task',son_escape(task)),
                          ])
@@ -599,11 +602,11 @@ def load_features(filename,fs):
 def extract_and_evaluate_protocol_wrap(evaluate_config_path,
                                        model_config_path,
                                        image_config_path,
-                                       convolve_func_name='numpy')
+                                       convolve_func_name='numpy'):
     DH = extract_and_evaluate_protocol(evaluate_config_path,model_config_path,
                                              image_config_path,
                                              convolve_func_name=convolve_func_name,
-                                             write=False):
+                                             write=False)
                                              
     for (h,ops) in DH.items():
         actualize(ops,outfiledir=get_code_dir(h))
@@ -634,7 +637,7 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
             performance_certificate = '../.performance_certificates/' + ext_hash
             op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
             D.append(op)
-            D[ext_hash] = [op]
+            DH[ext_hash] = [op]
         else:
             performance_certificate = '../.performance_certificates/' + ext_hash
             batch_certificate = '../.batch_certificates/' + ext_hash
