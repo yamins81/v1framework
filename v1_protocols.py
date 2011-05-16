@@ -3,6 +3,8 @@ import cPickle
 import hashlib
 import os
 import random
+import multiprocessing
+import functools 
 
 import scipy as sp
 import numpy as np
@@ -10,9 +12,11 @@ import pymongo as pm
 import gridfs
 from bson import SON
 import bson
+import zmq
 
 from starflow.protocols import protocolize, actualize
 from starflow.utils import activate
+from starflow.sge_utils import wait_and_get_statuses
 
 import v1like_extract as v1e
 import v1like_funcs as v1f
@@ -21,10 +25,14 @@ import svm
 import rendering
 import filter_generation
 import starflow.de as de
+from starflow.utils import ListUnion
 
 from dbutils import get_config_string, get_filename, reach_in, createCertificateDict, son_escape, get_most_recent_files
 from v1like_extract import get_config
 from sge_utils import qsub
+
+from pythor_networking import NETWORK_CACHE_PORT
+
 
 DB_NAME = 'v1-test'
 
@@ -41,16 +49,6 @@ def remove_existing(coll,fs, hash):
     existing = coll.find({'__hash__':hash})
     for e in existing:
         fs.delete(e['_id'])
-
-def get_code_dir(hash):
-    manager = de.DataEnvironmentManager() 
-    working_de = manager.working_de
-    return os.path.join(working_de.relative_generated_code_dir,DB_NAME.replace('-','_'),hash)
-
-
-def image_protocol_wrap(config_path,parallel=False):
-    D,hash = image_protocol(config_path,write = False,parallel=parallel)
-    actualize(D,outfiledir=get_code_dir(hash))
 
 
 def image_protocol(config_path,write = False,parallel=False):
@@ -138,12 +136,6 @@ def model_config_generator(config):
     models = config['models']
     return [SON([('model',m)]) for m in models]   
     
-
-def model_protocol_wrap(config_path,parallel=False):
-    D,hash = model_protocol(config_path,write = False,parallel=parallel)
-    actualize(D,outfiledir=get_code_dir(hash))
-
-    
 def model_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
@@ -187,19 +179,6 @@ def generate_models(outfile,m_hash,config_gen):
 
 #goes through everything in relevant collections and loads and does extraction into named new collection.   either in parallel or not
 #in parallel, it splits things up into batches of some size 
-
-def extract_features_protocol_wrap(image_config_path,
-                                   model_config_path,
-                                   convolve_func_name = 'numpy',
-                                   parallel=False,
-                                   batch_size=1000):
-    D,hash = extract_features_protocol(image_config_path,
-                            model_config_path,
-                            convolve_func_name = convolve_func_name,
-                            write = False,
-                            parallel=parallel,
-                            batch_size=batch_size)
-    actualize(D,outfiledir=get_code_dir(hash))
 
 
 def extract_features_protocol(image_config_path,
@@ -266,6 +245,10 @@ def extract_features(feature_certificate,
     f_fs = gridfs.GridFS(db,'features')
     
     remove_existing(f_coll,f_fs,feature_hash)
+
+    if convolve_func_name == 'pyfft':
+        device_ids = range(get_num_gpus())
+        v1_pyfft.setup_pyfft(device_ids)
         
     extract_features_core(image_certificate,
                           model_certificate,
@@ -278,88 +261,6 @@ def extract_features(feature_certificate,
                                                'image_hash':image_hash,
                                                'model_hash':model_hash,
                                                'args':feature_config,})
-   
- 
-def get_device_id():
-    num_gpus = get_num_gpus()
-    return int(os.environ.get('JOB_ID',random.randint(0,num_gpus-1))) % num_gpus
-    
-def get_num_gpus():
-    num = 0
-    while True:
-        try:
-            cuda.Device(num)
-        except:
-            break
-        else:
-            num += 1
-    return num
-    
-def extract_features_core(image_certificate,
-                          model_certificate,
-                          feature_hash,
-                          image_hash,
-                          model_hash,
-                          convolve_func_name,
-                          im_query=None,
-                          m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
-    if im_query is None:
-        im_query = {}
-    if m_query is None:
-        m_query = {}
-        
-    im_query['__hash__'] = image_hash
-    m_query['__hash__'] = model_hash
-
-    conn = pm.Connection(document_class = SON)
-    db = conn[DB_NAME]
-    
-    image_col = db['images.files'] 
-    model_col = db['models.files'] 
-    
-    image_fs = gridfs.GridFS(db,'images')
-    model_fs = gridfs.GridFS(db,'models')
-    
-    feature_fs = gridfs.GridFS(db,'features')
-    
-    if convolve_func_name == 'numpy':
-        convolve_func = v1f.v1like_filter_numpy
-    elif convolve_func_name == 'pyfft':
-        convolve_func = v1f.v1like_filter_pyfft
-    else:
-        raise ValueError, 'convolve func name not recognized'
-        
-    if convolve_func == v1f.v1like_filter_pyfft:
-        device_id = get_device_id() 
-        v1_pyfft.setup_pyfft(device_id = device_id)         
-
-    L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
-    L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
-    print(len(L1),len(L2))
-    for image_config in L1:
-        for model_config in L2:              
-            print('extracting',image_config,model_config)
-            features = compute_features(image_config, image_fs, model_config, model_fs,convolve_func)
-            features_string = cPickle.dumps(features)
-            y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
-            filename = get_filename(y['config'])
-            y['filename'] = filename
-            y['__hash__'] = feature_hash
-            feature_fs.put(features_string,**y)
-            
-    if convolve_func == v1f.v1like_filter_pyfft:
-        v1_pyfft.cleanup_pyfft()            
-            
-        
-def get_feature_batches(im_hash,m_hash,im_col,m_col,batch_size):
-    im_count = im_col.find({'__hash__':im_hash}).count()
-    m_count = m_col.find({'__hash__':m_hash}).count()
-     
-    im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(max(im_count/batch_size,1))]
-    m_batches = [(j,j+1) for j in range(m_count)]
-    
-    return [(imb[0],imb[1],mb[0],mb[1]) for imb in im_batches for mb in m_batches]
-    
 
 @activate(lambda x : (x[1],x[2]), lambda x : x[0])    
 def extract_features_parallel(feature_certificate,
@@ -387,7 +288,7 @@ def extract_features_parallel(feature_certificate,
     
     remove_existing(f_coll,f_fs,feature_hash)
     
-    limits = get_feature_batches(image_hash,model_hash,db['images.files'],db['models.files'],batch_size)
+    limits = get_feature_batches(image_hash,model_hash,db['images.files'],db['models.files'],batch_size = batch_size)
     
     jobids = []
 
@@ -408,7 +309,8 @@ def extract_features_parallel(feature_certificate,
                                              {'im_skip':im_from,
                                               'im_limit':im_to-im_from,
                                               'm_skip':m_from,
-                                              'm_limit':m_to-m_from}],
+                                              'm_limit':m_to-m_from,
+                                              'initialize':False}],
                                             opstring=opstring)
         jobids.append(jobid)
 
@@ -418,72 +320,193 @@ def extract_features_parallel(feature_certificate,
                                                'args':feature_config})
 
     return {'child_jobs':jobids}
-    
-    
-FEATURE_CACHE = {}
-
-def get_from_cache(obj,cache):
-    hash = hashlib.sha1(repr(obj)).hexdigest()
-    if hash in cache:
-        return cache[hash]
-        
-def put_in_cache(obj,value,cache):
-    hash = hashlib.sha1(repr(obj)).hexdigest()
-    cache[hash] = value
-
-def compute_features(image_config, image_fs, model_config, model_fs,convolve_func):
-    image_fh = image_fs.get_version(image_config['filename'])
-    filter_fh = model_fs.get_version(model_config['filename'])
-    return compute_features_core(image_fh,image_config,filter_fh,model_config,convolve_func)
-
-def compute_features_core(image_fh,image_config,filter_fh,model_config,convolve_func):
-
-    cached_val = get_from_cache((image_config,model_config),FEATURE_CACHE)
-    if cached_val is not None:
-        output = cached_val
-    else:
-        print('extracting', image_config, model_config)
      
-        m_config = model_config['config']['model']
-        conv_mode = m_config['conv_mode']
-        
-        #preprocessing
-        array = v1e.image2array(m_config ,image_fh)
-        
-        preprocessed,orig_imga = v1e.preprocess(array,m_config )
-            
-        #input normalization
-        norm_in = v1e.norm(preprocessed,conv_mode,m_config.get('normin'))
-        
-        #filtering
-        filtered = v1e.convolve(norm_in, filter_fh, m_config , convolve_func)
-        
-        #nonlinear activation
-        activ = v1e.activate(filtered,m_config.get('activ'))
-        
-        #output normalization
-        norm_out = v1e.norm(activ,conv_mode,m_config.get('normout'))
-        #pooling
-        pooled = v1e.pool(norm_out,conv_mode,m_config.get('pool'))
-        
-        put_in_cache((image_config,model_config),pooled,FEATURE_CACHE)
-        
-        output = pooled
+def get_num_gpus():
+    num = 0
+    while True:
+        try:
+            cuda.Device(num)
+        except:
+            break
+        else:
+            num += 1
+    return num
     
-    return output
-    
- 
-def evaluate_protocol_wrap(evaluate_config_path,model_config_path,image_config_path):
-    D,hashes = evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False)
-    for (d,h) in zip(D,hashes):
-        actualize([d],outfiledir=get_code_dir(h))
+def extract_features_core(image_certificate,
+                          model_certificate,
+                          feature_hash,
+                          image_hash,
+                          model_hash,
+                          convolve_func_name,
+                          initialized=True,
+                          im_query=None,
+                          m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
 
+    if convolve_func_name == 'numpy':
+        num_batches = multiprocessing.cpu_count()
+        if num_batches > 1:
+            pool = multiprocessing.Pool()
+    elif convolve_func_name == 'pyfft':
+        num_batches = get_num_gpus()
+        if num_batches > 1:
+            pool = Pool(processes = num_batches)
+        else:
+            pool = None
+        if not initialized:
+            device_ids = range(get_num_gpus())
+            v1_pyfft.setup_pyfft(device_ids)
+    else:
+        raise ValueError, 'convolve func name not recognized'
+
+    if num_batches == 1:
+        extract_features_inner_core(image_certificate,
+                          model_certificate,
+                          feature_hash,
+                          image_hash,
+                          model_hash,
+                          convolve_func_name,
+                          0,
+                          im_query,
+                          m_query,im_skip,im_limit,m_skip,m_limit)
+    else:
+        if im_query is None:
+            im_query = {}
+        if m_query is None:
+            m_query = {}
+            
+        im_query['__hash__'] = image_hash
+        m_query['__hash__'] = model_hash
+    
+        conn = pm.Connection(document_class = SON)
+        db = conn[DB_NAME]
+        
+        image_col = db['images.files'] 
+        model_col = db['models.files'] 
+
+        batches = get_feature_batches(image_hash,model_hash,image_col,model_col,im_skip=im_skip,
+                                      im_limit = im_limit, m_skip = m_skip, 
+                                      m_limit = m_limit, num_batches=num_batches)
+        res = []
+        for (batch_num,(s0,l0,s1,l1)) in enumerate(batches):
+            args = (image_certificate,
+                          model_certificate,
+                          feature_hash,
+                          image_hash,
+                          model_hash,
+                          convolve_func_name,
+                          batch_num,
+                          im_query,m_query,s0,l0,s1,l1)
+            res.append(pool.apply_async(extract_features_inner_core,args))
+        
+        finished = [r.get() for r in res]
+
+def extract_features_inner_core(image_certificate, model_certificate, feature_hash, image_hash,
+     model_hash, convolve_func_name,device_id, im_query, m_query, im_skip,
+     im_limit, m_skip, m_limit):
+                          
+ 
+    if im_query is None:
+        im_query = {}
+    if m_query is None:
+        m_query = {}
+        
+    im_query['__hash__'] = image_hash
+    m_query['__hash__'] = model_hash
+
+    conn = pm.Connection(document_class = SON)
+    db = conn[DB_NAME]
+    
+    image_col = db['images.files'] 
+    model_col = db['models.files'] 
+    
+    image_fs = gridfs.GridFS(db,'images')
+    model_fs = gridfs.GridFS(db,'models')
+    
+    feature_fs = gridfs.GridFS(db,'features')
+                       
+    if convolve_func_name == 'pyfft':
+        context = v1_pyfft.CONTEXTS[device_id]
+        context.push()
+        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
+    else:
+        convolve_func = v1f.v1like_filter_numpy
+      
+    L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
+    L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
+        
+    for image_config in L1:
+        for model_config in L2:              
+            features = compute_features(image_config['filename'], image_fs, model_config, model_fs,convolve_func)
+            features_string = cPickle.dumps(features)
+            y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
+            filename = get_filename(y['config'])
+            y['filename'] = filename
+            y['__hash__'] = feature_hash
+            feature_fs.put(features_string,**y)
+            
+            
+    if convolve_func_name == 'pyfft':
+        context.pop()            
+            
+        
+def get_feature_batches(im_hash,m_hash,im_col,m_col,im_skip=0,im_limit = 0, m_skip = 0, m_limit = 0, batch_size=None,num_batches=None):
+    im_count = im_col.find({'__hash__':im_hash}).skip(im_skip).limit(im_limit).count()
+    m_count = m_col.find({'__hash__':m_hash}).skip(m_skip).limit(m_limit).count()
+     
+    if batch_size:
+        im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(max(im_count/batch_size,1))]
+    else:
+        batch_size = max(im_count/num_batches,1)
+        im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(num_batches)]
+    
+    m_batches = [(j,j+1) for j in range(m_count)]
+    
+    return [(imb[0]+im_skip,imb[1]+im_skip,mb[0]+m_skip,mb[1]+m_skip) for imb in im_batches for mb in m_batches]
+    
+
+def compute_features(image_filename, image_fs, model_config, model_fs,convolve_func):
+    image_fh = image_fs.get_version(image_filename)
+    filter_fh = model_fs.get_version(model_config['filename'])
+    print('extracting', image_filename, model_config)
+    return compute_features_core(image_fh,filter_fh,model_config,convolve_func)
+
+        
+def compute_features_core(image_fh,filter_fh,model_config,convolve_func):
+
+
+ 
+    m_config = model_config['config']['model']
+    conv_mode = m_config['conv_mode']
+    
+    #preprocessing
+    array = v1e.image2array(m_config ,image_fh)
+    
+    preprocessed,orig_imga = v1e.preprocess(array,m_config )
+        
+    #input normalization
+    norm_in = v1e.norm(preprocessed,conv_mode,m_config.get('normin'))
+    
+    #filtering
+    filtered = v1e.convolve(norm_in, filter_fh, m_config , convolve_func)
+    
+    #nonlinear activation
+    activ = v1e.activate(filtered,m_config.get('activ'))
+    
+    #output normalization
+    norm_out = v1e.norm(activ,conv_mode,m_config.get('normout'))
+    #pooling
+    pooled = v1e.pool(norm_out,conv_mode,m_config.get('pool'))
+    
+    return pooled
+    
+    
 def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
     
     model_config_gen = get_config(model_config_path)
     image_config_gen = get_config(image_config_path)
     
-    overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images'])])
+    overall_config_gen = SON([('models',model_config_gen['models']),
+                              ('images',image_config_gen['images'])])
     feature_hash = get_config_string(overall_config_gen)
     feature_certificate = '../.feature_certificates/' + feature_hash   
  
@@ -493,10 +516,12 @@ def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,w
     D = []
     ext_hashes = []
     for task in task_config:
-        overall_config_gen = SON([('models',model_config_gen),('image',image_config_gen),('task',task)])
+        overall_config_gen = SON([('models',model_config_gen),
+                                  ('image',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)
         outfile = '../.performance_certificates/' + ext_hash
-        op = ('svm_evaluation_' + ext_hash,evaluate,(outfile,feature_certificate,evaluate_config_path,task,ext_hash))
+        op = ('svm_evaluation_' + ext_hash,evaluate,(outfile,feature_certificate,
+                                            evaluate_config_path,task,ext_hash))
         D.append(op)
         ext_hashes.append(ext_hash)
     if write:
@@ -553,9 +578,9 @@ def evaluate(outfile,feature_certificate,cpath,task,ext_hash):
                 assert set(train_filenames).intersection(test_filenames) == set([])
                 
                 print('train feature extraction ...')
-                train_features = sp.row_stack([transform_average(load_features(f['filename'],feature_fs), task.get('transform_average'), m) for f in train_data])
+                train_features = sp.row_stack([load_features(f['filename'],feature_fs,m,task) for f in train_data])
                 print('test feature extraction ...')
-                test_features = sp.row_stack([transform_average(load_features(f['filename'],feature_fs), task.get('transform_average'), m) for f in test_data])
+                test_features = sp.row_stack([load_features(f['filename'],feature_fs,m,task) for f in test_data])
                 train_labels = split['train_labels']
                 test_labels = split['test_labels']
     
@@ -588,172 +613,52 @@ def evaluate(outfile,feature_certificate,cpath,task,ext_hash):
             perf_fs.put(out_data,**out_record)
 
     createCertificateDict(outfile,{'feature_file':feature_certificate})
+
+
+FEATURE_CACHE = {}
+
+def get_from_cache(obj,cache):
+    hash = hashlib.sha1(repr(obj)).hexdigest()
+    if hash in cache:
+        return cache[hash]
+        
+def put_in_cache(obj,value,cache):
+    hash = hashlib.sha1(repr(obj)).hexdigest()
+    cache[hash] = value
     
     
-def load_features(filename,fs):
-    cached_val = get_from_cache(filename,FEATURE_CACHE)
-    if cached_val:
+def load_features(filename,fs,m,task):
+    cached_val = get_from_cache((filename,task.get('transform_average')),FEATURE_CACHE)
+    if cached_val is not None:
         return cached_val
     else:
-        val = cPickle.loads(fs.get_version(filename).read())
-        put_in_cache(filename,val,FEATURE_CACHE)
+        val = transform_average(cPickle.loads(fs.get_version(filename).read()),task.get('transform_average'),m)
+        put_in_cache((filename,task.get('transform_average')),val,FEATURE_CACHE)
         return val
-
-def extract_and_evaluate_protocol_wrap(evaluate_config_path,
-                                       model_config_path,
-                                       image_config_path,
-                                       convolve_func_name='numpy'):
-    DH = extract_and_evaluate_protocol(evaluate_config_path,model_config_path,
-                                             image_config_path,
-                                             convolve_func_name=convolve_func_name,
-                                             write=False)
-                                             
-    for (h,ops) in DH.items():
-        actualize(ops,outfiledir=get_code_dir(h))
     
 
-def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False):
-    
-    model_config_gen = get_config(model_config_path)
-    model_hash = get_config_string(model_config_gen['models'])
-    model_certificate = '../.model_certificates/' + model_hash
-    
-    image_config_gen = get_config(image_config_path)
-    image_hash =  get_config_string(image_config_gen['images'])
-    image_certificate = '../.image_certificates/' + image_hash
-
-    evaluate_config = get_config(evaluate_config_path)
-    task_config = evaluate_config.pop('train_test')
-
-     
-    D = []
-    DH = {}
-    for task in task_config:
-        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
-        ext_hash = get_config_string(overall_config_gen)    
-        
-        parallel = task.pop('generate_parallel',False)
-        if not parallel:
-            performance_certificate = '../.performance_certificates/' + ext_hash
-            op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
-            D.append(op)
-            DH[ext_hash] = [op]
-        else:
-            performance_certificate = '../.performance_certificates/' + ext_hash
-            batch_certificate = '../.batch_certificates/' + ext_hash
-            op1 = ('launch_batches' + ext_hash,extract_and_evaluate_launch_batches,(batch_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
-            D.append(op1)
-            op2 = ('combine_splits' + ext_hash,extract_and_evaluate_combine_splits,(performance_certificate,batch_certificate,image_certificate,model_certificate,evaluate_config_path,ext_hash))
-            D.append(op2)
-            DH[ext_hash] = [op1,op2]
-             
-    if write:
-        actualize(D)
-    return DH
-    
-    
-@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
-
-    conn = pm.Connection(document_class=bson.SON)
-    db = conn[DB_NAME]
-    
-    perf_fs = gridfs.GridFS(db,'performance')
-    perf_coll = db['performance.files']
-    
-    remove_existing(perf_coll,perf_fs,ext_hash)
-
-    print('using image certificate', image_certificate_file)
-    print('using model certificate', model_certificate_file)   
-    
-    model_certdict = cPickle.load(open(model_certificate_file))
-    model_hash = model_certdict['model_hash']
-    model_coll = db['models.files']
-    model_fs = gridfs.GridFS(db,'models')
-    
-    image_certdict = cPickle.load(open(image_certificate_file))
-    image_hash = image_certdict['image_hash']
-    image_config_gen = image_certdict['args']['images']
-    image_fs = gridfs.GridFS(db,'images')
-    
-    stats = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']    
-    
-    model_configs = get_most_recent_files(model_coll,{'__hash__' : model_hash})
-
-    if convolve_func_name == 'numpy':
-        convolve_func = v1f.v1like_filter_numpy
-    elif convolve_func_name == 'pyfft':
-        convolve_func = v1f.v1like_filter_pyfft
+def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
+    cached_val = get_from_cache((im,m,task.get('transform_average')),FEATURE_CACHE)
+    if cached_val is not None:
+        output = cached_val    
     else:
-        raise ValueError, 'convolve func name not recognized'    
+        if network_cache:
+            network_cache.send_pyobj({'get':(im,m,task.get('transform_average'))})
+            val = network_cache.recv_pyobj()
+            if val:
+                output = val
+            else:
+                output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
+                network_cache.send_pyobj({'put':((im,m,task.get('transform_average')),output)})
+                network_cache.recv_pyobj()
+        else:         
+            output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
+        put_in_cache((im,m,task.get('transform_average')),output,FEATURE_CACHE)
+           
+    return output
     
-    if convolve_func == v1f.v1like_filter_pyfft:
-        v1_pyfft.setup_pyfft()
-    
-    if isinstance(task,list):
-        task_list = task
-    else:
-        task_list = [task]
-    
-    for m in model_configs: 
-        print('Evaluating model',m)
-        for task in task_list:
-            classifier_kwargs = task.get('classifier_kwargs',{})    
-            print('task',task)
-            split_results = []
-            splits = generate_splits(task,image_hash,'images') 
-            for (ind,split) in enumerate(splits):
-                print ('split', ind)
-                train_data = split['train_data']
-                test_data = split['test_data']
-                
-                train_filenames = [t['filename'] for t in train_data]
-                test_filenames = [t['filename'] for t in test_data]
-                assert set(train_filenames).intersection(test_filenames) == set([])
-                
-                print('train feature extraction ...')
-                train_features = sp.row_stack([transform_average(compute_features(im, image_fs, m, model_fs, convolve_func,) , task.get('transform_average'),m) for im in train_data])
-                print('test feature extraction ...')
-                test_features = sp.row_stack([transform_average(compute_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average'),m) for im in test_data])
-                train_labels = split['train_labels']
-                test_labels = split['test_labels']
-    
-                print('classifier ...')
-                res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-                print('Split test accuracy', res['test_accuracy'])
-                split_results.append(res)
-        
-            model_results = SON([])
-            for stat in STATS:
-                if stat in split_results[0] and split_results[0][stat] != None:
-                    model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
-    
-            out_record = SON([('model',m['config']['model']),
-                              ('model_hash',model_hash), 
-                              ('model_filename',m['filename']), 
-                              ('images',son_escape(image_config_gen['images'])),
-                              ('image_hash',image_hash),
-                              ('task',son_escape(task)),
-                         ])
- 
-            filename = get_filename(out_record)
-            out_record['filename'] = filename
-            out_record['config_path'] = cpath
-            out_record.update(model_results)
-            out_record['__hash__'] = ext_hash
-            print('dump out ...')
-            out_data = cPickle.dumps(SON([('split_results',split_results),('splits',splits)]))
-            
-            perf_fs.put(out_data,**out_record)
- 
-    if convolve_func == v1f.v1like_filter_pyfft:
-        v1_pyfft.cleanup_pyfft() 
-      
-    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
 
-        
 def generate_splits(task_config,hash,colname):
-    
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
@@ -770,8 +675,6 @@ def generate_splits(task_config,hash,colname):
     return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
 
 
- 
-import numpy as np
 def transform_average(input,config,model_config):
     if config:
         averaged = []
@@ -812,41 +715,117 @@ def average_transform(input,config,M):
     else:
         raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
 
+   
+def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
+
+    if cache_port:
+        ctx = zmq.Context()
+        sock = ctx.socket(zmq.REQ)
+        sock.connect('tcp://127.0.0.1:' + str(cache_port))  
+    else:
+        sock = None
 
 
+    if convolve_func_name == 'pyfft':
+        context = v1_pyfft.CONTEXTS[device_id]
+        context.push()
+        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
+    else:
+        convolve_func = v1f.v1like_filter_numpy
 
-from starflow.utils import ListUnion
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
 
-def get_extraction_and_evaluation_batches(split_list):
-    return ListUnion([[[[eval_id,m,task,ind,split]] for (ind,split) in enumerate(splits)] for (eval_id,m,task,splits) in split_list])
+    perf_coll = db['performance.files']
 
+    model_fs = gridfs.GridFS(db,'models')
+    image_fs = gridfs.GridFS(db,'images')
+      
+    L = [get_features(im, image_fs, m, model_fs, convolve_func,task,sock) for im in images]
+    
+    if convolve_func_name == 'pyfft':
+        context.pop()
+        
+    return L
 
-@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def extract_and_evaluate_parallel_launch_batches(batch_certificate_file,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+import math
+
+def get_data_batches(data,num_batches):
+
+    bs = int(math.ceil(float(len(data)) / num_batches))
+    
+    return [data[bs*i:bs*(i+1)] for i in range(num_batches)]
+    
+def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
+    classifier_kwargs = task.get('classifier_kwargs',{})  
+    train_data = split['train_data']
+    test_data = split['test_data']
+    train_labels = split['train_labels']
+    test_labels = split['test_labels']                
+    train_filenames = [t['filename'] for t in train_data]
+    test_filenames = [t['filename'] for t in test_data]
+    assert set(train_filenames).intersection(test_filenames) == set([])
+
+    if convolve_func_name == 'numpy':
+        num_batches = multiprocessing.cpu_count()
+        if num_batches > 1:
+            pool = multiprocessing.Pool()
+    elif convolve_func_name == 'pyfft':
+        num_batches = get_num_gpus()
+        if num_batches > 1:
+            pool = multiprocessing.Pool(processes = num_batches)
+        else:
+            pool = None
+    else:
+        raise ValueError, 'convolve func name not recognized'
+
+    if num_batches > 1:
+        batches = get_data_batches(train_filenames,num_batches)
+        results = []
+        for (bn,b) in enumerate(batches):
+            results.append(pool.apply_async(extract_and_evaluate_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
+        results = [r.get() for r in results]
+        train_features = sp.row_stack(ListUnion(results))
+        batches = get_data_batches(test_filenames,num_batches)
+        results = []
+        for (bn,b) in enumerate(batches):
+            results.append(pool.apply_async(extract_and_evaluate_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
+        results = [r.get() for r in results]
+        test_features = sp.row_stack(ListUnion(results))
+    else:
+        print('train feature extraction ...')
+        train_features = sp.row_stack(extract_and_evaluate_inner_core(train_filenames,m,convolve_func_name,0,task,cache_port))
+        print('test feature extraction ...')
+        test_features = sp.row_stack(extract_and_evaluate_inner_core(test_filenames,m,convolve_func_name,0,task,cache_port))
+                           
+    print('classifier ...')
+    res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    print('Split test accuracy', res['test_accuracy'])
+    return res
+
+     
+def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
     
-    batch_col = db['split_batches']
-    batch_col.delete({'__hash__':ext_hash})
-    
-    split_col = db['performance_splits.files']
-    split_fs = gridfs.GridFS(db,'performance_splits')
-    remove_existing(split_col,split_fs,ext_hash)
-    
-    print('using image certificate', image_certificate_file)
-    print('using model certificate', model_certificate_file)   
-    
+
+    perf_coll = db['performance']
+    perf_coll.remove({'__hash__':ext_hash})
+    split_coll = db['splits.files']
+    split_fs = gridfs.GridFS(db,'splits')
+    remove_existing(split_coll,split_fs,ext_hash)
+    splitperf_coll = db['split_performance.files']
+    splitperf_fs = gridfs.GridFS(db,'split_performance')
+    remove_existing(splitperf_coll,splitperf_fs,ext_hash)
+
     model_certdict = cPickle.load(open(model_certificate_file))
-    model_hash = image_certdict['model_hash']
+    model_hash = model_certdict['model_hash']
     model_coll = db['models.files']
-    model_fs = gridfs.GridFS(db,'models')
     
     image_certdict = cPickle.load(open(image_certificate_file))
     image_hash = image_certdict['image_hash']
-    image_config_gen = image_certdict['args']['images']
-    image_fs = gridfs.GridFS(db,'images')
-    
+    image_config_gen = image_certdict['args']
     model_configs = get_most_recent_files(model_coll,{'__hash__' : model_hash})
     
     if isinstance(task,list):
@@ -854,173 +833,199 @@ def extract_and_evaluate_parallel_launch_batches(batch_certificate_file,image_ce
     else:
         task_list = [task]
     
-    split_list = []
+    return model_configs,image_config_gen,model_hash,image_hash, task_list, perf_coll, split_coll, split_fs, splitperf_coll, splitperf_fs
+    
+
+def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash):
+    
+    model_results = SON([])
+    for stat in STATS:
+        if stat in split_results[0] and split_results[0][stat] != None:
+            model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
+
+    out_record = SON([('model',m['config']['model']),
+                      ('model_hash',model_hash), 
+                      ('model_filename',m['filename']), 
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('image_hash',image_hash),
+                      ('task',son_escape(task)),
+                      ('__hash__',ext_hash)
+                 ])
+                 
+    out_record.update(model_results)
+
+    perf_coll.insert(out_record)
+
+
+def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs):
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task)),
+                      ('split_id',split_id),
+                 ])   
+
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record['__hash__'] = ext_hash
+    print('dump out ...')
+    out_data = cPickle.dumps(SON([('split',split)]))
+    
+    split_fs.put(out_data,**out_record)
+            
+def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs):
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task)),
+                      ('split_id',split_id),
+                 ])   
+                 
+    split_result = SON([])
+    for stat in STATS:
+        if stat in res and res[stat] != None:
+            split_result[stat] = res[stat] 
+
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record['__hash__'] = ext_hash
+    out_record.update(split_result)
+    print('dump out ...')
+    out_data = cPickle.dumps(SON([('split_result',res)]))
+    splitres_fs.put(out_data,**out_record)          
+ 
+
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+
+    (model_configs, image_config_gen, model_hash, image_hash, task_list, 
+    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_extract_and_evaluate(ext_hash,
+                                                image_certificate_file,
+                                                model_certificate_file,
+                                                task)
+
+    if convolve_func_name == 'pyfft':
+        device_ids = range(get_num_gpus())
+        v1_pyfft.setup_pyfft(device_ids)
+    
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:  
+            print('task',task)
+            split_results = []
+            splits = generate_splits(task,image_hash,'images') 
+            for (ind,split) in enumerate(splits):
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
+                res = extract_and_evaluate_core(split,m,convolve_func_name,task,None)    
+                put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
+                split_results.append(res)
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+        
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+
+
+def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id,convolve_func_name,cache_port=None):
+
+    if cache_port is None:
+        cache_port = NETWORK_CACHE_PORT
+
+               
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    split_col = db['splits.files']
+    split_fs = gridfs.GridFS(db,'splits')
+
+    #setup all devices
+    if convolve_func_name == 'pyfft':
+        device_ids = range(get_num_gpus())
+        v1_pyfft.setup_pyfft(device_ids)    
+    
+    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m,'images':image_config_gen})[0]
+    split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())
+    res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
+    splitperf_fs = gridfs.GridFS(db,'split_performance')
+    put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
+    
+
+
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+        
+    model_configs,
+    image_config_gen,
+    model_hash,
+    image_hash,
+    task_list, 
+    perf_col, 
+    split_coll, 
+    split_fs, 
+    splitperf_coll, 
+    splitperf_fs = prepare_extract_and_evaluate(ext_hash,
+                                                image_certificate_file,
+                                                model_certificate_file,
+                                                task)    
+    jobids = []
+    if convolve_func_name == 'numpy':
+        opstring = '-l qname=extraction_cpu.q'
+    elif convolve_func_name == 'pyfft':
+        opstring = '-l qname=extraction_gpu.q'
+        
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:
             classifier_kwargs = task.get('classifier_kwargs',{})    
-            task['universe'] = task.get('universe',SON([]))
-            task['universe']['__hash__'] = image_hash
-
-            splits = generate_splits_2(task,'images')
-            eval_id = generate_splits_id()         
-            split_list.append((eval_id,m,task,splits))
-        
-    batches = get_extraction_and_evaluation_batches(split_list)
-    
-    jobids = []
-    
-    if convolve_func_name == 'numpy':
-        queueName = 'extraction_cpu.q'
-    elif convolve_func_name == 'pyfft':
-        queueName = 'extraction_gpu.q'
-        
-    for (id,batch) in enumerate(batches):
-        batch_coll.insert({'__hash__':ext_hash,'batch_id':id,'batch':batch})
-
-        jobid = qsub(extract_and_evaluate_parallel_run_batch,(ext_hash,id,convolve_func_name),queueName = queueName)
-        jobids.append(jobid)
-    
-    
-    createCertificateDict(batch_certificate_file,{'image_file':image_certificate_file,'models_file':model_certificate_file})
-
-    return {'child_jobs':jobids}
-    
-    
-def extract_and_evaluate_parallel_run_batch(ext_hash,batch_id,convolve_func_name):
-
-    conn = pm.Connection(document_class=bson.SON)
-    db = conn[DB_NAME]
-    
-    batch_col = db['split_batches']
-    batch_rec = batch_col.find_one({'__hash__':ext_hash,'batch_id':batch_id})
-    batch = batch_rec['batch']
- 
-    model_fs = gridfs.GridFS(db,'models')
-    image_fs = gridfs.GridFS(db,'images')
-    
-    split_fs = gridfs.GridFS(db,'performance_splits')
-   
-    if convolve_func_name == 'numpy':
-        convolve_func = v1f.v1like_filter_numpy
-    elif convolve_func_name == 'pyfft':
-        convolve_func = v1f.v1like_filter_pyfft
-    else:
-        raise ValueError, 'convolve func name not recognized'
-
-    device_id = get_device_id()
-    if convolve_func == v1f.v1like_filter_pyfft:
-        device_id = get_device_id()
-        v1_pyfft.setup_pyfft(device_id = device_id) 
- 
-    for (eval_id,task,m,split_id, split) in batch:
+            print('task',task)
+            splits = generate_splits(task,image_hash,'images') 
+            for (ind,split) in enumerate(splits):
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
+                cache_client_list.append(thing)
+                jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
+                jobids.append(jobid)
+     
+    statuses = wait_and_get_statuses(jobids)
+     
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:
+            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':task,'model':m,'images':image_config_gen})
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash)
             
-        classifier_kwargs = task.get('classifier_kwargs',{}) 
-        train_data = split['train_data']
-        test_data = split['test_data']
-        
-        train_filenames = [t['filename'] for t in train_data]
-        test_filenames = [t['filename'] for t in test_data]
-        assert set(train_filenames).intersection(test_filenames) == set([])
-        
-        print('train feature extraction ...')
-        train_features = sp.row_stack([transform_average(compute_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average'),m) for im in train_data])
-        print('test feature extraction ...')
-        test_features = sp.row_stack([transform_average(compute_features(im, image_fs, m, model_fs, convolve_func) , task.get('transform_average'),m) for im in test_data])
-        train_labels = split['train_labels']
-        test_labels = split['test_labels']
-
-        print('classifier ...')
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        print('Split test accuracy', res['test_accuracy'])
-        
-        rec = SON([('eval_id',eval_id), ('task',task), ('model',m), ('split_id', split_id)])
-        
-        results = SON([])
-        for stat in STATS:
-            if stat in res[0] and res[0][stat] != None:
-                results[stat] = res[stat]
-                
-        filename = get_filename(rec)
-        rec['results'] = results
-        rec['filename'] = filename
-        rec['__hash__'] = ext_hash
-        
-        out = cPickle.dumps({'results':res,'split':split})
-        split_fs.put(out,**rec)
-        
-    
-    if convolve_func == v1f.v1like_filter_pyfft:
-        v1_pyfft.cleanup_pyfft() 
-    
-    
-@activate(lambda x : (x[1],x[2],x[3],x[4]),lambda x : x[0])  
-def extract_and_evaluate_parallel_combine_splits(outfile,batch_certificate_file,image_certificate_file,model_certificate_file,cpath,ext_hash):
-
-    conn = pm.Connection(document_class=bson.SON)
-    db = conn[DB_NAME]
-
-    split_col = db['performance_splits.files']
-    split_fs = gridfs.GridFS(db,'performance_splits')
-    
-    model_certdict = cPickle.load(open(model_certificate_file))
-    model_hash = image_certdict['model_hash']
-    model_coll = db['models.files']
-    model_fs = gridfs.GridFS(db,'models')
-    
-    image_certdict = cPickle.load(open(image_certificate_file))
-    image_hash = image_certdict['image_hash']
-    image_config_gen = image_certdict['args']['images']
-    image_fs = gridfs.GridFS(db,'images')
-    
-    perf_col = db['performance.files']
-    perf_fs = gridfs.GridFS(db,'performance')
-
-    splits = get_most_recent_files(split_col,{'__hash__':ext_hash})
-    results = {}
-    split_datas = []
-    for split in splits:
-        eval_id = split['eval_id']
-        if not eval_id in results:
-            results[eval_id] = {}
-            results[eval_id]['task'] = split['task']
-            results[eval_id]['model'] = split['model']
-            
-        if 'results' in results[eval_id]:
-            results[eval_id]['results'].append(split['results'])
-        else:
-            results[eval_id]['results'] = split['results']
-        
-        if not eval_id in split_datas:
-            split_data[eval_id] = {}
-        split_data = cPickle.loads(split_fs.get_version(split['filename']).read())
-        split_id = split['split_id']
-        split_datas[eval_id]['results'][split_id] = split_data['results']
-        split_datas[eval_id]['splits'][split_id] = split_data['split']
-        
-    
-    for eval_id in results:
-        R = results[eval_id].pop('results')
-        for k in R[0]:
-            results[eval_id][k] = np.array([r[k] for r in R]).mean()
-        
-        out_record = SON([('model',results[eval_id]['model']['config']['model']),
-                          ('model_hash',model_hash), 
-                          ('model_filename',results[eval_id]['model']['filename']), 
-                          ('images',son_escape(image_config_gen['images'])),
-                          ('image_hash',image_hash),
-                          ('task',son_escape(task)),
-                     ])
-
-        filename = get_filename(out_record)
-        out_record['filename'] = filename
-        out_record['config_path'] = cpath
-        out_record.update(results[eval_id])
-        out_record['__hash__'] = ext_hash
-        print('dump out ...')
-        out_data = cPickle.dumps(SON([('split_results',split_datas['eval_id']['results']),('splits',split_datas['eval_id']['splits'])]))
-        
-        perf_fs.put(out_data,**out_record)
-        
-        
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+
+
+def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False):
+    
+    model_config_gen = get_config(model_config_path)
+    model_hash = get_config_string(model_config_gen['models'])
+    model_certificate = '../.model_certificates/' + model_hash
+    
+    image_config_gen = get_config(image_config_path)
+    image_hash =  get_config_string(image_config_gen['images'])
+    image_certificate = '../.image_certificates/' + image_hash
+
+    evaluate_config = get_config(evaluate_config_path)
+    task_config = evaluate_config.pop('train_test')
+
+    D = []
+    DH = {}
+    for task in task_config:
+        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
+        ext_hash = get_config_string(overall_config_gen)    
+        
+        parallel = task.pop('generate_parallel',False)
+        if not parallel:
+            performance_certificate = '../.performance_certificates/' + ext_hash
+            op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            D.append(op)
+            DH[ext_hash] = [op]
+        else:
+            performance_certificate = '../.performance_certificates/' + ext_hash
+            batch_certificate = '../.batch_certificates/' + ext_hash
+            op = ('evaluation' + ext_hash,extract_and_evaluate_parallel,(batch_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            D.append(op)
+            DH[ext_hash] = [op]
+             
+    if write:
+        actualize(D)
+    return DH
+
+
+        

@@ -249,7 +249,7 @@ def v1like_filter_numpy(image,filter_source,model_config):
     return np.cast[original_dtype](res_fft)
     
     
-def v1like_filter_pyfft(image,filter_source,model_config):
+def v1like_filter_pyfft(image,filter_source,model_config,device_id=0):
      
     conv_mode = model_config['conv_mode']
     filter_shape = model_config['filter']['kshape']
@@ -260,7 +260,7 @@ def v1like_filter_pyfft(image,filter_source,model_config):
 
     fft_shape = power2(full_shape) 
     
-    image_fft = v1_pyfft.fft(image,fft_shape)
+    image_fft = v1_pyfft.fft(image,fft_shape,device_id=device_id)
 
     filter_key = (fft_shape,repr(model_config['filter']))
         
@@ -269,20 +269,52 @@ def v1like_filter_pyfft(image,filter_source,model_config):
         original_dtype = filterbank.dtype
         filter_fft = np.empty(fft_shape + (filterbank.shape[2],),dtype=np.complex64)
         for i in range(filterbank.shape[2]):
-            filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape)
+            filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape,device_id=device_id)
         FILTER_FFT_CACHE[filter_key] = (filter_fft,original_dtype)
     else:
         (filter_fft,original_dtype) = FILTER_FFT_CACHE[filter_key]
     
     res_fft = np.empty(fft_shape + (filter_fft.shape[2],), dtype=filter_fft.dtype)
     for i in range(res_fft.shape[2]):
-        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True)
+        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True,device_id=device_id)
         
     delta = np.array(fft_shape) - np.array(full_shape)
 
     myslice = tuple([slice(0,f) for (d,f) in zip(delta,full_shape)])
     res_fft = res_fft[myslice]
         
+    myslice = get_bounds(image_shape,filter_shape,conv_mode)           
+    res_fft = res_fft[myslice]
+    
+    return np.cast[original_dtype](res_fft)
+    
+def v1like_filter_cufft(image,filter_source,model_config):
+     
+    conv_mode = model_config['conv_mode']
+    filter_shape = model_config['filter']['kshape']
+
+    image_shape = image.shape
+
+    full_shape = tuple( np.array(image_shape) + np.array(filter_shape) - 1 )
+    
+    image_fft = v1_pyfft.cufft(image,full_shape)
+
+    filter_key = (full_shape,repr(model_config['filter']))
+        
+    if filter_key not in FILTER_FFT_CACHE:
+        filterbank = filter_source()
+        original_dtype = filterbank.dtype
+        filter_fft = np.empty(full_shape + (filterbank.shape[2],),dtype=np.complex64)
+        for i in range(filterbank.shape[2]):
+            filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],full_shape)
+        FILTER_FFT_CACHE[filter_key] = (filter_fft,original_dtype)
+    else:
+        (filter_fft,original_dtype) = FILTER_FFT_CACHE[filter_key]
+    
+    res_fft = np.empty(fft_shape + (filter_fft.shape[2],), dtype=filter_fft.dtype)
+    for i in range(res_fft.shape[2]):
+        res_fft[:,:,i] = v1_pyfft.cufft(image_fft * filter_fft[:,:,i],inverse=True)
+            
     myslice = get_bounds(image_shape,filter_shape,conv_mode)           
     res_fft = res_fft[myslice]
     

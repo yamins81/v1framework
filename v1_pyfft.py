@@ -1,25 +1,39 @@
-from pyfft.cuda import Plan
 from pycuda.tools import make_default_context
 import pycuda.gpuarray as gpuarray
 import pycuda.driver as cuda
 import numpy as np
 
-CONTEXT = None
-PLANS = {}
-
-def setup_pyfft(device_id=None):
-    cuda.init()
-    global CONTEXT
-    if device_id is None:
-        CONTEXT = make_default_context()
-    else:
-        dev = cuda.Device(device_id)
-        CONTEXT = dev.make_context()
-
+try:
+    from pyfft.cuda import Plan as pyfft_Plan
+except:
+    print('pyfft unavailable')
+else:
+    print('pyfft available')
     
-def cleanup_pyfft():
-    CONTEXT.pop()
+try:
+    import scikits.cuda.fft as cu_fft
+except:
+    print('cufft unavailable')
+else:
+    print('cufft available')
+    
 
+CONTEXTS = {}
+PYFFT_PLANS = {}
+
+def setup_pyfft(device_ids=None):
+    cuda.init()
+    global CONTEXTS
+    if device_ids is None:
+        CONTEXTS[0] = make_default_context()
+    else:
+        for device_id in device_ids:
+            dev = cuda.Device(device_id)
+            CONTEXTS[device_id] = dev.make_context()
+            CONTEXTS[device_id].pop()
+
+def cleanup_pyfft():
+    pass
 
 def pad(data,shape):
 
@@ -59,15 +73,16 @@ def pad2(data,shape):
     
     return newdata    
 
-def fft(data,shape=None,inverse=False):
+
+def fft(data,shape=None,inverse=False,device_id=0):
 
     if shape:
         data = pad2(data,shape)
                         
-    plan  = PLANS.get(data.shape)
+    plan = PYFFT_PLANS.get((device_id,data.shape))
     if not plan:
-        plan = Plan(data.shape)
-        PLANS[data.shape] = plan
+        plan = pyfft_Plan(data.shape)
+        PYFFT_PLANS[(device_id,data.shape)] = plan
     
     gpu_data = gpuarray.to_gpu(np.cast[np.complex64](data))
     plan.execute(gpu_data,inverse = inverse)
@@ -75,3 +90,22 @@ def fft(data,shape=None,inverse=False):
     
     return r
 
+
+def cufft(data,shape=None,inverse=False):
+
+    if shape:
+        data = pad2(data,shape)
+                        
+    plan  = CUFFT_PLANS.get(data.shape)
+    if not plan:
+        plan = cu_fft.Plan(data.shape,np.complex64,np.complex64)
+        CUFFT_PLANS[data.shape] = plan
+    
+    gpu_data = gpuarray.to_gpu(np.cast[np.complex64](data))
+    if inverse:
+        cu_fft.ifft(gpu_data,gpu_data,plan)
+    else:
+        cu_fft.fft(gpu_data,gpu_data,plan)
+    r = gpu_data.get()
+    
+    return r
