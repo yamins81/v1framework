@@ -385,6 +385,7 @@ def extract_features_core(image_certificate,
         batches = get_feature_batches(image_hash,model_hash,image_col,model_col,im_skip=im_skip,
                                       im_limit = im_limit, m_skip = m_skip, 
                                       m_limit = m_limit, num_batches=num_batches)
+
         print('batches',batches)
         res = []
         for (batch_num,(s0,l0,s1,l1)) in enumerate(batches):
@@ -397,14 +398,14 @@ def extract_features_core(image_certificate,
                           batch_num,
                           im_query,m_query,s0,l0,s1,l1)
             res.append(pool.apply_async(extract_features_inner_core,args))
-        
+
         finished = [r.get() for r in res]
 
 def extract_features_inner_core(image_certificate, model_certificate, feature_hash, image_hash,
      model_hash, convolve_func_name,device_id, im_query, m_query, im_skip,
      im_limit, m_skip, m_limit):
 
-                                
+    print('here')
     if im_query is None:
         im_query = {}
     if m_query is None:
@@ -450,14 +451,16 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
             
         
 def get_feature_batches(im_hash,m_hash,im_col,m_col,im_skip=0,im_limit = 0, m_skip = 0, m_limit = 0, batch_size=None,num_batches=None):
-    im_count = im_col.find({'__hash__':im_hash}).skip(im_skip).limit(im_limit).count()
-    m_count = m_col.find({'__hash__':m_hash}).skip(m_skip).limit(m_limit).count()
+    im_count = im_col.find({'__hash__':im_hash}).skip(im_skip).limit(im_limit).count(True)
+    m_count = m_col.find({'__hash__':m_hash}).skip(m_skip).limit(m_limit).count(True)
+
+    print im_count, num_batches, im_skip,im_limit,m_skip,m_limit
 
     if batch_size:
-        im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(max(im_count/batch_size,1))]
+        im_batches = [(batch_size*i,min(batch_size*(i+1),im_count)) for i in range(int(math.ceil(float(im_count)/batch_size)))]
     else:
-        batch_size = max(im_count/num_batches,1)
-        im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(num_batches)]
+        batch_size = int(math.ceil(float(im_count)/num_batches))
+        im_batches = [(batch_size*i,min(batch_size*(i+1),im_count)) for i in range(num_batches)]
     
     m_batches = [(j,j+1) for j in range(m_count)]
     
@@ -712,6 +715,7 @@ def average_transform(input,config,M):
    
 def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
 
+    print('here3')
     if cache_port:
         ctx = zmq.Context()
         sock = ctx.socket(zmq.REQ)
@@ -769,7 +773,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
     new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
     new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
-    
+
     if convolve_func_name == 'numpy':
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
@@ -944,9 +948,9 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    
-    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m,'images':image_config_gen})[0]
-    split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())
+    print(ext_hash,split_id,m['config']['model'],image_config_gen['images']) 
+    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})[0]
+    split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
     res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
     splitperf_fs = gridfs.GridFS(db,'split_performance')
     put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
@@ -955,24 +959,18 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
 def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
         
-    model_configs,
-    image_config_gen,
-    model_hash,
-    image_hash,
-    task_list, 
-    perf_col, 
-    split_coll, 
-    split_fs, 
-    splitperf_coll, 
-    splitperf_fs = prepare_extract_and_evaluate(ext_hash,
-                                                image_certificate_file,
-                                                model_certificate_file,
-                                                task)    
+    (model_configs, image_config_gen, model_hash, image_hash, task_list,
+     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_extract_and_evaluate(ext_hash,
+                                                                                                  image_certificate_file,
+                                                                                                  model_certificate_file,
+                                                                                                  task)
+
+    
     jobids = []
     if convolve_func_name == 'numpy':
         opstring = '-l qname=extraction_cpu.q'
     elif convolve_func_name == 'pyfft':
-        opstring = '-l qname=extraction_gpu.q'
+        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
         
     for m in model_configs: 
         print('Evaluating model',m)
@@ -982,7 +980,6 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
             splits = generate_splits(task,image_hash,'images') 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
-                cache_client_list.append(thing)
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
                 jobids.append(jobid)
      
@@ -992,12 +989,12 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
         print('Evaluating model',m)
         for task in task_list:
             split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':task,'model':m,'images':image_config_gen})
-            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash)
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
             
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
 
 
-def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False):
+def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False,parallel=False):
     
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -1016,7 +1013,6 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
         overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)    
         
-        parallel = task.pop('generate_parallel',False)
         if not parallel:
             performance_certificate = '../.performance_certificates/' + ext_hash
             op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
