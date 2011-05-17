@@ -405,7 +405,6 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
      model_hash, convolve_func_name,device_id, im_query, m_query, im_skip,
      im_limit, m_skip, m_limit):
 
-    print('here')
     if im_query is None:
         im_query = {}
     if m_query is None:
@@ -642,13 +641,15 @@ def load_features(filename,fs,m,task):
 def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
 
     if network_cache:
-        network_cache.send_pyobj({'get':(im,m,task.get('transform_average'))})
+        obj =(im,m,task.get('transform_average')) 
+        hash = hashlib.sha1(repr(obj)).hexdigest()
+        network_cache.send_pyobj({'get':hash})
         val = network_cache.recv_pyobj()
-        if val:
+        if val is not None:
             output = val
         else:
             output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
-            network_cache.send_pyobj({'put':((im,m,task.get('transform_average')),output)})
+            network_cache.send_pyobj({'put':(hash,output)})
             network_cache.recv_pyobj()
     else:
         output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
@@ -715,7 +716,6 @@ def average_transform(input,config,M):
    
 def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
 
-    print('here3')
     if cache_port:
         ctx = zmq.Context()
         sock = ctx.socket(zmq.REQ)
@@ -779,6 +779,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         if num_batches > 1:
             pool = multiprocessing.Pool()
     elif convolve_func_name == 'pyfft':
+
         num_batches = get_num_gpus()
         if num_batches > 1:
             pool = multiprocessing.Pool(processes = num_batches)
@@ -907,7 +908,7 @@ def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_f
     out_record['filename'] = filename
     out_record['__hash__'] = ext_hash
     out_record.update(split_result)
-    print('dump out ...')
+    print('dump out split result...')
     out_data = cPickle.dumps(SON([('split_result',res)]))
     splitres_fs.put(out_data,**out_record)          
  
@@ -948,12 +949,11 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    print(ext_hash,split_id,m['config']['model'],image_config_gen['images']) 
     splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})[0]
     split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
     res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
     splitperf_fs = gridfs.GridFS(db,'split_performance')
-    put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
+    put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
@@ -982,15 +982,16 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
                 jobids.append(jobid)
-     
+
+    print(jobids)
     statuses = wait_and_get_statuses(jobids)
-     
+    
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:
-            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':task,'model':m,'images':image_config_gen})
+            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
             put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
-            
+
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
 
 

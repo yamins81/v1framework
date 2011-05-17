@@ -1,6 +1,17 @@
+import hashlib
 import zmq
 
 NETWORK_CACHE_PORT = '5555' 
+
+def get_from_cache(obj,cache):
+    hash = hashlib.sha1(repr(obj)).hexdigest()
+    if hash in cache:
+        return cache[hash]
+
+def put_in_cache(obj,value,cache):
+    hash = hashlib.sha1(repr(obj)).hexdigest()
+    cache[hash] = value
+                    
 
 def network_cache_L(L,port=None):
     if port is None:
@@ -41,8 +52,9 @@ def network_cache(port=None):
     while True:
         req = sock.recv_pyobj()
         if 'get'  in req:
-            if req['get'] in cache:
-                sock.send_pyobj(cache[req['get']])
+            val = cache.get(req['get'])
+            if val is not None:
+                sock.send_pyobj(val)
             else:
                 sock.send_pyobj(None)
         elif 'put' in req:

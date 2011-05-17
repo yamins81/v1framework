@@ -20,3 +20,4 @@
 ../greedy_search.py
 ../v1_protocols.py
 ../protocol_test.py
+../deep_test.py
