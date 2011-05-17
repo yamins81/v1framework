@@ -37,8 +37,7 @@ def network_cache(port=None):
     sock.bind("tcp://127.0.0.1:" + str(port))
 
     cache = {}
-    L = set(L)
-    done = set([])
+
     while True:
         req = sock.recv_pyobj()
         if 'get'  in req:

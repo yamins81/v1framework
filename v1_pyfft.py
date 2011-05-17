@@ -21,18 +21,22 @@ else:
 CONTEXTS = {}
 PYFFT_PLANS = {}
 
-def setup_pyfft(device_ids=None):
-    cuda.init()
+def setup_pyfft(device_id=0):
     global CONTEXTS
-    if device_ids is None:
-        CONTEXTS[0] = make_default_context()
-    else:
-        for device_id in device_ids:
+    if device_id not in CONTEXTS:
+        print('initializing GPU device', device_id)
+        cuda.init()
+        if device_id is None:
+            CONTEXTS[0] = make_default_context()
+        else:
             dev = cuda.Device(device_id)
             CONTEXTS[device_id] = dev.make_context()
             CONTEXTS[device_id].pop()
+    return CONTEXTS[device_id]
+        
 
-def cleanup_pyfft():
+
+def cleanup_pyfft(device_id):
     pass
 
 def pad(data,shape):

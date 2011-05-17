@@ -19,11 +19,12 @@ def preprocess(arr,config):
         orig_imga = arr
         orig_imga_conv = orig_imga.copy()
     output = {}
-    for cidx in xrange(orig_imga_conv.shape[2]):
+    for cidx in xrange(orig_imga_conv.shape[2]): 
         if config.get('preproc'):
             output[cidx] = map_preprocessing(orig_imga_conv[:,:,cidx],config) 
         else:
             output[cidx] = orig_imga_conv[:,:,cidx]
+
     return output,orig_imga
 
 

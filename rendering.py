@@ -68,7 +68,7 @@ def renderman_random_config_gen(args):
     funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz']]
 
     if not 'models' in args:
-        models = json.loads(urllib.urlopen("http://50.19.109.25:9999/models?action=distinct&field=id").read())
+        models = json.loads(urllib.urlopen("http://50.19.109.25:9999/3dmodels?action=distinct&field=id").read())
     else:
         models = args['models']
     funcs1 = [('model_id',chooser(models))]

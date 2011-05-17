@@ -38,7 +38,6 @@ DB_NAME = 'v1-test'
 
 try:
     import pycuda.driver as cuda
-    cuda.init()
 except:
     GPU_SUPPORT = False
 else:
@@ -246,10 +245,6 @@ def extract_features(feature_certificate,
     
     remove_existing(f_coll,f_fs,feature_hash)
 
-    if convolve_func_name == 'pyfft':
-        device_ids = range(get_num_gpus())
-        v1_pyfft.setup_pyfft(device_ids)
-        
     extract_features_core(image_certificate,
                           model_certificate,
                           feature_hash,
@@ -309,8 +304,8 @@ def extract_features_parallel(feature_certificate,
                                              {'im_skip':im_from,
                                               'im_limit':im_to-im_from,
                                               'm_skip':m_from,
-                                              'm_limit':m_to-m_from,
-                                              'initialize':False}],
+                                              'm_limit':m_to-m_from
+                                              }],
                                             opstring=opstring)
         jobids.append(jobid)
 
@@ -320,8 +315,15 @@ def extract_features_parallel(feature_certificate,
                                                'args':feature_config})
 
     return {'child_jobs':jobids}
-     
+
+
 def get_num_gpus():
+    p = multiprocessing.Pool(1)
+    r = p.apply(get_num_gpus_core,())
+    return r
+
+def get_num_gpus_core():
+    cuda.init()
     num = 0
     while True:
         try:
@@ -329,16 +331,16 @@ def get_num_gpus():
         except:
             break
         else:
-            num += 1
+            num +=1
     return num
-    
+
+
 def extract_features_core(image_certificate,
                           model_certificate,
                           feature_hash,
                           image_hash,
                           model_hash,
                           convolve_func_name,
-                          initialized=True,
                           im_query=None,
                           m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
 
@@ -349,12 +351,9 @@ def extract_features_core(image_certificate,
     elif convolve_func_name == 'pyfft':
         num_batches = get_num_gpus()
         if num_batches > 1:
-            pool = Pool(processes = num_batches)
+            pool = multiprocessing.Pool(processes = num_batches)
         else:
             pool = None
-        if not initialized:
-            device_ids = range(get_num_gpus())
-            v1_pyfft.setup_pyfft(device_ids)
     else:
         raise ValueError, 'convolve func name not recognized'
 
@@ -386,6 +385,7 @@ def extract_features_core(image_certificate,
         batches = get_feature_batches(image_hash,model_hash,image_col,model_col,im_skip=im_skip,
                                       im_limit = im_limit, m_skip = m_skip, 
                                       m_limit = m_limit, num_batches=num_batches)
+        print('batches',batches)
         res = []
         for (batch_num,(s0,l0,s1,l1)) in enumerate(batches):
             args = (image_certificate,
@@ -403,8 +403,8 @@ def extract_features_core(image_certificate,
 def extract_features_inner_core(image_certificate, model_certificate, feature_hash, image_hash,
      model_hash, convolve_func_name,device_id, im_query, m_query, im_skip,
      im_limit, m_skip, m_limit):
-                          
- 
+
+                                
     if im_query is None:
         im_query = {}
     if m_query is None:
@@ -425,17 +425,17 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
     feature_fs = gridfs.GridFS(db,'features')
                        
     if convolve_func_name == 'pyfft':
-        context = v1_pyfft.CONTEXTS[device_id]
+        context = v1_pyfft.setup_pyfft(device_id)
         context.push()
         convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
     else:
         convolve_func = v1f.v1like_filter_numpy
-      
+
     L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
     L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
         
     for image_config in L1:
-        for model_config in L2:              
+        for model_config in L2: 
             features = compute_features(image_config['filename'], image_fs, model_config, model_fs,convolve_func)
             features_string = cPickle.dumps(features)
             y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
@@ -446,13 +446,13 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
             
             
     if convolve_func_name == 'pyfft':
-        context.pop()            
+        context.pop()
             
         
 def get_feature_batches(im_hash,m_hash,im_col,m_col,im_skip=0,im_limit = 0, m_skip = 0, m_limit = 0, batch_size=None,num_batches=None):
     im_count = im_col.find({'__hash__':im_hash}).skip(im_skip).limit(im_limit).count()
     m_count = m_col.find({'__hash__':m_hash}).skip(m_skip).limit(m_limit).count()
-     
+
     if batch_size:
         im_batches = [(batch_size*i,batch_size*(i+1)) for i in range(max(im_count/batch_size,1))]
     else:
@@ -480,12 +480,11 @@ def compute_features_core(image_fh,filter_fh,model_config,convolve_func):
     
     #preprocessing
     array = v1e.image2array(m_config ,image_fh)
-    
-    preprocessed,orig_imga = v1e.preprocess(array,m_config )
-        
+  
+    preprocessed,orig_imga = v1e.preprocess(array,m_config)
     #input normalization
+
     norm_in = v1e.norm(preprocessed,conv_mode,m_config.get('normin'))
-    
     #filtering
     filtered = v1e.convolve(norm_in, filter_fh, m_config , convolve_func)
     
@@ -638,23 +637,18 @@ def load_features(filename,fs,m,task):
     
 
 def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
-    cached_val = get_from_cache((im,m,task.get('transform_average')),FEATURE_CACHE)
-    if cached_val is not None:
-        output = cached_val    
-    else:
-        if network_cache:
-            network_cache.send_pyobj({'get':(im,m,task.get('transform_average'))})
-            val = network_cache.recv_pyobj()
-            if val:
-                output = val
-            else:
-                output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
-                network_cache.send_pyobj({'put':((im,m,task.get('transform_average')),output)})
-                network_cache.recv_pyobj()
-        else:         
+
+    if network_cache:
+        network_cache.send_pyobj({'get':(im,m,task.get('transform_average'))})
+        val = network_cache.recv_pyobj()
+        if val:
+            output = val
+        else:
             output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
-        put_in_cache((im,m,task.get('transform_average')),output,FEATURE_CACHE)
-           
+            network_cache.send_pyobj({'put':((im,m,task.get('transform_average')),output)})
+            network_cache.recv_pyobj()
+    else:
+        output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
     return output
     
 
@@ -725,9 +719,8 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     else:
         sock = None
 
-
     if convolve_func_name == 'pyfft':
-        context = v1_pyfft.CONTEXTS[device_id]
+        context = v1_pyfft.setup_pyfft(device_id)
         context.push()
         convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
     else:
@@ -740,7 +733,7 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
 
     model_fs = gridfs.GridFS(db,'models')
     image_fs = gridfs.GridFS(db,'images')
-      
+
     L = [get_features(im, image_fs, m, model_fs, convolve_func,task,sock) for im in images]
     
     if convolve_func_name == 'pyfft':
@@ -766,6 +759,17 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     test_filenames = [t['filename'] for t in test_data]
     assert set(train_filenames).intersection(test_filenames) == set([])
 
+    existing_train_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in train_filenames]
+    existing_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is not None]
+    new_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is None]
+    new_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is None]
+
+
+    existing_test_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in test_filenames]
+    existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
+    new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    
     if convolve_func_name == 'numpy':
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
@@ -780,23 +784,34 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         raise ValueError, 'convolve func name not recognized'
 
     if num_batches > 1:
-        batches = get_data_batches(train_filenames,num_batches)
+        batches = get_data_batches(new_train_filenames,num_batches)
         results = []
         for (bn,b) in enumerate(batches):
             results.append(pool.apply_async(extract_and_evaluate_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
         results = [r.get() for r in results]
-        train_features = sp.row_stack(ListUnion(results))
-        batches = get_data_batches(test_filenames,num_batches)
+        new_train_features = ListUnion(results)
+        batches = get_data_batches(new_test_filenames,num_batches)
         results = []
         for (bn,b) in enumerate(batches):
             results.append(pool.apply_async(extract_and_evaluate_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
         results = [r.get() for r in results]
-        test_features = sp.row_stack(ListUnion(results))
+        new_test_features = ListUnion(results)
     else:
         print('train feature extraction ...')
-        train_features = sp.row_stack(extract_and_evaluate_inner_core(train_filenames,m,convolve_func_name,0,task,cache_port))
+        new_train_features = extract_and_evaluate_inner_core(new_train_filenames,m,convolve_func_name,0,task,cache_port)
         print('test feature extraction ...')
-        test_features = sp.row_stack(extract_and_evaluate_inner_core(test_filenames,m,convolve_func_name,0,task,cache_port))
+        new_test_features = extract_and_evaluate_inner_core(new_test_filenames,m,convolve_func_name,0,task,cache_port)
+
+    #TODO get the order consistent with original ordering
+    train_features = sp.row_stack(filter(lambda x : x is not None,existing_train_features) + new_train_features)
+    test_features = sp.row_stack(filter(lambda x : x is not None, existing_test_features) + new_test_features)
+    train_labels = existing_train_labels + new_train_labels
+    test_labels = existing_test_labels + new_test_labels
+    
+    for (im,f) in zip(new_train_filenames,new_train_features):
+        put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
+    for(im,f) in zip(new_test_filenames,new_test_features):
+        put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
                            
     print('classifier ...')
     res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
@@ -901,11 +916,6 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
                                                 image_certificate_file,
                                                 model_certificate_file,
                                                 task)
-
-    if convolve_func_name == 'pyfft':
-        device_ids = range(get_num_gpus())
-        v1_pyfft.setup_pyfft(device_ids)
-    
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:  
@@ -918,6 +928,7 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
                 put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
                 split_results.append(res)
             put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+
         
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
 
@@ -933,17 +944,12 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    #setup all devices
-    if convolve_func_name == 'pyfft':
-        device_ids = range(get_num_gpus())
-        v1_pyfft.setup_pyfft(device_ids)    
     
     splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m,'images':image_config_gen})[0]
     split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())
     res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
     splitperf_fs = gridfs.GridFS(db,'split_performance')
     put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
-    
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
