@@ -31,7 +31,7 @@ from dbutils import get_config_string, get_filename, reach_in, createCertificate
 from v1like_extract import get_config
 from sge_utils import qsub
 
-from pythor_networking import NETWORK_CACHE_PORT
+from pythor_networking import NETWORK_CACHE_PORT, NETWORK_CACHE_TIMEOUT
 
 
 DB_NAME = 'v1-test'
@@ -640,11 +640,17 @@ def load_features(filename,fs,m,task):
 
 def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
 
-    if network_cache:
-        obj =(im,m,task.get('transform_average')) 
+    if network_cache and network_cache.sockets:
+        sock = network_cache.sockets.keys()[0]
+        obj = (im,m,task.get('transform_average')) 
         hash = hashlib.sha1(repr(obj)).hexdigest()
-        network_cache.send_pyobj({'get':hash})
-        val = network_cache.recv_pyobj()
+        sock.send_pyobj({'get':hash})
+        poll = network_cache.poll(timeout=NETWORK_CACHE_TIMEOUT)
+        if poll != []:
+            val = sock.recv_pyobj()
+        else:
+            val = None
+            network_cache.unregister(sock)
         if val is not None:
             output = val
         else:
@@ -720,8 +726,16 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
         ctx = zmq.Context()
         sock = ctx.socket(zmq.REQ)
         sock.connect('tcp://127.0.0.1:' + str(cache_port))  
+        sock.send_pyobj({'alive':True})
+        poller = zmq.Poller()
+        poller.register(sock)
+        poll = poller.poll(timeout=NETWORK_CACHE_TIMEOUT)
+        if poll != []:
+            sock.recv_pyobj()
+        else:
+            poller = None
     else:
-        sock = None
+        poller = None
 
     if convolve_func_name == 'pyfft':
         context = v1_pyfft.setup_pyfft(device_id)
@@ -738,7 +752,7 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     model_fs = gridfs.GridFS(db,'models')
     image_fs = gridfs.GridFS(db,'images')
 
-    L = [get_features(im, image_fs, m, model_fs, convolve_func,task,sock) for im in images]
+    L = [get_features(im, image_fs, m, model_fs, convolve_func,task,poller) for im in images]
     
     if convolve_func_name == 'pyfft':
         context.pop()
@@ -942,6 +956,7 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
 
     if cache_port is None:
         cache_port = NETWORK_CACHE_PORT
+        
 
                
     conn = pm.Connection(document_class=bson.SON)
