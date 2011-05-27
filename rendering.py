@@ -3,6 +3,9 @@ import os
 import itertools
 import random
 
+import renderer
+
+
 from bson import SON
 
 import numpy as np
@@ -85,8 +88,6 @@ def renderman_random_config_gen(args):
         
     return params
 
-import renderer
-import os
 def renderman_render(config,returnfh = False):
      params_list = [{'model_params':[config.to_dict()]}]
      orig_dir = os.getcwd()
