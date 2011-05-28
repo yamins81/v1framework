@@ -1,23 +1,25 @@
 import starflow.de as de
-from starflow.protocols import actualize
+from starflow.protocols import actualize, activate
 from v1like_extract import get_config 
  
-import v1_protocols as v1p
+import pythor_protocols as protocols
 
 
 def get_code_dir(hash):
     manager = de.DataEnvironmentManager() 
     working_de = manager.working_de
-    return os.path.join(working_de.relative_generated_code_dir,v1p.DB_NAME.replace('-','_'),hash)
+    return os.path.join(working_de.relative_generated_code_dir,protocols.DB_NAME.replace('-','_'),hash)
 
 
+@activate(lambda x : x[0], lambda x: get_code_dir(protocols.image_protocol_hash(x)))
 def images(config_path,parallel=False):
-    D,hash = v1p.image_protocol(config_path,write = False,parallel=parallel)
+    D,hash = protocols.image_protocol(config_path,write = False,parallel=parallel)
     actualize(D,outfiledir=get_code_dir(hash))
     return hash
 
+
 def models(config_path,parallel=False):
-    D,hash = v1p.model_protocol(config_path,write = False,parallel=parallel)
+    D,hash = protocols.model_protocol(config_path,write = False,parallel=parallel)
     actualize(D,outfiledir=get_code_dir(hash))
     return hash
     
@@ -27,7 +29,7 @@ def extract_features(image_config_path,
                                    convolve_func_name = 'numpy',
                                    parallel=False,
                                    batch_size=1000):
-    D,hash = v1p.extract_features_protocol(image_config_path,
+    D,hash = protocols.extract_features_protocol(image_config_path,
                             model_config_path,
                             convolve_func_name = convolve_func_name,
                             write = False,
@@ -39,7 +41,7 @@ def extract_features(image_config_path,
 
  
 def evaluate(evaluate_config_path,model_config_path,image_config_path):
-    D,hashes = v1p.evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False)
+    D,hashes = protocols.evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False)
     for (d,h) in zip(D,hashes):
         actualize([d],outfiledir=get_code_dir(h))
     return hashes
@@ -49,7 +51,7 @@ def extract_and_evaluate(evaluate_config_path,
                                        model_config_path,
                                        image_config_path,
                                        convolve_func_name='numpy'):
-    DH = v1p.extract_and_evaluate_protocol(evaluate_config_path,model_config_path,
+    DH = protocols.extract_and_evaluate_protocol(evaluate_config_path,model_config_path,
                                              image_config_path,
                                              convolve_func_name=convolve_func_name,
                                              write=False)

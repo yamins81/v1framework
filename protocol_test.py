@@ -1,4 +1,4 @@
-import v1_protocols
+import pythor_protocols as v1_protocols
 from starflow.protocols import protocolize
 
 

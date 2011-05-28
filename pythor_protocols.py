@@ -33,8 +33,7 @@ from sge_utils import qsub
 
 from pythor_networking import NETWORK_CACHE_PORT, NETWORK_CACHE_TIMEOUT
 
-
-DB_NAME = 'v1-test'
+DB_NAME = 'thor'
 
 try:
     import pycuda.driver as cuda
@@ -50,11 +49,14 @@ def remove_existing(coll,fs, hash):
         fs.delete(e['_id'])
 
 
-def image_protocol(config_path,write = False,parallel=False):
-
+def image_protocol_hash(config_path):
     config = get_config(config_path)
-
     image_hash = get_config_string(config['images'])
+    return image_hash
+
+def image_protocol(config_path,write = False,parallel=False):
+    config = get_config(config_path) 
+    image_hash = image_protocol_hash(config_path)
     image_certificate = '../.image_certificates/' + image_hash
 
     if  not parallel:

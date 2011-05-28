@@ -11,6 +11,10 @@ from bson import SON
 import numpy as np
 import cairo
 
+BASE_URL = 'http://50.19.109.25'
+MODEL_URL = BASE_URL + ':9999/3dmodels?'
+BG_URL =  BASE_URL + ':9999/backgrounds?'
+
 def render_image(config,returnfh=False): 
      generator = config['generator']
      if generator == 'renderman':
@@ -40,8 +44,6 @@ def gridded_config_gen(config):
         return renderman_config_gen(config['images'])
         
 
-IMAGE_URL = 'localhost:8000/render?'
-
 def renderman_config_gen(args):
     ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
     
@@ -64,21 +66,36 @@ def renderman_config_gen(args):
 
 import urllib
 import json
+
+    
 def renderman_random_config_gen(args):
     chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])    
     ranger = lambda v : (((chooser(np.arange(v['$gt'],v['$lt'],v['delta'])) if v.get('delta') else (lambda : (v['$lt'] - v['$gt']) * random.random() + v['$gt'])))  if isinstance(v,dict) else v) if v else None
     num = args['num_images']
     funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz']]
 
-    if not 'models' in args:
-        models = json.loads(urllib.urlopen("http://50.19.109.25:9999/3dmodels?action=distinct&field=id").read())
+    if not 'model_ids' in args:
+        models = json.loads(urllib.urlopen(MODEL_URL + 'action=distinct&field=id').read())
     else:
-        models = args['models']
+        models = args['model_ids']
     funcs1 = [('model_id',chooser(models))]
+    if 'bg_ids' in args:
+        bg_ids = args['bg_ids']
+        funcs1.append(('bg_id',chooser(bg_ids)))
+    elif 'bg_query' in args:
+        bg_query = args['bg_query']
+        bg_ids = json.loads(urllib.urlopen(BG_URL + 'query=' + json.dumps(bg_query) + '&distinct=path').read())
+        funcs1.append(('bg_id',chooser(bg_ids)))
+        
+    if 'kenvs' in args:
+        kenvs = args['kenvs']
+        funcs1.append(('kenv',chooser(kenvs)))
     
     params = []
     for i in range(num):
         param = SON([])
+        if args.get('use_canonical'):
+            param['use_canonical'] = args['use_canonical']    
         for (k,f) in funcs:
             if f:
                 param[k] = f()
@@ -88,21 +105,43 @@ def renderman_random_config_gen(args):
         
     return params
 
-def renderman_render(config,returnfh = False):
-     params_list = [{'model_params':[config.to_dict()]}]
-     orig_dir = os.getcwd()
-     os.chdir(os.path.join(os.environ['HOME'] , 'render_wd'))
-     tmp = tempfile.mkdtemp()
-     renderer.render(tmp,[{'model_params':[config.to_dict()]}])
-     imagefile = [os.path.join(tmp,x) for x in os.listdir(tmp) if x.endswith('.tif')][0]
-     os.chdir(orig_dir)
-     
-     fh = open(imagefile)
-     if returnfh:
-         return fh
-     else:
-         return fh.read()
 
+def get_canonical_view(m):
+    v = json.loads(urllib.urlopen(MODEL_URL + 'query={"id":"' + m + '"}&fields=["canonical_view"]').read())[0]
+    if v.get('canonical_view'):
+        return v['canonical_view']
+    
+    
+def renderman_render(config,returnfh = False):
+    config = config.to_dict()
+    
+    params_list = [{}]
+    param = params_list[0]
+    if 'bg_id' in config:
+        param['bg_id'] = config.pop('bg_id')
+    if 'kenv' in config:
+        param['kenv'] = config.pop('kenv')
+    use_canonical = config.pop('use_canonical',False)
+    if use_canonical:
+        v = get_canonical_view(config['model_id'])
+        if v:
+            config['rotations'] = [{'rxy':v['rxy'],'rxz':v['rxz'],'ryz':v['ryz']},
+                                   {'rxy':config.pop('rxy',0),'rxz':config.pop('rxz',0),'ryz':config.pop('ryz',0)}]
+    param['model_params'] = [config]   
+
+    orig_dir = os.getcwd()
+    os.chdir(os.path.join(os.environ['HOME'] , 'render_wd'))
+    tmp = tempfile.mkdtemp()
+    renderer.render(tmp,params_list)
+    imagefile = [os.path.join(tmp,x) for x in os.listdir(tmp) if x.endswith('.tif')][0]
+    os.chdir(orig_dir)
+     
+    fh = open(imagefile)
+    if returnfh:
+        return fh
+    else:
+        return fh.read()
+    
 
 def cairo_config_gen(args):
     ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args[v]['delta']).tolist() if isinstance(args.get(v),dict) else [args.get(v)]
