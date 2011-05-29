@@ -18,6 +18,8 @@
 ../generated_code
 ../main_pull.py
 ../greedy_search.py
-../v1_protocols.py
+../pythor_protocols.py
 ../protocol_test.py
 ../deep_test.py
+../deploy.py
+../experiments.py

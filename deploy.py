@@ -1,3 +1,5 @@
+import os
+
 import starflow.de as de
 from starflow.protocols import actualize, activate
 from v1like_extract import get_config 
@@ -8,10 +10,10 @@ import pythor_protocols as protocols
 def get_code_dir(hash):
     manager = de.DataEnvironmentManager() 
     working_de = manager.working_de
-    return os.path.join(working_de.relative_generated_code_dir,protocols.DB_NAME.replace('-','_'),hash)
+    return os.path.join(working_de.relative_generated_code_dir,protocols.DB_NAME.replace('-','_'),'module_' +hash)
 
 
-@activate(lambda x : x[0], lambda x: get_code_dir(protocols.image_protocol_hash(x)))
+@activate(lambda x : x[0], lambda x: get_code_dir(protocols.image_protocol_hash(x[0])))
 def images(config_path,parallel=False):
     D,hash = protocols.image_protocol(config_path,write = False,parallel=parallel)
     actualize(D,outfiledir=get_code_dir(hash))
@@ -96,7 +98,7 @@ def run_full_protocol(config_path,
                              parallel=parallel,
                              batch_size=feature_batch_size)
             e_hashes = evaluate(config_path,config_path,config_path)
-        	hashes.append(f_hash).extend(e_hashes)
+            hashes.append(f_hash).extend(e_hashes)
 
     codes = ['^.*' + h for h in hashes]
     update.FullUpdate(AU=codes)

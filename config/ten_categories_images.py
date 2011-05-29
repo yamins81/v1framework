@@ -8,7 +8,7 @@ MODELS = ListUnion(MODEL_CATEGORIES.values())
 config = {'images' : 
           SON([('model_ids',MODELS),
                ('bg_query',SON([("type","3d hdr")])),
-               ('num_images',100),
+               ('num_images',10000),
                ('use_canonical',True),
                ('ty',SON([('$gt',-.1),('$lt',.1)])),
                ('generator','renderman'),

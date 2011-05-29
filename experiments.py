@@ -1,6 +1,6 @@
 from starflow.protocols import Apply, Applies
 
-from deploy import images
+import deploy
 
 @Applies(deploy.images,args=('../config/ten_categories_images.py',True))
 def ten_categories_images():
