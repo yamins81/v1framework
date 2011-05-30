@@ -2,14 +2,15 @@ import tempfile
 import os
 import itertools
 import random
-
-import renderer
-
-
-from bson import SON
+import urllib
+import json
 
 import numpy as np
 import cairo
+
+import renderer
+
+from bson import SON
 
 BASE_URL = 'http://50.19.109.25'
 MODEL_URL = BASE_URL + ':9999/3dmodels?'
@@ -24,24 +25,31 @@ def render_image(config,returnfh=False):
      else:
          raise ValueError, 'image generator not recognized'
          
-
 def config_gen(config):
-    if config['images']['selection'] == 'gridded':
-        return gridded_config_gen(config)
-    elif config['images']['selection'] == 'random':
-        return random_config_gen(config)
+    if not isinstance(config['images'],list):
+        config['images'] = [config['images']]
+    params = []
+    for I in config['images']:    
+        if I['selection'] == 'gridded':
+            newparams = gridded_config_gen(I)
+        elif I['selection'] == 'random':
+            newparams = random_config_gen(I)
+        for np in newparams:
+            np['generator'] = I['generator']
+        params.extend(newparams)
+    return params
         
 def random_config_gen(config):
-    if config['images']['generator'] == 'cairo':
-        return cairo_random_config_gen(config['images'])
-    elif config['images']['generator'] == 'renderman':
-        return renderman_random_config_gen(config['images'])       
+    if config['generator'] == 'cairo':
+        return cairo_random_config_gen(config)
+    elif config['generator'] == 'renderman':
+        return renderman_random_config_gen(config)       
         
 def gridded_config_gen(config):
-    if config['images']['generator'] == 'cairo':
-        return cairo_config_gen(config['images'])   
-    elif config['images']['generator'] == 'renderman':
-        return renderman_config_gen(config['images'])
+    if config['generator'] == 'cairo':
+        return cairo_config_gen(config)   
+    elif config['generator'] == 'renderman':
+        return renderman_config_gen(config)
         
 
 def renderman_config_gen(args):
@@ -57,22 +65,47 @@ def renderman_config_gen(args):
     sy = ranger('sy')
     sz = ranger('sz')
     kenv = ranger('kenv')
-    model_ids = args['model_ids']   
+    model_ids = args['model_ids']
 
     param_names = ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','kenv','model_id']
     ranges = [tx,ty,tz,rxy,rxz,ryz,sx,sy,sz,kenv,model_ids]
     params = [SON([('image' , SON(filter(lambda x: x[1] is not None, zip(param_names,p))))]) for p in itertools.product(*ranges)]  
-    return params
 
-import urllib
-import json
 
+    chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])    
+    random_ranger = lambda v : (((chooser(np.arange(v['$gt'],v['$lt'],v['delta'])) if v.get('delta') else (lambda : (v['$lt'] - v['$gt']) * random.random() + v['$gt'])))  if isinstance(v,dict) else v) if v else None
     
+    if 'bg_ids' in args:
+        bg_ids = args['bg_ids']
+    elif 'bg_query' in args:
+        bg_query = args['bg_query']
+        bg_ids = json.loads(urllib.urlopen(BG_URL + 'query=' + json.dumps(bg_query) + '&distinct=path').read())
+    else:
+        bg_ids = None
+    funcs = []
+    if bg_ids:
+        funcs.append(('bg_id',chooser(bg_ids)))
+    if 'bg_phi' in args:
+        funcs.append(('bg_phi',random_ranger(args['bg_phi'])))
+    if 'bg_psi' in args:
+        funcs.append(('bg_psi',random_ranger(args['bg_psi'])))
+        
+    for param in params:
+        p = param['image']
+        if args.get('use_canonical'):
+            p['use_canonical'] = args['use_canonical']    
+        for (k,f) in funcs:
+            if f:
+                p[k] = f()
+    
+    return params
+    
+
 def renderman_random_config_gen(args):
     chooser = lambda v : (lambda : v[random.randint(0,len(v)-1)])    
     ranger = lambda v : (((chooser(np.arange(v['$gt'],v['$lt'],v['delta'])) if v.get('delta') else (lambda : (v['$lt'] - v['$gt']) * random.random() + v['$gt'])))  if isinstance(v,dict) else v) if v else None
     num = args['num_images']
-    funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','s']]
+    funcs = [(k,ranger(args.get(k))) for k in ['tx','ty','tz','rxy','rxz','ryz','sx','sy','sz','s','bg_phi','bg_psi']]
 
     if not 'model_ids' in args:
         models = json.loads(urllib.urlopen(MODEL_URL + 'action=distinct&field=id').read())
@@ -96,11 +129,10 @@ def renderman_random_config_gen(args):
         param = SON([])
         if args.get('use_canonical'):
             param['use_canonical'] = args['use_canonical']    
-        for (k,f) in funcs:
+        for (k,f) in funcs + funcs1:
             if f:
                 param[k] = f()
-        for (k,f) in funcs1:
-            param[k] = f()
+
         params.append(SON([('image',param)]))
         
     return params
@@ -119,6 +151,10 @@ def renderman_render(config,returnfh = False):
     param = params_list[0]
     if 'bg_id' in config:
         param['bg_id'] = config.pop('bg_id')
+    if 'bg_phi' in config:
+        param['bg_phi'] = config.pop('bg_phi')
+    if 'bg_psi' in config:
+        param['bg_phi'] = config.pop('bg_psi')
     if 'kenv' in config:
         param['kenv'] = config.pop('kenv')
     use_canonical = config.pop('use_canonical',False)

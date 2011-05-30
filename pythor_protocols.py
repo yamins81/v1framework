@@ -82,10 +82,8 @@ def generate_images(outfile,im_hash,config_gen):
     X = rendering.config_gen(config_gen)
     
     for (i,x) in enumerate(X):
-        x['image']['generator'] = config_gen['images']['generator']
         if (i/100)*100 == i:
-            print(i,x) 
-        
+            print(i,x)       
         image_string = rendering.render_image(x['image']) 
         y = SON([('config',x)])
         filename = get_filename(x)
