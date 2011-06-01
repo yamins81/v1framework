@@ -35,7 +35,7 @@ def config_gen(config):
         elif I['selection'] == 'random':
             newparams = random_config_gen(I)
         for np in newparams:
-            np['generator'] = I['generator']
+            np['image']['generator'] = I['generator']
         params.extend(newparams)
     return params
         

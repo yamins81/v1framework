@@ -263,16 +263,16 @@ def v1like_filter_pyfft(image,filter_source,model_config,device_id=0):
     if filter_key not in FILTER_FFT_CACHE:
         filterbank = filter_source()
         original_dtype = filterbank.dtype
-        filter_fft = np.empty(fft_shape + (filterbank.shape[2],),dtype=np.complex64)
+        filter_fft = np.empty((filterbank.shape[0],) + fft_shape ,dtype=np.complex64)
         for i in range(filterbank.shape[2]):
-            filter_fft[:,:,i] = v1_pyfft.fft(filterbank[:,:,i],fft_shape,device_id=device_id)
+            filter_fft[i] = v1_pyfft.fft(filterbank[i],fft_shape,device_id=device_id)
         FILTER_FFT_CACHE[filter_key] = (filter_fft,original_dtype)
     else:
         (filter_fft,original_dtype) = FILTER_FFT_CACHE[filter_key]
     
-    res_fft = np.empty(fft_shape + (filter_fft.shape[2],), dtype=filter_fft.dtype)
+    res_fft = np.empty((filter_fft.shape[0],) + fft_shape , dtype=filter_fft.dtype)
     for i in range(res_fft.shape[2]):
-        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[:,:,i],inverse=True,device_id=device_id)
+        res_fft[:,:,i] = v1_pyfft.fft(image_fft * filter_fft[i],inverse=True,device_id=device_id)
         
     delta = np.array(fft_shape) - np.array(full_shape)
 

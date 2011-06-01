@@ -17,7 +17,7 @@ def center_surround_orth(model_config):
 
     conv_mode = model_config['conv_mode']
     
-    L = np.empty(tuple(model_config['filter']['kshape']) + (2*len( model_config['filter']['base_images'] ),))
+    L = np.empty((2*len( model_config['filter']['base_images'] ),) + tuple(model_config['filter']['kshape']) )
     
     for (ind,image_config) in enumerate(model_config['filter']['base_images']):
         image_fh = rendering.cairo_render(image_config,returnfh=True)
@@ -54,15 +54,15 @@ def center_surround_orth(model_config):
           
         X = normalize(X)
         
-        L[:,:,2*ind] = X
-        L[:,:,2*ind + 1] = X.T
+        L[2*ind,:,:] = X
+        L[2*ind + 1,:,:] = X.T
         
     return L
 
 def center_surround(model_config):
     conv_mode = model_config['conv_mode']
     
-    L = np.empty(tuple(model_config['filter']['kshape']) + (len( model_config['filter']['base_images'] ),))
+    L = np.empty((len( model_config['filter']['base_images'] ),) + tuple(model_config['filter']['kshape']) )
     
     for (ind,image_config) in enumerate(model_config['filter']['base_images']):
         image_fh = rendering.cairo_render(image_config,returnfh=True)
@@ -97,7 +97,7 @@ def center_surround(model_config):
         X[hx0:hx1, wx0:wx1] = arr_box[ha0:ha1, wa0:wa1]
   
         X = normalize(X)        
-        L[:,:,ind] = X
+        L[ind,:,:] = X
 
         
     return L
@@ -144,24 +144,89 @@ def norm(input,conv_mode,params):
     return output
 
 
+
+def get_hierarchical_filterbanks(config):
+
+    filterbanks = [None]
+    filterbank1 = get_filterbank(config[1])
+    filterbanks.append(filterbank1)
+    n1 = len(filterbank1)
+    configL2 = config[2]
+    if configL2['filter']['model_name'] == 'uniform':
+        (fh,fw) = configL2['filter']['ker_shape']
+        f1 = config[1]['filter']
+        assert f1['model_name'] == 'gridded_gabor'
+        norients = f1['norients']
+        
+        fsample = configL2['filter'].get('fsample',1)
+        osample = configL2['filter'].get('osample',1)
+        
+        freq2 = len(f1['divfreqs'])/fsample
+        or2 = f1['norients']/osample
+        
+        n2 = freq2*or2
+        
+        fbank = np.zeros((n2*(n2 - 1 )/2,fh,fw,n1))
+        fnum = 0
+        for i in range(n2):
+            for j in range(i+1,n2):
+                fb1 = i/or2; orb1 = i - or2*(i/or2)
+                fb2 = j/or2; orb2 = j - or2*(j/or2)
+                
+                freqs1 = range(fb1*fsample,(fb1+1)*fsample)
+                ors1 = range(orb1*osample,(orb1+1)*osample)
+                
+                freqs2 = range(fb2*fsample,(fb2+1)*fsample)
+                ors2 = range(orb2*osample,(orb2+1)*osample)
+                
+                I = [norients*f + o for f in freqs1 for o in ors1]
+                J = [norients*f + o for f in freqs2 for o in ors2]
+                for ind in I + J:
+                    fbank[fnum,:,:,ind] = 1
+            
+                fnum += 1
+        
+        filterbanks.append(fbank)
+    elif configL2['filter']['model_name'] == 'really_random':
+        n2 = configL2['filter']['num_filters']
+        (fh,fw) = configL2['filter']['ker_shape']
+        filterbank = get_random_filterbank((n2,fh,fw,n1),normalization=configL2['filter'].get('normalize',True))
+        filterbanks.append(filterbank)
+    else:
+        filterbanks.append(get_filterbank(configL2))
+    for c in config[3:]:
+        filterbanks.append(get_filterbank(c))
+    
+    for (ind,fb) in enumerate(filterbanks):
+        if fb is not None:
+            filterbanks[ind] = np.cast[np.float32](fb)
+    return filterbanks
+        
+
+def get_random_filterbank(s,normalization=True):
+    filterbank = np.random.random(s)
+    if normalization:
+        for i in range(filterbank.shape[0]):
+            filterbank[i] = normalize(filterbank[i])
+    return filterbank
+    
+
 def get_filterbank(config):
+
     model_config = config
     config = config['filter']
     model_name = config['model_name']
-    fh, fw = config['kshape']
+    fh, fw = config.get('kshape',config.get('ker_shape'))
     
     if model_name == 'really_random':
         num_filters = config['num_filters']
-        filterbank = np.random.random((fh,fw,num_filters))
-        if config.get('normalize',True):
-            for i in range(filterbank.shape[2]):
-                filterbank[:,:,i] = normalize(filterbank[:,:,i])
-        
+        filterbank = get_random_filterbank((num_filters,fh,fw),normalization=config.get('normalize',True))
+
     elif model_name == 'random_gabor':
         num_filters = config['num_filters']
         xc = fw/2
         yc = fh/2
-        filterbank = np.empty((fh,fw,num_filters))
+        filterbank = np.empty((num_filters,fh,fw))
         orients = []
         freqs = []
         phases = []
@@ -177,7 +242,7 @@ def get_filterbank(config):
             phase = config.get('phase',2*np.pi*np.random.random())
             phases.append(phase)
             
-            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
+            filterbank[i,:,:] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh))   
         
@@ -193,14 +258,14 @@ def get_filterbank(config):
         yc = fh/2
         values = list(itertools.product(freqs,orients,phases))
         num_filters = len(values)
-        filterbank = np.empty((fh,fw,num_filters))
+        filterbank = np.empty((num_filters,fh,fw))
         for (i,(freq,orient,phase)) in enumerate(values):
-            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
+            filterbank[i,:,:] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh)) 
                                
     elif model_name == 'pixels':
-        return np.ones((fh,fw,1))
+        return np.ones((1,fh,fw))
 
     elif model_name == 'specific_gabor':
         orients = config['orients']
@@ -211,9 +276,9 @@ def get_filterbank(config):
         freqs = [1./d for d in divfreqs]
         values = zip(freqs,orients,phases)
         num_filters = len(values)
-        filterbank = np.empty((fh,fw,num_filters))
+        filterbank = np.empty((num_filters,fh,fw))
         for (i,(freq,orient,phase)) in enumerate(values):
-            filterbank[:,:,i] = v1m.gabor2d(xc,yc,xc,yc,
+            filterbank[i,:,:] = v1m.gabor2d(xc,yc,xc,yc,
                                freq,orient,phase,
                                (fw,fh)) 
         
@@ -222,7 +287,7 @@ def get_filterbank(config):
         specs = config.get('specs')
         if not specs:
             specs = [spec['image'] for spec in rendering.cairo_config_gen(config['spec_gen'])]
-        filterbank = np.empty((fh,fw,len(specs)))
+        filterbank = np.empty((len(specs),fh,fw))
         for (i,spec) in enumerate(specs):
             im_fh = rendering.cairo_render(spec,returnfh=True)
             arr = processing.image2array({'color_space':'rgb'},im_fh).astype(np.int32)
@@ -230,7 +295,7 @@ def get_filterbank(config):
             arrx0 = arr.shape[0]/2
             arry0 = arr.shape[1]/2
             dh = fh/2; dw = fw/2
-            filterbank[:,:,i] = normalize(arr[arrx0-dh:arrx0+(fh - dh),arry0-dw:arry0+(fw-dw)])
+            filterbank[i,:,:] = normalize(arr[arrx0-dh:arrx0+(fh - dh),arry0-dw:arry0+(fw-dw)])
     
     elif model_name == 'center_surround':
         
@@ -239,4 +304,5 @@ def get_filterbank(config):
         else:
             return center_surround(model_config)
 
+    filterbank = np.cast[np.float32](filterbank) 
     return filterbank

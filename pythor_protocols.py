@@ -18,7 +18,6 @@ from starflow.protocols import protocolize, actualize
 from starflow.utils import activate
 from starflow.sge_utils import wait_and_get_statuses
 
-import v1like_extract as v1e
 import v1like_funcs as v1f
 import traintest
 import svm
@@ -26,21 +25,24 @@ import rendering
 import filter_generation
 import starflow.de as de
 from starflow.utils import ListUnion
+from processing import image2array, preprocess, postprocess
 
 from dbutils import get_config_string, get_filename, reach_in, createCertificateDict, son_escape, get_most_recent_files
-from v1like_extract import get_config
 from sge_utils import qsub
-
 from pythor_networking import NETWORK_CACHE_PORT, NETWORK_CACHE_TIMEOUT
 
 DB_NAME = 'thor'
+
+import pythor3.operation.lnorm_.plugins.cthor
+import pythor3.operation.lpool_.plugins.cthor
+import pythor3.operation.fbcorr_.plugins.cthor
 
 try:
     import pycuda.driver as cuda
 except:
     GPU_SUPPORT = False
 else:
-    import v1_pyfft
+    import pythor3.operation.fbcorr_.plugins.cuFFT as cuFFT
     GPU_SUPPORT = True
 
 def remove_existing(coll,fs, hash):
@@ -122,7 +124,6 @@ def generate_images_parallel(outfile,im_hash,config_gen):
        
     jobids = []
     for (i,x) in enumerate(X):
-        x['image']['generator'] = config_gen['images']['generator'] 
         jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render -e /home/render')  
         jobids.append(jobid)
         
@@ -162,8 +163,8 @@ def generate_models(outfile,m_hash,config_gen):
     M = model_config_generator(config_gen)       
     
     for (i,m) in enumerate(M):
-        filterbank = filter_generation.get_filterbank(m['model']) 
-        filterbank_string = cPickle.dumps(filterbank)
+        filterbanks = filter_generation.get_hierarchical_filterbank(m['model']['layers']) 
+        filterbank_string = cPickle.dumps(filterbanks)
         if (i/100)*100 == i:
             print(i,m) 
         
@@ -289,7 +290,7 @@ def extract_features_parallel(feature_certificate,
 
     if convolve_func_name == 'numpy':
         queueName = 'extraction_cpu.q'
-    elif convolve_func_name == 'pyfft':
+    elif convolve_func_name == 'cufft':
         queueName = 'extraction_gpu.q'
 
     opstring = '-l qname=' + queueName + ' -o /home/render -e /home/render'
@@ -348,7 +349,7 @@ def extract_features_core(image_certificate,
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
             pool = multiprocessing.Pool()
-    elif convolve_func_name == 'pyfft':
+    elif convolve_func_name == 'cufft':
         num_batches = get_num_gpus()
         if num_batches > 1:
             pool = multiprocessing.Pool(processes = num_batches)
@@ -424,19 +425,22 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
     
     feature_fs = gridfs.GridFS(db,'features')
                        
-    if convolve_func_name == 'pyfft':
-        context = v1_pyfft.setup_pyfft(device_id)
-        context.push()
-        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
+    if convolve_func_name == 'cufft':
+        convolve_func = cuFFT.LFBCorrCuFFT(init_cuda=False)
+        convolve_func.init(device_id)
+        context = convolve_func.context
     else:
-        convolve_func = v1f.v1like_filter_numpy
+        convolve_func = functools.partial(pythor3.operation.fbcorr,plugin="cthor")
 
     L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
     L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
         
-    for image_config in L1:
-        for model_config in L2: 
-            features = compute_features(image_config['filename'], image_fs, model_config, model_fs,convolve_func)
+    for model_config in L2: 
+        filter_fh = model_fs.get_version(model_config['filename'])
+        filter = cPickle.loads(filter_fh.read())
+    
+        for image_config in L1:
+            features = compute_features(image_config['filename'], image_fs, filter, model_config, convolve_func)
             features_string = cPickle.dumps(features)
             y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
             filename = get_filename(y['config'])
@@ -445,7 +449,7 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
             feature_fs.put(features_string,**y)
             
             
-    if convolve_func_name == 'pyfft':
+    if convolve_func_name == 'cufft':
         context.pop()
             
         
@@ -466,39 +470,11 @@ def get_feature_batches(im_hash,m_hash,im_col,m_col,im_skip=0,im_limit = 0, m_sk
     return [(imb[0]+im_skip,imb[1]+im_skip,mb[0]+m_skip,mb[1]+m_skip) for imb in im_batches for mb in m_batches]
     
 
-def compute_features(image_filename, image_fs, model_config, model_fs,convolve_func):
+def compute_features(image_filename, image_fs, filter, model_config, convolve_func):
     image_fh = image_fs.get_version(image_filename)
-    filter_fh = model_fs.get_version(model_config['filename'])
     print('extracting', image_filename, model_config)
-    return compute_features_core(image_fh,filter_fh,model_config,convolve_func)
+    return compute_features_core(image_fh,filter,model_config,convolve_func)
 
-        
-def compute_features_core(image_fh,filter_fh,model_config,convolve_func):
-
-
- 
-    m_config = model_config['config']['model']
-    conv_mode = m_config['conv_mode']
-    
-    #preprocessing
-    array = v1e.image2array(m_config ,image_fh)
-  
-    preprocessed,orig_imga = v1e.preprocess(array,m_config)
-    #input normalization
-
-    norm_in = v1e.norm(preprocessed,conv_mode,m_config.get('normin'))
-    #filtering
-    filtered = v1e.convolve(norm_in, filter_fh, m_config , convolve_func)
-    
-    #nonlinear activation
-    activ = v1e.activate(filtered,m_config.get('activ'))
-    
-    #output normalization
-    norm_out = v1e.norm(activ,conv_mode,m_config.get('normout'))
-    #pooling
-    pooled = v1e.pool(norm_out,conv_mode,m_config.get('pool'))
-    
-    return pooled
     
     
 def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
@@ -638,7 +614,7 @@ def load_features(filename,fs,m,task):
         return val
     
 
-def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
+def get_features(im,im_fs,filter,m,convolve_func,task,network_cache):
 
     if network_cache and network_cache.sockets:
         sock = network_cache.sockets.keys()[0]
@@ -654,7 +630,7 @@ def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
         if val is not None:
             output = val
         else:
-            output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
+            output = transform_average(compute_features(im, im_fs, filter, m, convolve_func) , task.get('transform_average'),m)
             network_cache.send_pyobj({'put':(hash,output)})
             network_cache.recv_pyobj()
     else:
@@ -666,17 +642,18 @@ def generate_splits(task_config,hash,colname):
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
-    ntrain_pos = task_config.get('ntrain_pos')
-    ntest_pos = task_config.get('ntest_pos')
     N = task_config.get('N',10)
-    query = task_config['query']  
-    base_query.update(reach_in('config',task_config.get('universe',SON([]))))    
-    cquery = reach_in('config',query)
+    base_query.update(reach_in('config',task_config.get('universe',SON([]))))
     
-    print('q',cquery)
-    print('u',base_query)
- 
-    return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
+    query = task_config['query'] 
+    if isinstance(query,list):
+        cqueries = [reach_in('config',q) for q in query]
+        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest,universe=base_query)
+    else:
+        ntrain_pos = task_config.get('ntrain_pos')
+        ntest_pos = task_config.get('ntest_pos')
+        cquery = reach_in('config',query)
+        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
 
 
 def transform_average(input,config,model_config):
@@ -737,12 +714,12 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     else:
         poller = None
 
-    if convolve_func_name == 'pyfft':
-        context = v1_pyfft.setup_pyfft(device_id)
-        context.push()
-        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
+    if convolve_func_name == 'cufft':
+        convolve_func = cuFFT.LFBCorrCuFFT(init_cuda=False)
+        convolve_func.init(device_id)
+        context = convolve_func.context
     else:
-        convolve_func = v1f.v1like_filter_numpy
+        convolve_func = pythor3
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -752,9 +729,12 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     model_fs = gridfs.GridFS(db,'models')
     image_fs = gridfs.GridFS(db,'images')
 
-    L = [get_features(im, image_fs, m, model_fs, convolve_func,task,poller) for im in images]
+    filter_fh = model_fs.get_version(model_config['filename'])
+    filter = cPickle.loads(filter_fh.read())
     
-    if convolve_func_name == 'pyfft':
+    L = [get_features(im, image_fs, filter, m, convolve_func,task,poller) for im in images]
+    
+    if convolve_func_name == 'cufft':
         context.pop()
         
     return L
@@ -792,8 +772,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
             pool = multiprocessing.Pool()
-    elif convolve_func_name == 'pyfft':
-
+    elif convolve_func_name == 'cufft':
         num_batches = get_num_gpus()
         if num_batches > 1:
             pool = multiprocessing.Pool(processes = num_batches)
@@ -984,7 +963,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     jobids = []
     if convolve_func_name == 'numpy':
         opstring = '-l qname=extraction_cpu.q'
-    elif convolve_func_name == 'pyfft':
+    elif convolve_func_name == 'cufft':
         opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
         
     for m in model_configs: 
@@ -998,7 +977,6 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
                 jobids.append(jobid)
 
-    print(jobids)
     statuses = wait_and_get_statuses(jobids)
     
     for m in model_configs: 
@@ -1029,21 +1007,90 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
         overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)    
         
-        if not parallel:
-            performance_certificate = '../.performance_certificates/' + ext_hash
+        performance_certificate = '../.performance_certificates/' + ext_hash
+        if parallel:
             op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
-            D.append(op)
-            DH[ext_hash] = [op]
         else:
-            performance_certificate = '../.performance_certificates/' + ext_hash
-            batch_certificate = '../.batch_certificates/' + ext_hash
-            op = ('evaluation' + ext_hash,extract_and_evaluate_parallel,(batch_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
-            D.append(op)
-            DH[ext_hash] = [op]
+            op = ('evaluation_' + ext_hash,extract_and_evaluate_parallel,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+        D.append(op)
+        DH[ext_hash] = [op]
              
     if write:
         actualize(D)
     return DH
 
 
+
+
+
+#=-=-=-=-=-=-=-=core computations
+    
+def compute_features_core(image_fh,filters,model_config,convolve_func):
+ 
+    m_config = model_config['config']['model']
+    conv_mode = m_config['conv_mode']
+    layers = m_config['layers']
+    
+    
+    #preprocessing
+    array = image2array(m_config,image_fh)
+    array,orig_imga = preprocess(array,m_config)
+#    for cidx in array.keys():
+#        if len(array[cidx].shape) != 3:
+#            array[cidx] = array[cidx][:,:,sp.newaxis]
+
+    assert len(filters) == len(layers)
+    dtype = array[0].dtype
+    
+    for (filter,layer) in zip(filters,layers):
+
+        if filter is not None:
+            #filter + activation
+            array = fbcorr(array, filter, layer , convolve_func)
+
+        if layer.get('lpool'):
+            array = lpool(array,conv_mode,layer['lpool'])
+     
+        if layer.get('lnorm'):
+            array = lnorm(array,conv_mode,layer['lnorm'])
+     
+    return array
+
+
+def fbcorr(input,filter,layer_config,convolve_func):
+	output = {}     
+	for cidx in input.keys():
+		output[cidx] = convolve_func(input[cidx],
+										 filter,
+										 min_out=layer_config['activ'].get('min_out'),
+										 max_out=layer_config['activ'].get('max_out'))         
+	return output
+
+
+
+def lpool(input,conv_mode,config):
+	pooled = {}
+	for cidx in input.keys():
+		pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)
+	return pooled
+
         
+ 
+def lnorm(input,conv_mode,config):
+	normed = {}
+	for cidx in input.keys():
+		normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='cthor',**config)
+	return normed
+
+
+     
+     
+#-0-0-0-0-0-utils
+
+def get_config(config_fname):
+    config_path = os.path.abspath(config_fname)
+    print("Config file:", config_path)
+    config = {}
+    execfile(config_path, {},config)
+    
+    return config['config']

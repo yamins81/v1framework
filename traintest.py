@@ -298,3 +298,55 @@ def generate_multi_split(dbname,collectionname,queries,ntrain,ntest,ntrain_pos =
            }
 
  
+ 
+def generate_multi_split2(dbname,collectionname,task_queries,N,ntrain,ntest,universe = None,labels=None):
+
+    nq = len(task_queries)
+    if labels is None:
+        labels = range(nq)
+    
+    task_queries = [copy.deepcopy(task_query) for task_query in task_queries]
+    print('Generating splits ...')
+    if universe is None:
+        universe = SON([])
+
+    connection = pm.Connection(document_class=SON)
+    db = connection[dbname]
+    data = db[collectionname + '.files']
+
+    fs = gridfs.GridFS(db,collection=collectionname)
+
+    for task_query in task_queries:
+        combine_things(task_query,universe)
+    
+    task_data = [get_most_recent_files(data,task_query,kwargs={"fields":["filename"]}) for task_query in task_queries]
+    
+    ntrain_vec = [ntrain/nq]*(nq - 1) + [ntrain - (ntrain/nq)*(nq-1)]
+    ntest_vec = [ntest/nq]*(nq - 1) + [ntest - (ntest/nq)*(nq-1)]
+    
+    for (tq,td,ntr,nte) in zip(task_queries,task_data,ntrain_vec,ntest_vec):
+        assert ntr + nte <= len(td), 'not enough examples to train/test for %s, %d needed, but only have %d' % (repr(tq),ntr+nte,len(td))
+    
+    splits = []  
+    for ind in range(N):
+        print('... split', ind)
+        
+        train_data = []
+        test_data = []
+        train_labels = []
+        test_labels = []
+        for (label,td,ntr,nte) in zip(labels,task_data,ntrain_vec,ntest_vec):
+            perm = sp.random.permutation(len(td))
+            train_data.extend([td[i] for i in perm[:ntr]])
+            test_data.extend([td[i] for i in perm[ntr:ntr+nte]])
+            train_labels.extend([label]*ntr)
+            test_labels.extend([label]*nte)
+
+        train_filenames = np.array([str(_t['filename']) for _t in train_data])
+        test_filenames = np.array([str(_t['filename']) for _t in test_data])
+        assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))
+             
+        split = {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+        splits.append(split)
+   
+    return splits
