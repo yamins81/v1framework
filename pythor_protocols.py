@@ -96,7 +96,7 @@ def generate_images(outfile,im_hash,config_gen):
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
 def generate_and_insert_single_image(x,im_hash):
-
+    
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
     im_coll = db['images.files']
@@ -124,7 +124,7 @@ def generate_images_parallel(outfile,im_hash,config_gen):
        
     jobids = []
     for (i,x) in enumerate(X):
-        jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render -e /home/render')  
+        jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render/image_jobs -e /home/render/image_jobs')  
         jobids.append(jobid)
         
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
