@@ -9,94 +9,76 @@
 from bson import SON
 
 models = [SON([
-    
-SON([
     ('layers', [SON([('lnorm', SON([
                 ('inker_shape' , (9,9)),
                 ('outker_shape', (9,9)),
                 ('threshold' , 1.0),
                 ('stretch',1)
                 ]))]),
-                
             SON([('filter',SON([
                     ('ker_shape',(3,3)),
                     ('model_name','really_random'),
                     ('num_filters',16)
                     ])),
-    
                 ('activ', SON([
                     ('min_out' , 0),
                     ('max_out' , None),
                     ])),
-                
                 ('lnorm', SON([
                     ('inker_shape', (9,9)),
                     ('outker_shape', (0,0)),
                     ('threshold', 10.0),
                     ('stretch',.1)
                     ])),
-                
                 ('lpool',SON([
                     ('order',2),
                     ('stride',2),
                     ('ker_shape',(5,5))
                     ]))
-                
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('num_filters',32),
                     ('ker_shape',(3,3)),
                     ])),
-    
                 ('activ', SON([
                     ('min_out' , 0),
                     ('max_out' , None),
                     ])),
-                
                 ('lnorm', SON([
                     ('inker_shape', (5,5)),
                     ('outker_shape', (0,0)),
                     ('threshold', 10.0),
                     ('stretch',.1),
                     ('remove_mean',True)
-                    ])),
-                
+                    ])),           
                 ('lpool',SON([
                     ('order',10),
                     ('stride',2),
                     ('ker_shape',(5,5))
-                    ]))
-                
+                    ]))         
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('num_filters',128),
                     ('ker_shape',(3,3)),
                     ])),
-    
                 ('activ', SON([
                     ('min_out' , None),
                     ('max_out' , 1),
                     ])),
-                
                 ('lnorm', SON([
                     ('inker_shape', (3,3)),
                     ('outker_shape', (0,0)),
                     ('threshold', 10.0),
                     ('stretch',.1),
                     ])),
-                
                 ('lpool',SON([
                     ('order',2),
                     ('stride',2),
                     ('ker_shape',(9,9))
                     ]))
-                
                 ])
-
-                
-            
            ])    
     ]),
 ]
