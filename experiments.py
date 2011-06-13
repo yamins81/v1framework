@@ -650,6 +650,19 @@ def ext_eval_medium_gabor_mod4_with_freq_uniform_ten_categories(depends_on=('../
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
                                             
+@protocolize()
+def make_best_l3_model(depends_on='../config/best_l3_model.py'):
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+                                            
+@protocolize()
+def ext_eval_best_l3_ten_categories(depends_on=('../config/ten_categories_renderman_task2.py',
+                                                  '../config/best_l3_model.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.extract_and_evaluate_protocol('../config/ten_categories_renderman_task2.py',
+                                            '../config/best_l3_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
                                             
 @protocolize()
 def make_medium_l1_random_model(depends_on='../config/l1_random_120.py'):
