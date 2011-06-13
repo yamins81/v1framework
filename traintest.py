@@ -159,13 +159,13 @@ def generate_split2(dbname,collectionname,task_query,N,ntrain,ntest,ntrain_pos =
     combine_things(task_query,universe)
     
     print('T',task_query)
-    task_data = get_most_recent_files(data,task_query)
+    task_data = list(data.find(task_query,fields=["filename"]))
     task_fnames = [str(x['filename']) for x in task_data]
     N_task = len(task_data)
     
     if use_negate:
         task_fnames = np.array(task_fnames)
-        all_data = get_most_recent_files(data,universe)
+        all_data = list(data.find(universe,fields=["filename"]))
         all_fnames = np.array([str(x['filename']) for x in all_data])
         I = np.invert(tb.isin(all_fnames,task_fnames)).nonzero()[0]
         nontask_data = [all_data[ind] for ind in I]
@@ -319,7 +319,7 @@ def generate_multi_split2(dbname,collectionname,task_queries,N,ntrain,ntest,univ
     for task_query in task_queries:
         combine_things(task_query,universe)
     
-    task_data = [get_most_recent_files(data,task_query,kwargs={"fields":["filename"]}) for task_query in task_queries]
+    task_data = [list(data.find(task_query,fields=["filename"])) for task_query in task_queries]
     
     ntrain_vec = [ntrain/nq]*(nq - 1) + [ntrain - (ntrain/nq)*(nq-1)]
     ntest_vec = [ntest/nq]*(nq - 1) + [ntest - (ntest/nq)*(nq-1)]

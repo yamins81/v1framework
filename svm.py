@@ -92,7 +92,8 @@ def classify(train_features,
 def ova_classify(train_features,
                      train_labels,
                      test_features,
-                     test_labels):
+                     test_labels,
+                     classifier_kwargs):
                      
     """
     Classifier using one-vs-all on top of liblinear binary classification.  
@@ -100,8 +101,10 @@ def ova_classify(train_features,
     by averaging these measure of the binary results. 
     """
                      
-    train_features, test_features = __sphere(train_features, test_features)
+    train_features, test_features,fmean,fstd = __sphere(train_features, test_features)
 
+    classifier_kwargs['sphere'] = False
+    
     labels = sp.unique(sp.concatenate((train_labels, test_labels)))
     label_to_id = dict([(k,v) for v, k in enumerate(labels)])
 
@@ -113,6 +116,8 @@ def ova_classify(train_features,
     aps = []
     aucs = []
     cls_datas = []
+    test_accuracies = []
+    train_accuracies = []
 
     signs = []
     for id in all_ids: 
@@ -120,10 +125,13 @@ def ova_classify(train_features,
         binary_test_ids = sp.array([2*int(l == id) - 1 for l in test_ids])
         signs.append(binary_train_ids[0])   
         
-        res = classify(train_features, binary_train_ids, test_features, binary_test_ids,sphere=False)
+        res = classify(train_features, binary_train_ids, test_features, binary_test_ids,classifier_kwargs)
+        
         
         aps.append(res['ap'])
         aucs.append(res['auc'])
+        test_accuracies.append(res['test_accuracy'])
+        train_accuracies.append(res['train_accuracy'])
         cls_datas.append(res['cls_data'])
     
     mean_ap = sp.array(aps).mean()
@@ -136,10 +144,10 @@ def ova_classify(train_features,
     predictor = max_predictor(weights,bias,labels)
   
     test_prediction = predictor(test_features)
-    test_accuracy = 100*(test_prediction == test_labels).sum() / len(test_prediction)
+    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
 
     train_prediction = predictor(train_features)
-    train_accuracy = 100*(train_prediction == train_labels).sum() / len(train_prediction)
+    train_accuracy = float(100*(train_prediction == train_labels).sum() / float(len(train_prediction)))
 
     cls_data = {'coef' : weights, 
      'intercept' : bias, 
@@ -155,7 +163,9 @@ def ova_classify(train_features,
      'train_accuracy' : train_accuracy,
      'test_accuracy' : test_accuracy,
      'mean_ap' : mean_ap,
-     'mean_auc' : mean_auc
+     'mean_auc' : mean_auc,
+     'test_accuracies' : test_accuracies,
+     'train_accuracies' : train_accuracies
      }
      
 
@@ -174,16 +184,16 @@ def multi_classify(train_features,
     train_ids = sp.array([label_to_id[i] for i in train_labels])
     test_ids = sp.array([label_to_id[i] for i in test_labels])
     
-    classifier = classifier_train(train_features, train_ids, test_features, multi_class = multi_class)
+    classifier = classifier_train(train_features, train_ids, test_features, multi_class = multi_class)[0]
     weights = classifier.coef_.T
     bias = classifier.intercept_
         
     test_prediction_ids = classifier.predict(test_features)
     test_prediction = labels[test_prediction_ids]
-    test_accuracy = 100*(test_prediction == test_labels).sum() / len(test_prediction)
+    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
  
     train_prediction = labels[classifier.predict(train_features)]
-    train_accuracy = 100*(train_prediction == train_labels).sum() / len(train_prediction)
+    train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
 
     cls_data = {'coef' : weights, 
      'intercept' : bias, 
@@ -222,6 +232,9 @@ def classifier_train(train_features,
     #sphering
     if sphere:
         train_features, test_features,fmean,fstd = __sphere(train_features, test_features)
+    else:
+        fmean = None
+        fstd = None
 
     if classifier_type == 'liblinear':
         clf = svm.LinearSVC(**kwargs)

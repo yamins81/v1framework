@@ -151,51 +151,92 @@ def get_hierarchical_filterbanks(config):
     filterbank1 = get_filterbank(config[1])
     filterbanks.append(filterbank1)
     n1 = len(filterbank1)
-    configL2 = config[2]
-    if configL2['filter']['model_name'] == 'uniform':
-        (fh,fw) = configL2['filter']['ker_shape']
-        f1 = config[1]['filter']
-        assert f1['model_name'] == 'gridded_gabor'
-        norients = f1['norients']
-        
-        fsample = configL2['filter'].get('fsample',1)
-        osample = configL2['filter'].get('osample',1)
-        
-        freq2 = len(f1['divfreqs'])/fsample
-        or2 = f1['norients']/osample
-        
-        n2 = freq2*or2
-        
-        fbank = np.zeros((n2*(n2 - 1 )/2,fh,fw,n1))
-        fnum = 0
-        for i in range(n2):
-            for j in range(i+1,n2):
-                fb1 = i/or2; orb1 = i - or2*(i/or2)
-                fb2 = j/or2; orb2 = j - or2*(j/or2)
-                
-                freqs1 = range(fb1*fsample,(fb1+1)*fsample)
-                ors1 = range(orb1*osample,(orb1+1)*osample)
-                
-                freqs2 = range(fb2*fsample,(fb2+1)*fsample)
-                ors2 = range(orb2*osample,(orb2+1)*osample)
-                
-                I = [norients*f + o for f in freqs1 for o in ors1]
-                J = [norients*f + o for f in freqs2 for o in ors2]
-                for ind in I + J:
-                    fbank[fnum,:,:,ind] = 1
+    if len(config) > 2:
+        configL2 = config[2]
+        if configL2['filter']['model_name'] == 'uniform':
+            (fh,fw) = configL2['filter']['ker_shape']
+            f1 = config[1]['filter']
+            assert f1['model_name'] == 'gridded_gabor'
+            norients = f1['norients']
             
-                fnum += 1
-        
-        filterbanks.append(fbank)
-    elif configL2['filter']['model_name'] == 'really_random':
-        n2 = configL2['filter']['num_filters']
-        (fh,fw) = configL2['filter']['ker_shape']
-        filterbank = get_random_filterbank((n2,fh,fw,n1),normalization=configL2['filter'].get('normalize',True))
-        filterbanks.append(filterbank)
-    else:
-        filterbanks.append(get_filterbank(configL2))
-    for c in config[3:]:
-        filterbanks.append(get_filterbank(c))
+            fsample = configL2['filter'].get('fsample',1)
+            osample = configL2['filter'].get('osample',1)
+            
+            freq2 = len(f1['divfreqs'])/fsample
+            or2 = f1['norients']/osample
+            
+            n2 = freq2*or2
+            
+            fbank = np.zeros((n2*(n2 - 1 )/2,fh,fw,n1))
+            fnum = 0
+            for i in range(n2):
+                for j in range(i+1,n2):
+                    fb1 = i/or2; orb1 = i - or2*(i/or2)
+                    fb2 = j/or2; orb2 = j - or2*(j/or2)
+                    
+                    freqs1 = range(fb1*fsample,(fb1+1)*fsample)
+                    ors1 = range(orb1*osample,(orb1+1)*osample)
+                    
+                    freqs2 = range(fb2*fsample,(fb2+1)*fsample)
+                    ors2 = range(orb2*osample,(orb2+1)*osample)
+                    
+                    I = [norients*f + o for f in freqs1 for o in ors1]
+                    J = [norients*f + o for f in freqs2 for o in ors2]
+                    for ind in I + J:
+                        fbank[fnum,:,:,ind] = 1
+                    fbank[fnum] = normalize(fbank[fnum])
+                    fnum += 1
+            
+            filterbanks.append(fbank)       
+        elif configL2['filter']['model_name'] == 'freq_uniform':
+            (fh,fw) = configL2['filter']['ker_shape']
+            f1 = config[1]['filter']
+            assert f1['model_name'] == 'gridded_gabor'
+            norients = f1['norients']
+            
+            osample = configL2['filter'].get('osample',1)
+            
+            freq2 = len(f1['divfreqs'])
+            or2 = f1['norients']/osample
+                    
+            fbank = np.zeros((freq2*or2**2,fh,fw,n1))
+            fnum = 0
+            for i in range(freq2):
+                for j in range(or2):
+                    for k in range(or2):            
+                        ors1 = range(j*osample,(j+1)*osample)
+                        ors2 = range(k*osample,(k+1)*osample)
+
+                        I = [norients*i + o for o in ors1]
+                        J = [norients*i + o for o in ors2]    
+                        for ind in I + J:
+                            fbank[fnum,:,:,ind] = 1
+                        fbank[fnum] = normalize(fbank[fnum])
+                        fnum += 1
+            
+            filterbanks.append(fbank)       
+
+        elif configL2['filter']['model_name'] == 'really_random':
+            n2 = configL2['filter']['num_filters']
+            (fh,fw) = configL2['filter']['ker_shape']
+            filterbank = get_random_filterbank((n2,fh,fw,n1),normalization=configL2['filter'].get('normalize',True))
+            filterbanks.append(filterbank)
+        elif configL2['filter']['model_name'] == 'multiply':
+            if (not configL2['filter'].get('sum_up',True)) or config[1]['filter']['model_name'] == 'really_random':
+                filterbanks.append((None,None))
+            else:             
+                filterbanks.append((len(config[1]['filter']['divfreqs']),config[1]['filter']['norients']))
+        else:
+            filterbanks.append(get_filterbank(configL2))
+        for c in config[3:]:
+            configL3 = config[3]
+            if configL3['filter']['model_name'] == 'really_random':
+                n3 = configL3['filter']['num_filters']
+                (fh,fw) = configL3['filter']['ker_shape']
+                filterbank = get_random_filterbank((n3,fh,fw,n2),normalization=configL3['filter'].get('normalize',True))
+                filterbanks.append(filterbank)
+            else:
+                filterbanks.append(get_filterbank(c))
     
     for (ind,fb) in enumerate(filterbanks):
         if fb is not None:

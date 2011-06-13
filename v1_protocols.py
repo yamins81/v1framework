@@ -18,32 +18,29 @@ from starflow.protocols import protocolize, actualize
 from starflow.utils import activate
 from starflow.sge_utils import wait_and_get_statuses
 
+import v1like_extract as v1e
 import v1like_funcs as v1f
 import traintest
 import svm
 import rendering
 import filter_generation
 import starflow.de as de
-from starflow.utils import ListUnion, uniqify
-from processing import image2array, preprocess, postprocess
+from starflow.utils import ListUnion
 
 from dbutils import get_config_string, get_filename, reach_in, createCertificateDict, son_escape, get_most_recent_files
+from v1like_extract import get_config
 from sge_utils import qsub
+
 from pythor_networking import NETWORK_CACHE_PORT, NETWORK_CACHE_TIMEOUT
 
-DB_NAME = 'thor'
-
-import pythor3.operation.lnorm_.plugins.cthor
-import pythor3.operation.lpool_.plugins.cthor
-import pythor3.operation.fbcorr_.plugins.cthor
-import pythor3.operation.fbcorr_.plugins.numpyFFT
+DB_NAME = 'v1'
 
 try:
     import pycuda.driver as cuda
 except:
     GPU_SUPPORT = False
 else:
-    import pythor3.operation.fbcorr_.plugins.cuFFT as cuFFT
+    import v1_pyfft
     GPU_SUPPORT = True
 
 def remove_existing(coll,fs, hash):
@@ -97,7 +94,7 @@ def generate_images(outfile,im_hash,config_gen):
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
 def generate_and_insert_single_image(x,im_hash):
-    
+
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
     im_coll = db['images.files']
@@ -125,20 +122,14 @@ def generate_images_parallel(outfile,im_hash,config_gen):
        
     jobids = []
     for (i,x) in enumerate(X):
-        jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render/image_jobs -e /home/render/image_jobs')  
+        x['image']['generator'] = config_gen['images']['generator'] 
+        jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render -e /home/render')  
         jobids.append(jobid)
         
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
     return {'child_jobs':jobids}
- 
- 
-
-def model_protocol_hash(config_path):
-    config = get_config(config_path)
-    model_hash = get_config_string(config['models'])
-    return model_hash
- 
+    
    
 def model_config_generator(config): 
     models = config['models']
@@ -147,7 +138,8 @@ def model_config_generator(config):
 def model_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
-    model_hash = model_protocol_hash(config_path)
+
+    model_hash = get_config_string(config['models'])
     model_certificate = '../.model_certificates/' + model_hash
 
     D = [('generate_models',generate_models,(model_certificate,model_hash,config))]
@@ -170,8 +162,8 @@ def generate_models(outfile,m_hash,config_gen):
     M = model_config_generator(config_gen)       
     
     for (i,m) in enumerate(M):
-        filterbanks = filter_generation.get_hierarchical_filterbanks(m['model']['layers']) 
-        filterbank_string = cPickle.dumps(filterbanks)
+        filterbank = filter_generation.get_filterbank(m['model']) 
+        filterbank_string = cPickle.dumps(filterbank)
         if (i/100)*100 == i:
             print(i,m) 
         
@@ -297,7 +289,7 @@ def extract_features_parallel(feature_certificate,
 
     if convolve_func_name == 'numpy':
         queueName = 'extraction_cpu.q'
-    elif convolve_func_name == 'cufft':
+    elif convolve_func_name == 'pyfft':
         queueName = 'extraction_gpu.q'
 
     opstring = '-l qname=' + queueName + ' -o /home/render -e /home/render'
@@ -356,7 +348,7 @@ def extract_features_core(image_certificate,
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
             pool = multiprocessing.Pool()
-    elif convolve_func_name == 'cufft':
+    elif convolve_func_name == 'pyfft':
         num_batches = get_num_gpus()
         if num_batches > 1:
             pool = multiprocessing.Pool(processes = num_batches)
@@ -432,21 +424,19 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
     
     feature_fs = gridfs.GridFS(db,'features')
                        
-    if convolve_func_name == 'cufft':
-        convolve_func = cuFFT.LFBCorrCuFFT(device_id=device_id, use_cache=True)
-        context = convolve_func.context
+    if convolve_func_name == 'pyfft':
+        context = v1_pyfft.setup_pyfft(device_id)
+        context.push()
+        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
     else:
-        convolve_func = c_numpy_mixed
+        convolve_func = v1f.v1like_filter_numpy
 
     L1 = get_most_recent_files(image_col,im_query,skip=im_skip,limit=im_limit)
     L2 = get_most_recent_files(model_col,m_query,skip=m_skip,limit=m_limit)
         
-    for model_config in L2: 
-        filter_fh = model_fs.get_version(model_config['filename'])
-        filter = cPickle.loads(filter_fh.read())
-    
-        for image_config in L1:
-            features = compute_features(image_config['filename'], image_fs, filter, model_config, convolve_func)
+    for image_config in L1:
+        for model_config in L2: 
+            features = compute_features(image_config['filename'], image_fs, model_config, model_fs,convolve_func)
             features_string = cPickle.dumps(features)
             y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
             filename = get_filename(y['config'])
@@ -455,7 +445,7 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
             feature_fs.put(features_string,**y)
             
             
-    if convolve_func_name == 'cufft':
+    if convolve_func_name == 'pyfft':
         context.pop()
             
         
@@ -476,11 +466,40 @@ def get_feature_batches(im_hash,m_hash,im_col,m_col,im_skip=0,im_limit = 0, m_sk
     return [(imb[0]+im_skip,imb[1]+im_skip,mb[0]+m_skip,mb[1]+m_skip) for imb in im_batches for mb in m_batches]
     
 
-def compute_features(image_filename, image_fs, filter, model_config, convolve_func):
+def compute_features(image_filename, image_fs, model_config, model_fs,convolve_func):
     image_fh = image_fs.get_version(image_filename)
+    filter_fh = model_fs.get_version(model_config['filename'])
     print('extracting', image_filename, model_config)
-    return compute_features_core(image_fh,filter,model_config,convolve_func)
+    return compute_features_core(image_fh,filter_fh,model_config,convolve_func)
 
+        
+def compute_features_core(image_fh,filter_fh,model_config,convolve_func):
+
+ 
+    m_config = model_config['config']['model']
+    conv_mode = m_config['conv_mode']
+    
+    #preprocessing
+    array = v1e.image2array(m_config ,image_fh)
+  
+    preprocessed,orig_imga = v1e.preprocess(array,m_config)
+    
+    #input normalization
+    norm_in = v1e.norm(preprocessed,conv_mode,m_config.get('normin'))
+    
+    #filtering
+    filtered = v1e.convolve(norm_in, filter_fh, m_config , convolve_func)
+    
+    #nonlinear activation
+    activ = v1e.activate(filtered,m_config.get('activ'))
+    
+    #output normalization
+    norm_out = v1e.norm(activ,conv_mode,m_config.get('normout'))
+    
+    #pooling
+    pooled = v1e.pool(norm_out,conv_mode,m_config.get('pool'))
+    
+    return pooled
     
     
 def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
@@ -620,7 +639,7 @@ def load_features(filename,fs,m,task):
         return val
     
 
-def get_features(im,im_fs,filter,m,convolve_func,task,network_cache):
+def get_features(im,im_fs,m,m_fs,convolve_func,task,network_cache):
 
     if network_cache and network_cache.sockets:
         sock = network_cache.sockets.keys()[0]
@@ -636,11 +655,11 @@ def get_features(im,im_fs,filter,m,convolve_func,task,network_cache):
         if val is not None:
             output = val
         else:
-            output = transform_average(compute_features(im, im_fs, filter, m, convolve_func) , task.get('transform_average'),m)
+            output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
             network_cache.send_pyobj({'put':(hash,output)})
             network_cache.recv_pyobj()
     else:
-        output = transform_average(compute_features(im, im_fs, filter, m, convolve_func) , task.get('transform_average'),m)
+        output = transform_average(compute_features(im, im_fs, m, m_fs, convolve_func) , task.get('transform_average'),m)
     return output
     
 
@@ -648,50 +667,34 @@ def generate_splits(task_config,hash,colname):
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
+    ntrain_pos = task_config.get('ntrain_pos')
+    ntest_pos = task_config.get('ntest_pos')
     N = task_config.get('N',10)
-    base_query.update(reach_in('config',task_config.get('universe',SON([]))))
+    query = task_config['query']  
+    base_query.update(reach_in('config',task_config.get('universe',SON([]))))    
+    cquery = reach_in('config',query)
     
-    query = task_config['query'] 
-    if isinstance(query,list):
-        cqueries = [reach_in('config',q) for q in query]
-        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest,universe=base_query)
-    else:
-        ntrain_pos = task_config.get('ntrain_pos')
-        ntest_pos = task_config.get('ntest_pos')
-        cquery = reach_in('config',query)
-        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
+    print('q',cquery)
+    print('u',base_query)
+ 
+    return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
 
-def unravel(X):
-    return sp.concatenate([X[:,:,i].ravel() for i in range(X.shape[2])])
 
 def transform_average(input,config,model_config):
-    K = input.keys()
-    K.sort()
-    vec = []
     if config:
+        averaged = []
+        K = input.keys()
+        K.sort()
         for cidx in K:
-            vec.append(average_transform(input[cidx],config,model_config))
-    else:
-        for cidx in K:
-            vec.append(unravel(input[cidx]))
-    vec = sp.concatenate(vec)
-    return vec
-        
-def sum_up(x,s1,s2):
-    y = []
-    F = lambda x : (s2**2)*x[2] + s2*x[0] + x[1]
-    for i in range(s1):
-        S = [map(F,[(k,(j+k)%s2,i) for k in range(s2)]) for j in range(s2)]
-        y.extend([sum([x[ss] for ss in s]) for s in S])
-    return np.array(y)
-    
+            averaged.append(average_transform(input[cidx],config,model_config))
+        averaged = sp.concatenate(averaged)
+        print(averaged)
+        return averaged
+    return input
 
 def average_transform(input,config,M):
     if config['transform_name'] == 'translation':
-        if config.get('max',False):
-            return input.max(1).max(0)
-        else:
-            return input.sum(1).sum(0)
+        return input.sum(1).sum(0)
     elif config['transform_name'] == 'translation_and_orientation':
         model_config = M['config']['model'] 
         assert model_config.get('filter') and model_config['filter']['model_name'] == 'gridded_gabor'
@@ -710,21 +713,6 @@ def average_transform(input,config,M):
                     output[nphases*freq_num + phase_num] += H[norients*nphases*freq_num + nphases*orient_num + phase_num]
         
         return output
-    elif config['transform_name'] == 'sum_up':
-        model_config = M['config']['model']
-        Lo = model_config['layers'][-2]
-        L = model_config['layers'][-1]
-        s1 = len(Lo['filter']['divfreqs'])
-        s2 = Lo['filter']['norients']
-        if L['filter']['model_name'] == 'uniform':
-            os = L['filter'].get('osample',1)
-            fs = L['filter'].get('fsample',1)
-            s1 = s1/fs
-            s2 = s2/os
-        elif L['filter']['model_name'] == 'freq_uniform':
-            os = L['filter'].get('osample',1)
-            s2 = s2/os            
-        return sum_up(input.max(1).max(0),s1,s2)
     elif config['transform_name'] == 'nothing':
         return input.ravel()
     elif config['transform_name'] == 'translation_and_fourier':
@@ -732,35 +720,7 @@ def average_transform(input,config,M):
     else:
         raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
 
-from pythor3.operation.fbcorr_ import (
-    DEFAULT_STRIDE,
-    DEFAULT_MIN_OUT,
-    DEFAULT_MAX_OUT,
-    DEFAULT_MODE)
-
-def c_numpy_mixed(arr_in, arr_fb, arr_out=None,
-                 mode=DEFAULT_MODE,
-                 min_out=DEFAULT_MIN_OUT,
-                 max_out=DEFAULT_MAX_OUT,
-                 stride=DEFAULT_STRIDE
-                ):
-    
-    if max(arr_fb.shape[-3:-1]) >= 13:
-        return pythor3.operation.fbcorr(arr_in, arr_fb, arr_out=None,
-                 mode=mode,
-                 min_out=min_out,
-                 max_out=max_out,
-                 stride=stride,
-                 plugin="numpyFFT",
-                 plugin_kwargs={"use_cache":True})
-    else:
-        return pythor3.operation.fbcorr(arr_in, arr_fb, arr_out=None,
-                 mode=mode,
-                 min_out=min_out,
-                 max_out=max_out,
-                 stride=stride,
-                 plugin="cthor")
-
+   
 def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
 
     if cache_port:
@@ -778,12 +738,12 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     else:
         poller = None
 
-    if convolve_func_name == 'cufft':
-        convolve_func = cuFFT.LFBCorrCuFFT(device_id=device_id, use_cache=True)
-        context = convolve_func.context
+    if convolve_func_name == 'pyfft':
+        context = v1_pyfft.setup_pyfft(device_id)
+        context.push()
+        convolve_func = functools.partial(v1f.v1like_filter_pyfft,device_id=device_id)
     else:
-        convolve_func = c_numpy_mixed
-        
+        convolve_func = v1f.v1like_filter_numpy
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -793,12 +753,9 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     model_fs = gridfs.GridFS(db,'models')
     image_fs = gridfs.GridFS(db,'images')
 
-    filter_fh = model_fs.get_version(m['filename'])
-    filter = cPickle.loads(filter_fh.read())
+    L = [get_features(im, image_fs, m, model_fs, convolve_func,task,poller) for im in images]
     
-    L = [get_features(im, image_fs, filter, m, convolve_func,task,poller) for im in images]
-    
-    if convolve_func_name == 'cufft':
+    if convolve_func_name == 'pyfft':
         context.pop()
         
     return L
@@ -810,8 +767,7 @@ def get_data_batches(data,num_batches):
     bs = int(math.ceil(float(len(data)) / num_batches))
     
     return [data[bs*i:bs*(i+1)] for i in range(num_batches)]
-
-        
+    
 def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
@@ -826,32 +782,28 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     existing_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is not None]
     new_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is None]
     new_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is None]
-    
+
+
     existing_test_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in test_filenames]
     existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
     new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
     new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
-    
+
     if convolve_func_name == 'numpy':
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
-            print('found %d processors, using that many processes' % num_batches)
             pool = multiprocessing.Pool()
-        else:
-            pool = multiprocessing.Pool(1)
-    elif convolve_func_name == 'cufft':
+    elif convolve_func_name == 'pyfft':
+
         num_batches = get_num_gpus()
-        #num_batches = 1
         if num_batches > 1:
-            print('found %d gpus, using that many processes' % num_batches)
             pool = multiprocessing.Pool(processes = num_batches)
         else:
-            pool = multiprocessing.Pool(1)
+            pool = None
     else:
         raise ValueError, 'convolve func name not recognized'
 
-    print('num_batches',num_batches)
-    if num_batches > 0:
+    if num_batches > 1:
         batches = get_data_batches(new_train_filenames,num_batches)
         results = []
         for (bn,b) in enumerate(batches):
@@ -880,14 +832,9 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
     for(im,f) in zip(new_test_filenames,new_test_features):
         put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
-          
-    
+                           
     print('classifier ...')
-    if len(uniqify(train_labels + test_labels)) > 2:
-        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    else:
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
     return res
 
@@ -942,7 +889,6 @@ def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,pe
                  
     out_record.update(model_results)
 
-    print('inserting result ...')
     perf_coll.insert(out_record)
 
 
@@ -953,16 +899,14 @@ def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs):
                       ('split_id',split_id),
                  ])   
 
-    
     filename = get_filename(out_record)
     out_record['filename'] = filename
     out_record['__hash__'] = ext_hash
-    print('pickling split ...')
+    print('dump out ...')
     out_data = cPickle.dumps(SON([('split',split)]))
-    print('dump out split ...')
+    
     split_fs.put(out_data,**out_record)
-
-import bson           
+            
 def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs):
     out_record = SON([('model',m['config']['model']),
                       ('images',son_escape(image_config_gen['images'])),
@@ -979,9 +923,8 @@ def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_f
     out_record['filename'] = filename
     out_record['__hash__'] = ext_hash
     out_record.update(split_result)
-    print('pickling split result...')
+    print('dump out split result...')
     out_data = cPickle.dumps(SON([('split_result',res)]))
-    print('dumping out split result ...')
     splitres_fs.put(out_data,**out_record)          
  
 
@@ -1001,7 +944,6 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
             splits = generate_splits(task,image_hash,'images') 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
-                print('evaluating split %d' % ind)
                 res = extract_and_evaluate_core(split,m,convolve_func_name,task,None)    
                 put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
                 split_results.append(res)
@@ -1043,7 +985,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     jobids = []
     if convolve_func_name == 'numpy':
         opstring = '-l qname=extraction_cpu.q'
-    elif convolve_func_name == 'cufft':
+    elif convolve_func_name == 'pyfft':
         opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
         
     for m in model_configs: 
@@ -1057,6 +999,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
                 jobids.append(jobid)
 
+    print(jobids)
     statuses = wait_and_get_statuses(jobids)
     
     for m in model_configs: 
@@ -1068,27 +1011,8 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
 
 
-def get_extract_and_evaluate_hashes(evaluate_config_path,model_config_path,image_config_path):
-    model_config_gen = get_config(model_config_path)
-    model_hash = get_config_string(model_config_gen['models'])
-    model_certificate = '../.model_certificates/' + model_hash
-    
-    image_config_gen = get_config(image_config_path)
-    image_hash =  get_config_string(image_config_gen['images'])
-    image_certificate = '../.image_certificates/' + image_hash
-
-    evaluate_config = get_config(evaluate_config_path)
-    task_config = evaluate_config.pop('train_test')
-
-    DH = []
-    for task in task_config:
-        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
-        ext_hash = get_config_string(overall_config_gen)    
-        DH.append(ext_hash)
-    
-    return DH
-             
 def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False,parallel=False):
+    
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
     model_certificate = '../.model_certificates/' + model_hash
@@ -1106,143 +1030,21 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
         overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
         ext_hash = get_config_string(overall_config_gen)    
         
-        performance_certificate = '../.performance_certificates/' + ext_hash
         if not parallel:
+            performance_certificate = '../.performance_certificates/' + ext_hash
             op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            D.append(op)
+            DH[ext_hash] = [op]
         else:
-            op = ('evaluation_' + ext_hash,extract_and_evaluate_parallel,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
-        D.append(op)
-        DH[ext_hash] = [op]
+            performance_certificate = '../.performance_certificates/' + ext_hash
+            batch_certificate = '../.batch_certificates/' + ext_hash
+            op = ('evaluation' + ext_hash,extract_and_evaluate_parallel,(batch_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            D.append(op)
+            DH[ext_hash] = [op]
              
     if write:
         actualize(D)
     return DH
 
 
-
-
-
-#=-=-=-=-=-=-=-=core computations
-    
-def compute_features_core(image_fh,filters,model_config,convolve_func):
- 
-    m_config = model_config['config']['model']
-    conv_mode = m_config['conv_mode']
-    layers = m_config['layers']
-    
-    array = image2array(m_config,image_fh)
-    array,orig_imga = preprocess(array,m_config)
-    assert len(filters) == len(layers)
-    dtype = array[0].dtype
-    
-    for (filter,layer) in zip(filters,layers):
-
-        #print('b',array[0].shape) 
-        if filter is not None:
-            array = fbcorr(array, filter, layer , convolve_func)
-        #print('f',array[0].shape) 
         
-        if layer.get('lpool'):
-            array = lpool(array,conv_mode,layer['lpool'])
-        #print('p',array[0].shape)
-        
-        if layer.get('lnorm'):
-            if layer['lnorm'].get('use_old',False):
-                array = old_norm(array,conv_mode,layer['lnorm'])
-            else:
-                array = lnorm(array,conv_mode,layer['lnorm'])
-        #print('n',array[0].shape)
-        
-    return array
-
-def multiply(x,s1,s2,all=False,max=False):
-    
-    if max:
-        x = x.sum(1).sum(0)
-    else:
-        x = x.max(1).max(0)
-    
-    if np.isnan(s1):
-        y = np.array([z1*z2 for z1 in x for z2 in x])
-    else:
-		if all:
-			S = [[(s2*f1 + i , s2*f2 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for f2 in range(s1) for o in range(s2) if f1 < f2 or (f1 == f2 and o != 0) ]
-		else:
-			S = [[(s2*f1 + i , s2*f1 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for o in range(s2)]
-		
-		
-		print(len(S),len(S[0]))
-		y = np.array([sum([x[i]*x[j] for (i,j) in s]) for s in S])
-    
-    #y = y / np.sqrt((y**2).sum())
-    #y = y / y.max()
-    
-    return y
-
-
-def fbcorr(input,filter,layer_config,convolve_func):
-    output = {}     
-    for cidx in input.keys():
-        if layer_config['filter']['model_name'] == 'multiply':
-            (s1,s2) = filter
-            output[cidx] = multiply(input[cidx],s1,s2,all=layer_config['filter'].get('all',False),max=layer_config['filter'].get('max',False))
-        else:
-            output[cidx] = convolve_func(input[cidx],
-                                         filter,
-                                         min_out=layer_config['activ'].get('min_out'),
-                                         max_out=layer_config['activ'].get('max_out'))         
-    return output
-
-
-def old_norm(input,conv_mode,params):
-    output = {}
-    for cidx in input.keys():
-        if len(input[cidx].shape) == 3:
-            inobj = input[cidx]
-            strip = False
-        else:
-            strip = True
-            inobj = input[cidx][:,:,sp.newaxis]
-
-        if params:
-    
-            res = v1f.v1like_norm(inobj, conv_mode, params['inker_shape'],params['threshold'])
-            if strip:
-                res = res[:,:, 0]
-            output[cidx] = res
-        else: 
-            output[cidx] = inobj
-            
-    return output
-
-
-def lpool(input,conv_mode,config):
-    pooled = {}
-    for cidx in input.keys():
-        pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)
-    return pooled
-
-        
- 
-def lnorm(input,conv_mode,config):
-    normed = {}
-    if 'inker_shape' in config: 
-        config['inker_shape'] = tuple(config['inker_shape'])
-    if 'outker_shape' in config:
-        config['outker_shape'] = tuple(config['outker_shape'])
-    for cidx in input.keys():
-        normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='cthor',**config)
-    return normed
-
-
-     
-     
-#-0-0-0-0-0-utils
-
-def get_config(config_fname):
-    config_path = os.path.abspath(config_fname)
-    print("Config file:", config_path)
-    config = {}
-    execfile(config_path, {},config)
-    
-    return config['config']

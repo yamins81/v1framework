@@ -19,7 +19,7 @@ def images(config_path,parallel=False):
     actualize(D,outfiledir=get_code_dir(hash))
     return hash
 
-
+@activate(lambda x : x[0], lambda x: get_code_dir(protocols.model_protocol_hash(x[0])))
 def models(config_path,parallel=False):
     D,hash = protocols.model_protocol(config_path,write = False,parallel=parallel)
     actualize(D,outfiledir=get_code_dir(hash))
@@ -48,7 +48,7 @@ def evaluate(evaluate_config_path,model_config_path,image_config_path):
         actualize([d],outfiledir=get_code_dir(h))
     return hashes
 
-
+@activate(lambda x : (x[0],x[1],x[2]), lambda x: tuple([get_code_dir(x) for x in protocols.get_extract_and_evaluate_hashes(x[0],x[1],x[2])]))
 def extract_and_evaluate(evaluate_config_path,
                                        model_config_path,
                                        image_config_path,
