@@ -41,6 +41,7 @@ config = {
       ]),
    SON([
       ('N',1), 
+      ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('ntrain',100),
       ('ntest',30),
       ('universe',SON([('image.ty',SON([('$lt',.5),('$gt',-.5)])),

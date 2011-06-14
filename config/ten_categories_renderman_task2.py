@@ -39,7 +39,7 @@ config = {
                ])
       ]),
    SON([
-      ('N',1), 
+      ('N',2), 
       ('ntrain',100),
       ('ntest',30),
       ('universe',SON([('image.ty',SON([('$lt',.5),('$gt',-.5)])),
