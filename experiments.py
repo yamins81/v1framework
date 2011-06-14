@@ -719,3 +719,12 @@ def extract_and_evaluate_medium_gabor_mod4_with_multiplication_no_sum(depends_on
                                             '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='cufft', write=True,parallel=False) 
+
+@protocolize()
+def ext_eval_medium_gabor_mod4_mult_ten_categories(depends_on=('../config/ten_categories_renderman_task3.py',
+                                                  '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.extract_and_evaluate_protocol('../config/ten_categories_renderman_task3.py',
+                                            '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
+                                           '../config/ten_categories_images.py',
+                                            convolve_func_name='cufft', write=True,parallel=False) 
