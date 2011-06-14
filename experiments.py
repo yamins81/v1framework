@@ -727,4 +727,4 @@ def ext_eval_medium_gabor_mod4_mult_ten_categories(depends_on=('../config/ten_ca
     protocols.extract_and_evaluate_protocol('../config/ten_categories_renderman_task3.py',
                                             '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
                                            '../config/ten_categories_images.py',
-                                            convolve_func_name='cufft', write=True,parallel=False) 
+                                            convolve_func_name='numpy', write=True,parallel=False) 
