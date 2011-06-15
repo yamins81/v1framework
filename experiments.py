@@ -631,6 +631,7 @@ def extract_and_evaluate_small_gabor_with_uniform_sumup(depends_on=('../config/v
 @protocolize()
 def make_medium_gabor_mod4_with_freq_uniform_model(depends_on='../config/medium_gabor_mod4_with_freq_uniform.py'):
     protocols.model_protocol(depends_on,parallel=False,write=True)
+
     
 @protocolize()
 def extract_and_evaluate_medium_gabor_mod4_with_freq_uniform_sumup(depends_on=('../config/various_vs_polygon_task6.py',
@@ -650,6 +651,7 @@ def ext_eval_medium_gabor_mod4_with_freq_uniform_ten_categories(depends_on=('../
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
                                             
+                                            
 @protocolize()
 def make_best_l3_model(depends_on='../config/best_l3_model.py'):
     protocols.model_protocol(depends_on,parallel=False,write=True)
@@ -663,6 +665,16 @@ def ext_eval_best_l3_ten_categories(depends_on=('../config/ten_categories_render
                                             '../config/best_l3_model.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
+                                            
+@protocolize()
+def ext_eval_best_l3_polygon(depends_on=('../config/various_vs_polygon_task0.py',
+                                                  '../config/best_l3_model.py',
+                                                  '../config/polygon_task.py')):
+    protocols.extract_and_evaluate_protocol('../config/various_vs_polygon_task0.py',
+                                            '../config/best_l3_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
+                                            
                                             
 @protocolize()
 def make_medium_l1_random_model(depends_on='../config/l1_random_120.py'):
