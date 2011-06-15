@@ -681,10 +681,10 @@ def make_bigger_best_l3_model(depends_on='../config/bigger_best_l3_model.py'):
 
 @protocolize()
 def ext_eval_bigger_best_l3_polygon(depends_on=('../config/various_vs_polygon_task0.py',
-                                                  '../config/best_l3_model.py',
+                                                  '../config/bigger_best_l3_model.py',
                                                   '../config/polygon_task.py')):
     protocols.extract_and_evaluate_protocol('../config/various_vs_polygon_task0.py',
-                                            '../config/best_l3_model.py',
+                                            '../config/bigger_best_l3_model.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
                                             
