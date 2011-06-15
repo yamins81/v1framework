@@ -26,7 +26,7 @@ models = [SON([
                     ])),
                 ('lnorm', SON([
                     ('inker_shape', (9,9)),
-                    ('outker_shape', (0,0)),
+                    ('outker_shape', (9,9)),
                     ('threshold', 10.0),
                     ('stretch',.1)
                     ])),
@@ -47,7 +47,7 @@ models = [SON([
                     ])),
                 ('lnorm', SON([
                     ('inker_shape', (5,5)),
-                    ('outker_shape', (0,0)),
+                    ('outker_shape', (5,5)),
                     ('threshold', 10.0),
                     ('stretch',.1),
                     ('remove_mean',True)
@@ -69,7 +69,7 @@ models = [SON([
                     ])),
                 ('lnorm', SON([
                     ('inker_shape', (3,3)),
-                    ('outker_shape', (0,0)),
+                    ('outker_shape', (3,3)),
                     ('threshold', 10.0),
                     ('stretch',.1),
                     ])),
