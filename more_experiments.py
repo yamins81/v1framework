@@ -2,13 +2,6 @@ from starflow.protocols import Apply, Applies, protocolize
 
 import deploy
 import pythor_protocols as protocols
-
-
-                                            
-@protocolize()
-def make_best_l3_model(depends_on='../config/best_l3_model.py'):
-    protocols.model_protocol(depends_on,parallel=False,write=True)
-
                                             
 @protocolize()
 def ext_eval_best_l3_exploratory_renderman(depends_on=('../config/exploratory_renderman_tasks.py',
