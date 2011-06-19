@@ -54,7 +54,22 @@ config = {
                 SON([('image.model_id','face0008')]),
                ])
       ]),
-      
+   SON([
+      ('N',1), 
+      ('ntrain',300),
+      ('ntest',300),
+      ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['boats'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['guns'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['faces'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['chair'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['table'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['reptiles'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['plants'])]))]),
+                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cats_and_dogs'])]))])
+               ])
+      ]),      
    ]
    
    
