@@ -778,8 +778,6 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     else:
         poller = None
 
-    print("HERE",cache_port)
-    return
     if convolve_func_name == 'cufft':
         convolve_func = cuFFT.LFBCorrCuFFT(device_id=device_id, use_cache=True)
         context = convolve_func.context
