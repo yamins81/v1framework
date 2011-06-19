@@ -837,7 +837,6 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         if num_batches > 1:
             print('found %d processors, using that many processes' % num_batches)
             pool = multiprocessing.Pool(num_batches)
-            return 
             print('allocated pool')
         else:
             pool = multiprocessing.Pool(1)
@@ -853,6 +852,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         raise ValueError, 'convolve func name not recognized'
 
     print('num_batches',num_batches)
+    return 
     if num_batches > 0:
         batches = get_data_batches(new_train_filenames,num_batches)
         results = []
