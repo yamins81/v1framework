@@ -39,6 +39,21 @@ config = {
                 SON([('image.model_id','face0008')]),
                ])
       ]),
+   SON([
+      ('N',1), 
+      ('ntrain',400),
+      ('ntest',80),
+      ('universe',SON([('bg_id',SON([('$ne','gray.tdl')]))])),
+      ('query',[SON([('image.model_id','face0001')]),
+                SON([('image.model_id','face0002')]),
+                SON([('image.model_id','face0003')]),
+                SON([('image.model_id','face0004')]),
+                SON([('image.model_id','face0005')]),
+                SON([('image.model_id','face0006')]),
+                SON([('image.model_id','face0007')]),
+                SON([('image.model_id','face0008')]),
+               ])
+      ]),
       
    ]
    
