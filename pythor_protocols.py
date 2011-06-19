@@ -1042,7 +1042,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     
     jobids = []
     if convolve_func_name == 'numpy':
-        opstring = '-l qname=extraction_cpu.q'
+        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
     elif convolve_func_name == 'cufft':
         opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
         
@@ -1056,8 +1056,13 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
                 jobids.append(jobid)
-
+                
+    print('Waiting for jobs', jobids) 
     statuses = wait_and_get_statuses(jobids)
+    
+    if not all([status == 0 for status in statuses]):
+        raise ValueError, 'There was a error in the job.'
+    
     
     for m in model_configs: 
         print('Evaluating model',m)
