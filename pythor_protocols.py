@@ -637,8 +637,8 @@ def get_features(im,im_fs,filter,m,convolve_func,task,network_cache):
             output = val
         else:
             output = transform_average(compute_features(im, im_fs, filter, m, convolve_func) , task.get('transform_average'),m)
-            network_cache.send_pyobj({'put':(hash,output)})
-            network_cache.recv_pyobj()
+            sock.send_pyobj({'put':(hash,output)})
+            sock.recv_pyobj()
     else:
         output = transform_average(compute_features(im, im_fs, filter, m, convolve_func) , task.get('transform_average'),m)
     return output
