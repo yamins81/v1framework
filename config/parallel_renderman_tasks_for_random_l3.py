@@ -8,8 +8,8 @@ config = {
 'train_test' : [
    SON([
       ('N',3), 
-      ('ntrain',320),
-      ('ntest',160),
+      ('ntrain',8),
+      ('ntest',8),
       ('universe',SON([('image.bg_id',SON([('$ne','gray.tdl')]))])),
       ('query',[SON([('image.model_id','face0001')]),
                 SON([('image.model_id','face0002')]),
@@ -23,8 +23,8 @@ config = {
       ]),
    SON([
       ('N',3), 
-      ('ntrain',400),
-      ('ntest',200),
+      ('ntrain',10),
+      ('ntest',10),
       ('universe',SON([('image.bg_id',SON([('$ne','gray.tdl')]))])),
       ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
