@@ -1015,6 +1015,7 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
 
     if cache_port is None:
         cache_port = NETWORK_CACHE_PORT
+    cache_port = None
         
 
                
