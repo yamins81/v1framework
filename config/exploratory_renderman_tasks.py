@@ -23,6 +23,22 @@ config = {
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cats_and_dogs'])]))])
                ])
       ]),
+   SON([
+      ('N',1), 
+      ('ntrain',400),
+      ('ntest',80),
+      ('universe',SON([('image.ty',SON([('$lt',.6),('$gt',-.6)])),
+                       ('image.tz',SON([('$lt',.6),('$gt',-.6)]))])),
+      ('query',[SON([('image.model_id','face001')]),
+                SON([('image.model_id','face002')]),
+                SON([('image.model_id','face003')]),
+                SON([('image.model_id','face004')]),
+                SON([('image.model_id','face005')]),
+                SON([('image.model_id','face006')]),
+                SON([('image.model_id','face007')]),
+                SON([('image.model_id','face008')]),
+               ])
+      ]),
       
    ]
    
