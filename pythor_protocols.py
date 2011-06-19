@@ -836,7 +836,8 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
             print('found %d processors, using that many processes' % num_batches)
-            pool = multiprocessing.Pool()
+            pool = multiprocessing.Pool(num_batches)
+            print('allocated_pool')
         else:
             pool = multiprocessing.Pool(1)
     elif convolve_func_name == 'cufft':
