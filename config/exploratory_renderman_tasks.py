@@ -8,7 +8,7 @@ config = {
 'train_test' : [
 
    SON([
-      ('N',3), 
+      ('N',1), 
       ('ntrain',400),
       ('ntest',80),
       ('universe',SON([('image.ty',SON([('$lt',.6),('$gt',-.6)])),
