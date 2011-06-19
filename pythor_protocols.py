@@ -778,6 +778,8 @@ def extract_and_evaluate_inner_core(images,m,convolve_func_name,device_id,task,c
     else:
         poller = None
 
+    print("HERE",cache_port)
+    return
     if convolve_func_name == 'cufft':
         convolve_func = cuFFT.LFBCorrCuFFT(device_id=device_id, use_cache=True)
         context = convolve_func.context
@@ -852,7 +854,6 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         raise ValueError, 'convolve func name not recognized'
 
     print('num_batches',num_batches)
-    return 
     if num_batches > 0:
         batches = get_data_batches(new_train_filenames,num_batches)
         results = []
