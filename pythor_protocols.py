@@ -1055,6 +1055,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
+                print('Submitted job', jobid)
                 jobids.append(jobid)
                 
     print('Waiting for jobs', jobids) 
