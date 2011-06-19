@@ -831,14 +831,13 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
     new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
     new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
-    
-    reload(multiprocessing)
+
     if convolve_func_name == 'numpy':
-        #num_batches = multiprocessing.cpu_count()
-        num_batches = 8
+        num_batches = multiprocessing.cpu_count()
         if num_batches > 1:
             print('found %d processors, using that many processes' % num_batches)
             pool = multiprocessing.Pool(num_batches)
+            return 
             print('allocated pool')
         else:
             pool = multiprocessing.Pool(1)
