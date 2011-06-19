@@ -58,6 +58,7 @@ config = {
       ('N',1), 
       ('ntrain',300),
       ('ntest',300),
+      ('universe',SON([('bg_id',SON([('$ne','gray.tdl')]))])),
       ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['boats'])]))]),
