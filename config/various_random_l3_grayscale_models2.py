@@ -95,8 +95,8 @@ for m in [base_model]:
         ('whiten', False)
     ])
     
-l2_filter_kers = [5,7,9]
-l3_filter_kers = [5,7,9]
+l2_filter_kers = [3,5,7]
+l3_filter_kers = [3,5,7]
 l2_norm_stretch = [.1,1]
 l2_norm_kers = [3,5]
 l3_pool_kers = [3,9]
