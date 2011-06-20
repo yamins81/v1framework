@@ -92,11 +92,11 @@ model3['layers'][1]['filter']['norients'] = 24
 model3['layers'][1]['filter']['divfreqs'] = [4, 6, 8, 9,15,20]
 model3['layers'][2]['filter']['osample'] = 2
 
-model3 = copy.deepcopy(base_model)
-model3['layers'][1]['filter']['ker_shape'] = [43,43]
-model3['layers'][1]['filter']['norients'] = 24
-model3['layers'][1]['filter']['divfreqs'] = [6, 8, 9,15,20,30]
-model3['layers'][2]['filter']['osample'] = 2
+model3a = copy.deepcopy(base_model)
+model3a['layers'][1]['filter']['ker_shape'] = [43,43]
+model3a['layers'][1]['filter']['norients'] = 24
+model3a['layers'][1]['filter']['divfreqs'] = [5,8,9,15,20,30]
+model3a['layers'][2]['filter']['osample'] = 2
 
 #some pooling/norming in l2
 model4 = copy.deepcopy(base_model)
