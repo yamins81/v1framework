@@ -266,6 +266,7 @@ def image_preprocessing(arr,params):
         orig_imga_conv = colorconv.rg2_convert(orig_imga)
     elif params['color_space'] == 'gray':
         orig_imga_conv = colorconv.gray_convert(orig_imga)
+        print('here')
         orig_imga_conv.shape = orig_imga_conv.shape + (1,)
     elif params['color_space'] == 'opp':
         orig_imga_conv = colorconv.opp_convert(orig_imga)

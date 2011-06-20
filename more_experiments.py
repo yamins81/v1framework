@@ -27,3 +27,15 @@ def ext_eval_various_random_l3_various_renderman(depends_on=('../config/parallel
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
+@protocolize()
+def make_best_l3_grayscale_model(depends_on='../config/best_l3_grayscale_model.py'):
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def ext_eval_best_l3_exploratory_grayscale_renderman(depends_on=('../config/exploratory_renderman_tasks2.py',
+                                                  '../config/best_l3_grayscale_model.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks2.py',
+                                            '../config/best_l3_grayscale_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
