@@ -28,7 +28,10 @@ base_model = SON([
                 ]))]),          
             SON([('filter',SON([
                     ('model_name','gridded_gabor'),
-                    ('phases',[0])
+                    ('phases',[0]),
+                    ('ker_shape',[21,21]),
+                    ('divfreqs',[2,4,5,10,13,16]),
+                    ('norients',12)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -74,14 +77,14 @@ model1a['layers'][1]['filter']['divfreqs'] = [2,4,7,8]
 
 
 model2 = copy.deepcopy(base_model)
-model2['layers'][1]['filter']['ker_shape'] = [20,20]
+model2['layers'][1]['filter']['ker_shape'] = [21,21]
 model2['layers'][1]['filter']['norients'] = 12
 model2['layers'][1]['filter']['divfreqs'] = [2,4,5,8,10,12,15,16]
 model2['layers'][2]['filter']['fsample'] = 2
 model2['layers'][2]['filter']['osample'] = 2
 
 model2a = copy.deepcopy(base_model)
-model2a['layers'][1]['filter']['ker_shape'] = [20,20]
+model2a['layers'][1]['filter']['ker_shape'] = [21,21]
 model2a['layers'][1]['filter']['norients'] = 12
 model2a['layers'][1]['filter']['divfreqs'] = [2,5,10,13,16]
 model2a['layers'][2]['filter']['osample'] = 2
