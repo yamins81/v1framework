@@ -97,20 +97,20 @@ for m in [base_model]:
     
 l0_norm_kers = [3,9]
 l1_filter_kers = [3,9]
-l1_norm_stretch = [.1,1]
+l3_norm_stretch = [.1,1]
 l2_filter_kers = [3,9]
 
 models = []
 for v1 in l0_norm_kers:
     for v2 in l1_filter_kers:
         for v3 in l2_filter_kers:
-            for v4 in l1_norm_stretch:
+            for v4 in l3_norm_stretch:
                 m = copy.deepcopy(base_model)
                 m['layers'][0]['lnorm']['inker_shape'] = [v1,v1]
                 m['layers'][0]['lnorm']['outker_shape'] = [v1,v1]
                 m['layers'][1]['filter']['ker_shape'] = [v2,v2]
                 m['layers'][2]['filter']['ker_shape'] = [v3,v3]
-                m['layers'][1]['lnorm']['stretch'] = v4
+                m['layers'][3]['lnorm']['stretch'] = v4
                 models.append(m)
 
 config = {
