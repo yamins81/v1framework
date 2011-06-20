@@ -89,3 +89,16 @@ def ext_eval_small_gabor_then_random_exploratory_renderman(depends_on=('../confi
                                             '../config/small_gabor_then_random_model.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
+
+@protocolize()
+def ext_eval_small_gabor_then_random_exploratory_polygon(depends_on=('../config/exploratory_polygon_tasks.py',
+                                                  '../config/small_gabor_then_random_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+    testing small gabor then random on two hard renderman problems.  
+    result:   
+    """
+    protocols.extract_and_evaluate_protocol('../config/exploratory_polygon_tasks.py',
+                                            '../config/small_gabor_then_random_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
