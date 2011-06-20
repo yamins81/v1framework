@@ -87,7 +87,7 @@ model4['layers'][1]['filter']['divfreqs'] = [2,3,4,5,8,10,12,15,16,18]
 model4['layers'][2]['filter']['fsample'] = 2
 model4['layers'][2]['filter']['osample'] = 2
 
-
+model5 = copy.deepcopy(base_model)
 model5['layers'][1]['filter']['ker_shape'] = [19,19]
 model5['layers'][1]['filter']['norients'] = 16
 model5['layers'][1]['filter']['divfreqs'] = [2,4,5,8,10,12,15,16]
@@ -107,13 +107,13 @@ model6a['layers'][1]['filter']['norients'] = 16
 model6a['layers'][1]['filter']['divfreqs'] = [2,3,4,5,8,10,12,15,16,18]
 model6a['layers'][2]['filter']['osample'] = 2
 
-
 model6b = copy.deepcopy(base_model)
 model6b['layers'][1]['filter']['ker_shape'] = [19,19]
 model6b['layers'][1]['filter']['norients'] = 16
 model6b['layers'][1]['filter']['divfreqs'] = [2,3,4,5,8,10,12,15,16,18]
 model6b['layers'][2]['filter']['fsample'] = 2
 
+model7 = copy.deepcopy(base_model)
 model7['layers'][1]['filter']['ker_shape'] = [31,31]
 model7['layers'][1]['filter']['norients'] = 16
 model7['layers'][1]['filter']['divfreqs'] = [2,4,5,8,10,12,15,16]
@@ -127,6 +127,7 @@ model8['layers'][1]['filter']['divfreqs'] = [2,3,4,5,8,10,12,15,16,18]
 model8['layers'][2]['filter']['fsample'] = 2
 model8['layers'][2]['filter']['osample'] = 2
 
+model9 = copy.deepcopy(base_model)
 model9['layers'][1]['filter']['ker_shape'] = [25,25]
 model9['layers'][1]['filter']['norients'] = 16
 model9['layers'][1]['filter']['divfreqs'] = [2,4,5,8,10,12,15,16]
