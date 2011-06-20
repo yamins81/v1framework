@@ -96,25 +96,24 @@ for m in [base_model]:
     ])
     
 l2_filter_kers = [5,7,9]
-l3_filter_kers = [5,9]
+l3_filter_kers = [5,7,9]
 l2_norm_stretch = [.1,1]
-l2_norm_kers = [3,9]
-l3_norm_kers = [3,9]
+l2_norm_kers = [3,5]
+l3_pool_kers = [3,9]
 
 models = []
 for v1 in l2_filter_kers:
     for v2 in l3_filter_kers:
-        for v3 in l2_norm_kers:
-            for v4 in l3_norm_kers:
-                for v5 in l2_norm_stretch:
+        for v3 in l2_norm_stretch:
+            for v4 in l2_norm_kers:
+                for v5 in l3_pool_kers:
                     m = copy.deepcopy(base_model)
-                    m['layers'][2]['lnorm']['inker_shape'] = [v3,v3]
-                    m['layers'][2]['lnorm']['outker_shape'] = [v3,v3]
-                    m['layers'][3]['lnorm']['inker_shape'] = [v4,v4]
-                    m['layers'][3]['lnorm']['outker_shape'] = [v4,v4]
                     m['layers'][2]['filter']['ker_shape'] = [v1,v1]
                     m['layers'][3]['filter']['ker_shape'] = [v2,v2]
-                    m['layers'][2]['lnorm']['stretch'] = v5
+                    m['layers'][2]['lnorm']['stretch'] = v3                    
+                    m['layers'][2]['lnorm']['inker_shape'] = [v4,v4]
+                    m['layers'][2]['lnorm']['outker_shape'] = [v4,v4]
+                    m['layers'][3]['lpool']['ker_shape'] = [v5,v5]
                     models.append(m)
 
 config = {
