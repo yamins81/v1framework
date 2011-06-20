@@ -1064,7 +1064,8 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     statuses = wait_and_get_statuses(jobids)
     
     if not all([status == 0 for status in statuses]):
-        raise ValueError, 'There was a error in the job.'
+        bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
+        raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)
     
     
     for m in model_configs: 
