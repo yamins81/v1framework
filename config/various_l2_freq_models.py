@@ -29,9 +29,9 @@ base_model = SON([
             SON([('filter',SON([
                     ('model_name','gridded_gabor'),
                     ('phases',[0]),
-                    ('ker_shape',[21,21]),
-                    ('divfreqs',[2,4,5,10,13,16]),
-                    ('norients',12)
+                    ('ker_shape',[11,11]),
+                    ('divfreqs',[2,4,5,7,9]),
+                    ('norients',6)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -62,19 +62,14 @@ base_model = SON([
            ])   
     ])
 
-#different size gabors
-
-
+#different filter shapes
 model1 = copy.deepcopy(base_model)
-model1['layers'][1]['filter']['ker_shape'] = [11,11]
-model1['layers'][1]['filter']['norients'] = 6
-model1['layers'][1]['filter']['divfreqs'] = [2,4,7,9]
+model1['layers'][1]['filter']['ker_shape'] = [9,9]
+model1['layers'][1]['filter']['norients'] = 4
+model1['layers'][1]['filter']['divfreqs'] = [2,4,7,8]
 
 model1a = copy.deepcopy(base_model)
-model1a['layers'][1]['filter']['ker_shape'] = [9,9]
-model1a['layers'][1]['filter']['norients'] = 4
-model1a['layers'][1]['filter']['divfreqs'] = [2,4,7,8]
-
+model1a['layers'][2]['filter']['ker_shape'] = [3,3]
 
 model2 = copy.deepcopy(base_model)
 model2['layers'][1]['filter']['ker_shape'] = [21,21]
@@ -149,7 +144,7 @@ model11['layers'][1]['lpool']['ker_shape'] = [9,9]
 
 #unif instead of freq unif
 model12 = copy.deepcopy(base_model)
-model12['layers'][1]['filter']['model_name'] = 'uniform'
+model12['layers'][2]['filter']['model_name'] = 'uniform'
 
 models = [model1,
           model1a,
