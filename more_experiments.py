@@ -102,3 +102,26 @@ def ext_eval_small_gabor_then_random_exploratory_polygon(depends_on=('../config/
                                             '../config/small_gabor_then_random_model.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
+                                            
+
+@protocolize()
+def make_various_random_l3_grayscale_models2(depends_on='../config/various_random_l3_grayscale_models2.py'):
+    """
+    making a bunch more l3 random models with grayscale
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_various_random_l3_grayscale2_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_random_l3.py',
+                                                  '../config/various_random_l3_grayscale_models2.py',
+                                                  '../config/polygon_task.py')):
+    """
+    testing a bunch more l3 random grayscale models on polygon problems:
+    result: 
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_random_l3.py',
+                                            '../config/various_random_l3_grayscale_models2.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
