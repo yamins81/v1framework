@@ -6,21 +6,23 @@
 
 #from collections import OrderedDict
 
-import copy
-
 from bson import SON
 
-base_model = SON([
-    ('layers', [SON([('lnorm', SON([
+models = [SON([
+    ('layers', [
+            SON([('lnorm', SON([
                 ('inker_shape' , (9,9)),
                 ('outker_shape', (9,9)),
                 ('threshold' , 1.0),
                 ('stretch',1)
                 ]))]),
+                
             SON([('filter',SON([
-                    ('ker_shape',(3,3)),
-                    ('model_name','really_random'),
-                    ('num_filters',16)
+                    ('ker_shape',(11,11)),
+                    ('model_name','gridded_gabor'),
+                    ('phases',[0]),
+                    ('norients',6),
+                    ('divfreqs',[3,5,7,9])
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -38,6 +40,7 @@ base_model = SON([
                     ('ker_shape',(5,5))
                     ]))
                 ]),
+                
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('num_filters',32),
@@ -60,6 +63,7 @@ base_model = SON([
                     ('ker_shape',(5,5))
                     ]))         
                 ]),
+                
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('num_filters',128),
@@ -81,11 +85,16 @@ base_model = SON([
                     ('ker_shape',(9,9))
                     ]))
                 ])
+            
            ])   
-    ])
+    ]),
+    
 
 
-for m in [base_model]:
+                
+]
+
+for m in models:
     m['color_space'] ='gray'
     m['conv_mode'] = 'valid'
     m['preproc'] = SON([
@@ -95,24 +104,6 @@ for m in [base_model]:
         ('whiten', False)
     ])
     
-l0_norm_kers = [3,9]
-l1_filter_kers = [3,9]
-l3_norm_stretch = [.1,1]
-l2_filter_kers = [3,9]
-
-models = []
-for v1 in l0_norm_kers:
-    for v2 in l1_filter_kers:
-        for v3 in l2_filter_kers:
-            for v4 in l3_norm_stretch:
-                m = copy.deepcopy(base_model)
-                m['layers'][0]['lnorm']['inker_shape'] = [v1,v1]
-                m['layers'][0]['lnorm']['outker_shape'] = [v1,v1]
-                m['layers'][1]['filter']['ker_shape'] = [v2,v2]
-                m['layers'][2]['filter']['ker_shape'] = [v3,v3]
-                m['layers'][3]['lnorm']['stretch'] = v4
-                models.append(m)
-
 config = {
      'models': models
 }
