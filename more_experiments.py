@@ -160,3 +160,30 @@ def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/explor
                                             '../config/various_l2_freq_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_various_l2_freq_models2(depends_on='../config/various_l2_freq_models2.py'):
+    """
+    making a bunch more l3 random models with grayscale
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+@protocolize()
+def ext_eval_various_l2_freq_exploratory_renderman2(depends_on=('../config/exploratory_renderman_tasks_for_freq.py',
+                                                  '../config/various_l2_freq_models2.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    testing a bunch more l3 random grayscale models on polygon problems:
+    results: 
+    	-- max/min results are about 75%/50% for the rect vs everythign problem and 45%/22% for the five-way choice
+    	-- 9 is much better than 3 for l3 pool kershape for both problems
+    	-- 5,7 predominate over 3 in l2 filter kershape for the two-choice problem but not for the five-choice
+    	-- 3,5 predominate over 7 in l3 filter kershape for the five-choice problem but not so much for the two-shoice
+    	-- l2 norm stretch doesn't matter much for either problem 
+    	-- l2 norm shape doesn't matter much for either problem
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_freq.py',
+                                            '../config/various_l2_freq_models2.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
