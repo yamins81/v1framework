@@ -20,7 +20,7 @@ base_model = SON([
             SON([('filter',SON([
                     ('ker_shape',(3,3)),
                     ('model_name','really_random'),
-                    ('num_filters',96)
+                    ('num_filters',16)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -40,7 +40,7 @@ base_model = SON([
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
-                    ('num_filters',256),
+                    ('num_filters',32),
                     ('ker_shape',(3,3)),
                     ])),
                 ('activ', SON([
