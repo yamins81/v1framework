@@ -250,6 +250,13 @@ def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_pol
                                             
                                             
 
+@protocolize()
+def make_medium_gabor_mod4_sameconv_model(depends_on='../config/medium_gabor_mod4_with_freq_uniform_sameconv.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
 
 
 @protocolize()
