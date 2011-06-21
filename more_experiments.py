@@ -104,7 +104,8 @@ def ext_eval_various_random_l2_grayscale_various_polygon(depends_on=('../config/
                                             '../config/various_random_l2_grayscale_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
-                                            
+
+@protocolize()                                            
 def ext_eval_various_random_l2_grayscale_various_renderman(depends_on=('../config/exploratory_renderman_tasks_for_random_l2.py',
                                                   '../config/various_random_l2_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
