@@ -77,13 +77,41 @@ def ext_eval_various_random_l3_grayscale_car_vs_plane(depends_on=('../config/exp
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    testing a bunch of l3 random grayscale models on polygon problems:
-    result: (a) all models clustered between 65-75% for rect vs. all problem (chance is 50%) 
-            (b) all models clustered between 32-41% for 5-way choice problem (chacne is 20%)
     
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_random_l3.py',
                                             '../config/various_random_l3_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_various_random_l2_grayscale_models(depends_on='../config/various_random_l2_grayscale_models.py'):
+    """
+    making a bunch of l2 random models with grayscale
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def ext_eval_various_random_l2_grayscale_various_polygon(depends_on=('../config/exploratory_polygon_tasks_for_random_l2.py',
+                                                  '../config/various_random_l2_grayscale_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/exploratory_polygon_tasks_for_random_l2.py',
+                                            '../config/various_random_l2_grayscale_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+                                            
+def ext_eval_various_random_l2_grayscale_various_renderman(depends_on=('../config/exploratory_renderman_tasks_for_random_l2.py',
+                                                  '../config/various_random_l2_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_random_l2.py',
+                                            '../config/various_random_l2_grayscale_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
