@@ -49,7 +49,6 @@ models = [SON([
                          
              SON([('filter',SON([
                       ('model_name','freq_uniform'),
-                      ('mode','same'),
                       ('ker_shape',(5,5)),
                       ('osample',2)
                     ])),
