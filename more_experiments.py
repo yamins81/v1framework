@@ -247,3 +247,17 @@ def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_pol
                                             '../config/various_l2_freq_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+                                            
+                                            
+
+
+
+@protocolize()
+def ext_eval_medium_gabor_mod4_sameconv_freq_uniform_ten_categories(depends_on=('../config/cars_vs_planes_task_for_freq.py',
+                                                  '../config/medium_gabor_mod4_with_freq_uniform_sameconv.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.extract_and_evaluate_protocol('../config/cars_vs_planes_task_for_freq.py',
+                                            '../config/medium_gabor_mod4_with_freq_uniform_sameconv.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
+                                            

@@ -1199,7 +1199,8 @@ def fbcorr(input,filter,layer_config,convolve_func):
             output[cidx] = convolve_func(input[cidx],
                                          filter,
                                          min_out=layer_config['activ'].get('min_out'),
-                                         max_out=layer_config['activ'].get('max_out'))         
+                                         max_out=layer_config['activ'].get('max_out'),
+                                         mode=layer_config['filter'].get('mode','valid'))         
     return output
 
 
