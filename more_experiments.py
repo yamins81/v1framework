@@ -268,3 +268,20 @@ def ext_eval_medium_gabor_mod4_sameconv_freq_uniform_ten_categories(depends_on=(
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
                                             
+@protocolize()
+def make_small_gabor_sameconv_model(depends_on='../config/small_gabor_with_freq_uniform_sameconv.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+
+@protocolize()
+def ext_eval_small_gabor_sameconv_freq_uniform_ten_categories(depends_on=('../config/cars_vs_planes_task_for_freq2.py',
+                                                  '../config/small_gabor_with_freq_uniform_sameconv.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.extract_and_evaluate_protocol('../config/cars_vs_planes_task_for_freq2.py',
+                                            '../config/small_gabor_with_freq_uniform_sameconv.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
