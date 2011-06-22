@@ -39,7 +39,10 @@ def ext_eval_best_l3_exploratory_grayscale_renderman(depends_on=('../config/expl
                                                   '../config/best_l3_grayscale_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-    testing grayscale best l3 on two hard renderman problems.  result:   about 29% for each problem
+    testing grayscale best l3 on two hard renderman problems.
+    results:
+    	faces (chance is 12.5%): 29.4%
+    	10-way (chance is 10%): 29%
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks2.py',
                                             '../config/best_l3_grayscale_model.py',
@@ -63,8 +66,17 @@ def ext_eval_various_random_l3_grayscale_various_polygon(depends_on=('../config/
                                                   '../config/polygon_task.py')):
     """
     testing a bunch of l3 random grayscale models on polygon problems:
-    result: (a) all models clustered between 65-75% for rect vs. all problem (chance is 50%) 
-            (b) all models clustered between 32-41% for 5-way choice problem (chacne is 20%)
+    results:
+    	5-way choice (chance is 20%):
+    		max: 41.6%
+    		min: 27.6%
+    		mean: 36%
+    		std: 3.5%
+		rect vs. all (chance is 50%):
+			max: 75.8%
+			min: 62.5%
+			mean: 68%
+			std: 3.79%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_random_l3.py',
@@ -77,7 +89,11 @@ def ext_eval_various_random_l3_grayscale_car_vs_plane(depends_on=('../config/exp
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    
+    hash 87736f529ff7c9b1df90f8be4b3f25dc31383fa5
+    result: max: 78.75%
+    		min: 57.5%
+    		mean: 67.5%
+    		std: 5.6%
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_random_l3.py',
                                             '../config/various_random_l3_grayscale_models.py',
@@ -97,6 +113,22 @@ def ext_eval_various_random_l2_grayscale_various_polygon(depends_on=('../config/
                                                   '../config/various_random_l2_grayscale_models.py',
                                                   '../config/polygon_task.py')):
     """
+    5-way:
+        max: 37
+        min: 12.0
+        mean: 23.6
+        std: 4.7
+    Rect vs all:
+        max: 70.0
+        min: 40
+        mean: 56.9
+        std: 6.2
+    Rect vs all with trans. avg max:
+        max: 88.75
+        min: 62.5
+        mean: 73.1
+        Std: 5.5
+    
 
     
     """
@@ -110,6 +142,32 @@ def ext_eval_various_random_l2_grayscale_various_renderman(depends_on=('../confi
                                                   '../config/various_random_l2_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    faces:
+        max: 23.1
+        min: 12.5
+        mean: 18.73
+        std: 2.5
+    10-way:
+        max: 33.5
+        min: 14.75
+        mean: 23.69
+        std: 3.97
+    Car vs plane:
+        max: 80
+        min: 51
+        mean: 65.8
+        std: 5.9
+    Car vs plane with trans avg, max:
+        max: 73.75
+        min: 42.6
+        mean: 62.7
+        std: 6.1
+    Car vs plane with trans avg:
+        max: 75
+        min: 46.26
+        mean: 64
+        std: 5.2
+        
     
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_random_l2.py',
@@ -227,6 +285,11 @@ def ext_eval_various_l2_freq_harder_renderman(depends_on=('../config/exploratory
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    faces (12.5% chance):
+        max: 26.56 
+        min: 18.75
+        mean: 22.79
+        std: 2.43
 
     
     """
@@ -240,7 +303,16 @@ def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_pol
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    5-way choice (chance is 20%):
+        max: 89.5%
+        min: 55.5%
+        mean: 76.6%
+        std: 9.9%
+    rect vs all (chance is 50%):
+        max: 92.5%
+        min: 67.5%
+        mean: 84%
+        std: 6.4%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
