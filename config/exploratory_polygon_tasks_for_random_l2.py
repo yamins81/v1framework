@@ -35,7 +35,7 @@ config = {
    ]),
   SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',1), 
+      ('N',2), 
       ('ntrain',200),
       ('ntest',100),
       ('universe',SON([('image.tx',SON([('$lt',.22),('$gt',-.22)])),
