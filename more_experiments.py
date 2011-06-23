@@ -125,13 +125,13 @@ def ext_eval_various_random_l3_renderman_subtasks_more(depends_on=('../config/re
 @protocolize()
 def ext_eval_various_random_l3_polygon_subtasks(depends_on=('../config/polygon_subtasks.py',
                                                   '../config/various_random_l3_grayscale_models.py',
-                                                  '../config/polygon_images.py')):
+                                                  '../config/polygon_task.py')):
     """
     
     """
     protocols.extract_and_evaluate_protocol('../config/polygon_subtasks.py',
                                             '../config/various_random_l3_grayscale_models.py',
-                                            '../config/polygon_images.py',
+                                            '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
                                             
