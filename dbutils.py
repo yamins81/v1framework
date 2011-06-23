@@ -513,15 +513,18 @@ def FuncTime(func):
     return time.gmtime(max(times.values()))
 
 def reach_in(attr,q):
-    q1 = SON([])
-    for k in q:
-        if k == '$or':
-            q1[k] = [reach_in(attr,l) for l in q[k]]
-        elif k.startswith('$'):
-            q1[k] = q[k]
-        else:
-            q1[attr + '.' + k] = q[k]
-    return q1   
+    if isinstance(q,list):
+        return [reach_in(attr,qq) for qq in q]
+    else:
+        q1 = SON([])
+        for k in q:
+            if k == '$or':
+                q1[k] = [reach_in(attr,l) for l in q[k]]
+            elif k.startswith('$'):
+                q1[k] = q[k]
+            else:
+                q1[attr + '.' + k] = q[k]
+        return q1   
     
 
 def interpret_res(res,data,func):
