@@ -1129,7 +1129,13 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
 
 
 
-
+def compute_population_results(hash):
+    conn = pm.Connection()
+    db = conn[DB_NAME]
+    coll = db['performance']
+    L = list(coll.find({'__hash__':hash}))
+    acc = np.array([l['test_accuracy'] for l in L])
+    return acc.max(),acc.min(),acc.mean(),acc.std()
 
 #=-=-=-=-=-=-=-=core computations
     
