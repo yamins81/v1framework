@@ -68,15 +68,20 @@ def ext_eval_various_random_l3_grayscale_various_polygon(depends_on=('../config/
     testing a bunch of l3 random grayscale models on polygon problems:
     results:
     	5-way choice (chance is 20%):
-    		max: 41.6%
-    		min: 27.6%
+    		max: 41.6%   -- up go 54% with max transform avg.
+    		min: 27.6% 
     		mean: 36%
     		std: 3.5%
 		rect vs. all (chance is 50%):
-			max: 75.8%
+			max: 75.8% 
 			min: 62.5%
 			mean: 68%
 			std: 3.79%
+		rect vs. all with trans with max(chance is 50%):
+			max: 86.25
+			min: 57.5
+			mean: 73
+			std: 6.38
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_random_l3.py',
@@ -118,6 +123,11 @@ def ext_eval_various_random_l2_grayscale_various_polygon(depends_on=('../config/
         min: 12.0
         mean: 23.6
         std: 4.7
+    5-way with trans avg max:
+        max: 56.5
+        min: 36.5
+        mean: 46.5
+        std: 4.4
     Rect vs all:
         max: 70.0
         min: 40
@@ -252,8 +262,11 @@ def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/explor
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
-    
+    cars vs planes, trans with max:
+    	max: 73.75
+    	min: 47.5
+        mean: 62.5
+        std: 7.3
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_freq.py',
                                             '../config/various_l2_freq_models.py',
@@ -272,7 +285,11 @@ def ext_eval_various_l2_freq_exploratory_renderman2(depends_on=('../config/explo
                                                   '../config/various_l2_freq_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    cars vs planes, trans with max:
+    	max: 70
+    	min: 51.25
+    	mean: 58.5
+    	std: 4.81
     
     """
     protocols.extract_and_evaluate_protocol('../config/exploratory_renderman_tasks_for_freq.py',
@@ -290,6 +307,11 @@ def ext_eval_various_l2_freq_harder_renderman(depends_on=('../config/exploratory
         min: 18.75
         mean: 22.79
         std: 2.43
+    10-way:
+    	max: 24
+    	min: 15.75
+    	mean: 19.9
+    	std: 2.25
 
     
     """
@@ -297,6 +319,20 @@ def ext_eval_various_l2_freq_harder_renderman(depends_on=('../config/exploratory
                                             '../config/various_l2_freq_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_l2_freq_renderman_subtasks(depends_on=('../config/renderman_subtasks_for_freq.py',
+                                                  '../config/various_l2_freq_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
+                                            '../config/various_l2_freq_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
