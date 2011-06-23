@@ -6,7 +6,7 @@ def combine_ors(ors):
     import copy
     import itertools
  
-     def combine_dicts(d):
+    def combine_dicts(d):
         y = copy.deepcopy(d[0])
         for dd in d[1:]:
             y.update(dd)
