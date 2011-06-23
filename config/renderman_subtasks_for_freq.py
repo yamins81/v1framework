@@ -22,7 +22,7 @@ config = {
 
    SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',1), 
+      ('N',3), 
       ('ntrain',80),
       ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl'),
@@ -37,7 +37,7 @@ config = {
       ]), 
    SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',1), 
+      ('N',3), 
       ('ntrain',80),
       ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl'),
@@ -55,7 +55,7 @@ config = {
 
    SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',1), 
+      ('N',3), 
       ('ntrain',80),
       ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl'),
@@ -70,7 +70,7 @@ config = {
       ]),
    SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',1), 
+      ('N',3), 
       ('ntrain',80),
       ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl'),

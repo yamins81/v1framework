@@ -90,6 +90,20 @@ def ext_eval_various_random_l3_grayscale_various_polygon(depends_on=('../config/
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
 @protocolize()
+def ext_eval_various_random_l3_renderman_subtasks(depends_on=('../config/renderman_subtasks_for_freq.py',
+                                                  '../config/various_random_l3_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
+                                            '../config/various_random_l3_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+                                            
+@protocolize()
 def ext_eval_various_random_l3_grayscale_car_vs_plane(depends_on=('../config/exploratory_renderman_tasks_for_random_l3.py',
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
@@ -184,6 +198,20 @@ def ext_eval_various_random_l2_grayscale_various_renderman(depends_on=('../confi
                                             '../config/various_random_l2_grayscale_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_random_l2_renderman_subtasks(depends_on=('../config/renderman_subtasks_for_freq.py',
+                                                  '../config/various_random_l2_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
+                                            '../config/various_random_l2_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
                                             
 @protocolize()
