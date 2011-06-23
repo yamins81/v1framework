@@ -2,17 +2,16 @@ from bson import SON
 
 import model_categories as mc
 
-import itertools
-
-import copy
-
-def combine_dicts(d):
-    y = copy.deepcopy(d[0])
-    for dd in d[1:]:
-        y.update(dd)
-    return y
-    
 def combine_ors(ors):
+    import copy
+    import itertools
+ 
+     def combine_dicts(d):
+        y = copy.deepcopy(d[0])
+        for dd in d[1:]:
+            y.update(dd)
+        return y
+ 
     return map(combine_dicts,itertools.product(ors))
     
     
