@@ -1135,7 +1135,7 @@ def compute_population_results(hash):
     coll = db['performance']
     L = list(coll.find({'__hash__':hash}))
     acc = np.array([l['test_accuracy'] for l in L])
-    return acc.max(),acc.min(),acc.mean(),acc.std()
+    return acc.max(),acc.min(),acc.mean(),acc.std(),L[0]['task']
 
 #=-=-=-=-=-=-=-=core computations
     
