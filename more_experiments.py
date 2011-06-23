@@ -94,12 +94,44 @@ def ext_eval_various_random_l3_renderman_subtasks(depends_on=('../config/renderm
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+        no out of plane rot:
+            max,min,mean,std : 85.0, 67.5, 76.09375, 4.6837369154400159
+        not rot: 
+            max,min,mean,std : 85.0, 73.333333333333329, 80.78125, 3.7205877811845829
+        limited trans:
+            max,min,mean,std : 80.833333333333329, 66.666666666666671, 72.447916666666657, 3.9798619593244
+        limited scale: 
+            max,min,mean,std : 78.333333333333329, 64.166666666666671, 71.510416666666657, 4.1793426973561818
     
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
                                             '../config/various_random_l3_grayscale_models.py',
                                             '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+@protocolize()
+def ext_eval_various_random_l3_renderman_subtasks_more(depends_on=('../config/renderman_subtasks.py',
+                                                  '../config/various_random_l3_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
+                                            '../config/various_random_l3_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_random_l3_polygon_subtasks(depends_on=('../config/polygon_subtasks.py',
+                                                  '../config/various_random_l3_grayscale_models.py',
+                                                  '../config/polygon_images.py')):
+    """
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/polygon_subtasks.py',
+                                            '../config/various_random_l3_grayscale_models.py',
+                                            '../config/polygon_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
                                             
@@ -353,12 +385,40 @@ def ext_eval_various_l2_freq_renderman_subtasks(depends_on=('../config/renderman
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
-    
+    no out of plane rot:
+    	max,min,mean,std : 80.0, 68.333333333333329, 73.333333333333329, 3.4291776360024366
+    not rot at all:
+        max,min,mean,std : 85.833333333333329, 72.5, 79.111111111111114, 3.7449554547450479
+    limited translation:
+        max,min,mean,std : 74.166666666666671, 59.166666666666664, 68.555555555555557 4.0764302950764773
+    limited scale:
+        max,min,mean,std : 80.833333333333329, 61.666666666666664, 69.277777777777771, .0080182621053053
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
                                             '../config/various_l2_freq_models.py',
                                             '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_l2_freq_renderman_subtasks_more(depends_on=('../config/renderman_subtasks.py',
+                                                  '../config/various_l2_freq_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
+                                            '../config/various_l2_freq_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_l2_freq_polygon_subtasks(depends_on=('../config/polygon_subtasks.py',
+                                                  '../config/various_l2_freq_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/polygon_subtasks.py',
+                                            '../config/various_l2_freq_models.py',
+                                            '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 
