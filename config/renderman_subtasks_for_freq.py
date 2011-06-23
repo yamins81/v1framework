@@ -12,7 +12,7 @@ def combine_ors(ors):
             y.update(dd)
         return y
  
-    return map(combine_dicts,itertools.product(ors))
+    return map(combine_dicts,itertools.product(*ors))
     
     
 config = {
@@ -74,7 +74,7 @@ config = {
       ('ntrain',80),
       ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl'),
-                       ('$or',[SON([('config.image.sx',SON([('$exists',False)]))]),
+                       ('$or',[SON([('image.sx',SON([('$exists',False)]))]),
                                SON([('$where',"(this.config.image.sx/this.config.image.sy < 1.1) && (this.config.image.sx/this.config.image.sy > 1/1.1)")])
                               ])
                       ])),
