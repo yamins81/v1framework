@@ -44,7 +44,8 @@ rot_q = SON([('image.tx',SON([('$lt',.05),('$gt',-.05)])),
 scale_q = SON([('image.tx',SON([('$lt',.06),('$gt',-.06)])),
                ('image.ty',SON([('$lt',.06),('$gt',-.06)])),
                ('image.rxy',SON([('$lt',.225)])),
-               
+              ])
+              
 scale_q_1 = SON([('image.tx',SON([('$lt',.08),('$gt',-.08)])),
                ('image.ty',SON([('$lt',.08),('$gt',-.08)])),
                ('image.rxy',SON([('$lt',.2)])),
