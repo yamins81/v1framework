@@ -127,8 +127,29 @@ def ext_eval_various_random_l3_polygon_subtasks(depends_on=('../config/polygon_s
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/polygon_task.py')):
     """
-    
+    5way
+    just rotation:
+    	86.3,69,75,4.7
+    rotation and scale:
+        71.6,53,62.6,5.98
+    translation and rotation:
+        62.3,45.0,55.2,4.7
+    	
+    	
+    rect:
+    just translation:
+    	100.0,91.6,96.4,2.1
+    just rotation:
+        92.5,76.7,83.9,5.3
+    just scale:
+    	100,95,98,1.2
+    rotation and scale:
+    	89.1,70,80,5.15
+    translation and rotation:
+    	86.6,69.1,78.2,5.2
+    	
     """
+    
     protocols.extract_and_evaluate_protocol('../config/polygon_subtasks.py',
                                             '../config/various_random_l3_grayscale_models.py',
                                             '../config/polygon_task.py',
@@ -231,18 +252,6 @@ def ext_eval_various_random_l2_grayscale_various_renderman(depends_on=('../confi
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
-@protocolize()
-def ext_eval_various_random_l2_renderman_subtasks(depends_on=('../config/renderman_subtasks_for_freq.py',
-                                                  '../config/various_random_l2_grayscale_models.py',
-                                                  '../config/ten_categories_images.py')):
-    """
-
-    
-    """
-    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_for_freq.py',
-                                            '../config/various_random_l2_grayscale_models.py',
-                                            '../config/ten_categories_images.py',
-                                            convolve_func_name='numpy', write=True,parallel=True)
 
 
                                             
@@ -415,6 +424,27 @@ def ext_eval_various_l2_freq_polygon_subtasks(depends_on=('../config/polygon_sub
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/polygon_task.py')):
     """
+    5way
+    just rotation:
+    	97,71,91,7.1
+    rotation and scale:
+        93,55,82,8.7
+    translation and rotation:
+    	99,73,92,6.8
+    	
+    rect:
+    just translation:
+    	100,92.5,97.6,2.15
+    just rotation:
+        98.3,74.1,90.5,5.52
+    just scale:
+    	99.1,92.5,96.5,1.89
+    rotation and scale:
+    	92.5,70.8,86.2,5.2
+    translation and rotation:
+    	95.8,70.0,88.8,6.9
+    	
+    	
     """
     protocols.extract_and_evaluate_protocol('../config/polygon_subtasks.py',
                                             '../config/various_l2_freq_models.py',
