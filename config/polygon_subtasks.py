@@ -30,6 +30,11 @@ trans_q = SON([('image.sx',SON([('$lt',1.2),('$gt',1/1.2)])),
                ('image.rxy',SON([('$lt',.2)])),
                ])
                
+trans_q_1 = SON([('image.sx',SON([('$lt',1.25),('$gt',1/1.25)])),
+               ('image.sy',SON([('$lt',1.25),('$gt',1/1.25)])),
+               ('image.rxy',SON([('$lt',.2)])),
+               ])               
+               
 rot_q = SON([('image.tx',SON([('$lt',.05),('$gt',-.05)])),
                ('image.ty',SON([('$lt',.05),('$gt',-.05)])),
                ('image.sx',SON([('$lt',1.2),('$gt',1/1.2)])),
@@ -39,6 +44,10 @@ rot_q = SON([('image.tx',SON([('$lt',.05),('$gt',-.05)])),
 scale_q = SON([('image.tx',SON([('$lt',.06),('$gt',-.06)])),
                ('image.ty',SON([('$lt',.06),('$gt',-.06)])),
                ('image.rxy',SON([('$lt',.225)])),
+               
+scale_q_1 = SON([('image.tx',SON([('$lt',.08),('$gt',-.08)])),
+               ('image.ty',SON([('$lt',.08),('$gt',-.08)])),
+               ('image.rxy',SON([('$lt',.2)])),
                ])
 
 scale_rot_q = SON([('image.tx',SON([('$lt',.015),('$gt',-.015)])),
@@ -50,11 +59,11 @@ trans_rot_q = SON([('image.sx',SON([('$lt',1.05),('$gt',1/1.05)])),
                ])
  
 t1 = copy.deepcopy(fiveway_task)
-t1['universe'].update(trans_q)
+t1['universe'].update(trans_q_1)
 t2 = copy.deepcopy(fiveway_task)
 t2['universe'].update(rot_q)
 t3 = copy.deepcopy(fiveway_task)
-t3['universe'].update(scale_q)
+t3['universe'].update(scale_q_1)
 t4 = copy.deepcopy(fiveway_task)
 t4['universe'].update(scale_rot_q)
 t5 = copy.deepcopy(fiveway_task)
