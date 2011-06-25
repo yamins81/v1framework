@@ -1262,3 +1262,311 @@ def get_config(config_fname):
     execfile(config_path, {},config)
     
     return config['config']
+
+
+#################
+
+def get_corr_protocol(corr_config_path,model_config_path,image_config_path,convolve_func_name='numpy', write=False,parallel=False):
+    model_config_gen = get_config(model_config_path)
+    model_hash = get_config_string(model_config_gen['models'])
+    model_certificate = '../.model_certificates/' + model_hash
+    
+    image_config_gen = get_config(image_config_path)
+    image_hash =  get_config_string(image_config_gen['images'])
+    image_certificate = '../.image_certificates/' + image_hash
+
+    corr_config = get_config(corr_config_path)
+    task_config = extract_config.pop('extractions')
+
+    D = []
+    DH = {}
+    for task in task_config:
+        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
+        ext_hash = get_config_string(overall_config_gen)    
+        
+        performance_certificate = '../.corr_extraction_certificates/' + ext_hash
+        if not parallel:
+            op = ('extraction_' + ext_hash,get_corr,(performance_certificate,image_certificate,model_certificate,extract_config_path,convolve_func_name,task,ext_hash))
+        else:
+            op = ('extraction_' + ext_hash,get_corr_parallel,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+        D.append(op)
+        DH[ext_hash] = [op]
+             
+    if write:
+        actualize(D)
+    return DH
+
+    
+    
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def get_corr_parallel(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+        
+    (model_configs, image_config_gen, model_hash, image_hash, task_list,
+     sample_coll, sample_fs, extraction_coll, extraction_fs) = prepare_corr(ext_hash,
+                                                              image_certificate_file,
+                                                              model_certificate_file,
+                                                              task)
+    
+    jobids = []
+    if convolve_func_name == 'numpy':
+        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
+    elif convolve_func_name == 'cufft':
+        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
+        
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:
+            classifier_kwargs = task.get('classifier_kwargs',{})    
+            print('task',task)
+            sample = generate_random_sample(task,image_hash,'images') 
+            put_in_sample(sample,image_config_gen,m,task,ext_hash,ind,sample_fs)  
+            jobid = qsub(get_corr_parallel_core,(image_config_gen,m,task,ext_hash,convolve_func_name),opstring=opstring)
+            print('Submitted job', jobid)
+            jobids.append(jobid)
+                
+    print('Waiting for jobs', jobids) 
+    statuses = wait_and_get_statuses(jobids)
+    
+    if not all([status == 0 for status in statuses]):
+        bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
+        raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)
+    
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+    
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def get_corr(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+
+    (model_configs, image_config_gen, model_hash, image_hash, task_list, 
+     sample_coll, sample_fs,extraction_coll,extraction_fs) = prepare_corr(ext_hash,
+                                                image_certificate_file,
+                                                model_certificate_file,
+                                                task)
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:  
+            print('task',task)
+            sample = generate_random_sample(task,image_hash,'images') 
+            put_in_sample(sample,image_config_gen,m,task,ext_hash,ind,sample_fs)  
+            res = get_corr_core(sample,m,convolve_func_name,task,None)    
+            put_in_sample_result(res,image_config_gen,m,task,ext_hash,extraction_fs)
+    
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+    
+    
+def extract_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,cache_port=None):
+
+    if cache_port is None:
+        cache_port = NETWORK_CACHE_PORT
+    cache_port = None
+        
+
+               
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    sample_col = db['samples.files']
+    sample_fs = gridfs.GridFS(db,'samples')
+
+    sampleconf = get_most_recent_files(sample_col,{'__hash__':ext_hash,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})[0]
+    sample = cPickle.loads(sample_fs.get_version(sampleconf['filename']).read())['sample']
+    res = get_corr_core(sample,m,convolve_func_name,task,cache_port)
+    extraction_fs = gridfs.GridFS(db,'correlation_extraction')
+    put_in_sample_result(res,image_config_gen,m,task,ext_hash,extraction_fs)
+
+
+def get_corr_core(sample,m,convolve_func_name,task,cache_port):
+
+    sample_filenames = [t['filename'] for t in sample]
+
+    if convolve_func_name == 'numpy':
+        num_batches = multiprocessing.cpu_count()
+        if num_batches > 1:
+            print('found %d processors, using that many processes' % num_batches)
+            pool = multiprocessing.Pool(num_batches)
+            print('allocated pool')
+        else:
+            pool = multiprocessing.Pool(1)
+    elif convolve_func_name == 'cufft':
+        num_batches = get_num_gpus()
+        #num_batches = 1
+        if num_batches > 1:
+            print('found %d gpus, using that many processes' % num_batches)
+            pool = multiprocessing.Pool(processes = num_batches)
+        else:
+            pool = multiprocessing.Pool(1)
+    else:
+        raise ValueError, 'convolve func name not recognized'
+
+    print('num_batches',num_batches)
+    if num_batches > 0:
+        batches = get_data_batches(sample_filenames,num_batches)
+        results = []
+        weights = []
+        for (bn,b) in enumerate(batches):
+            results.append(pool.apply_async(get_core_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
+            weights.append(len(b))
+        weights = np.array(weights) / float(sum(weights))
+        batch_extractions = [r.get() for r in results]
+        extractions = combine_corr_extractions(batch_extractions,weights = weights)
+    else:
+        extractions = get_corr_inner_core(sample_filenames,m,convolve_func_name,0,task,cache_port)
+
+    
+    return extractions
+
+
+def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
+
+    if cache_port:
+        ctx = zmq.Context()
+        sock = ctx.socket(zmq.REQ)
+        sock.connect('tcp://127.0.0.1:' + str(cache_port))  
+        sock.send_pyobj({'alive':True})
+        poller = zmq.Poller()
+        poller.register(sock)
+        poll = poller.poll(timeout=NETWORK_CACHE_TIMEOUT)
+        if poll != []:
+            sock.recv_pyobj()
+        else:
+            poller = None
+    else:
+        poller = None
+
+    if convolve_func_name == 'cufft':
+        convolve_func = cuFFT.LFBCorrCuFFT(device_id=device_id, use_cache=True)
+        context = convolve_func.context
+    else:
+        convolve_func = c_numpy_mixed
+        
+
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+
+    perf_coll = db['performance.files']
+
+    model_fs = gridfs.GridFS(db,'models')
+    image_fs = gridfs.GridFS(db,'images')
+
+    filter_fh = model_fs.get_version(m['filename'])
+    filters = cPickle.loads(filter_fh.read())
+    cshape = filters[-1].shape[0]
+    
+    s = task['ker_shape']; size = s[0]*s[1]*cshape
+    V = np.zeros((size,size))
+    M = np.zeros((size,))
+    for (n,im) in enumerate(images):
+        n = float(n)
+        f = get_features(im, image_fs, filters, m, convolve_func,task,poller)
+        f0 = get_central_slice(f,s)
+        V,M = combine_corr_extractions([(V,M),(0,f0)],np.array([n-1,1]))
+    
+    if convolve_func_name == 'cufft':
+        context.pop()
+        
+    return {'mean':M, 'variance' : V}
+ 
+def get_central_slice(f,s):
+    fshape = f.shape[:2]
+    d0 = (fshape[0] - s[0])/2
+    d1 = (fshape[1] - s[1])/2
+    return f[d0:d0+s[0],d1:d2+s[1]].ravel()
+
+def combine_corr_extractions(batches,weights=None):
+    if weights is None:
+        weights = np.ones(len(batches)) / len(batches)
+    
+    if len(batches) > 2:
+       subweights = weights[:-1]
+       subweights = subweights/sum(sumwegiths)
+       res1 = combine_corr_extractions(batches[:-1],weights=subweights) 
+       res2 = batches[-1]
+       w1 = sum(weights[:-1])
+       w2 = weights[-1]
+    else:
+        res1 = batches[0]
+        res2 = batches[-1]
+        w1 = weights[0]
+        w2 = weights[1]
+    
+    v1,m1 = res1
+    v2,m2 = res2
+    
+    v = w1*v1 + v2*v2 + w1*w2*(outer(m1,m1) + outer(m2,m2) - outer(m1,m2) - outer(m2,m1))
+    m = w1*m1 + w2*m2
+    
+    return v,m
+    
+    
+    
+def put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs):
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task)),
+                 ])   
+
+    
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record['__hash__'] = ext_hash
+    print('pickling split ...')
+    out_data = cPickle.dumps(SON([('sample',split)]))
+    print('dump out sample ...')
+    sample_fs.put(out_data,**out_record)
+
+import bson           
+def put_in_sample_result(res,image_config_gen,m,task,ext_hash,sampleres_fs):
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task))
+                 ])   
+                 
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record['__hash__'] = ext_hash
+    print('pickling sample result...')
+    out_data = cPickle.dumps(SON([('sample_result',res)]))
+    print('dumping out split result ...')
+    sampleres_fs.put(out_data,**out_record)          
+
+
+def prepare_get_corr(ext_hash,image_certificate_file,model_certificate_file,task):
+
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    
+
+    sample_coll = db['samples.files']
+    sample_fs = gridfs.GridFS(db,'samples')
+    remove_existing(sample_coll,sample_fs,ext_hash)
+    extraction_coll = db['correlation_extraction.files']
+    extraction_fs = gridfs.GridFS(db,'correlation_extraction')
+    remove_existing(extraction_coll,extraction_fs,ext_hash)
+
+    model_certdict = cPickle.load(open(model_certificate_file))
+    model_hash = model_certdict['model_hash']
+    model_coll = db['models.files']
+    
+    image_certdict = cPickle.load(open(image_certificate_file))
+    image_hash = image_certdict['image_hash']
+    image_config_gen = image_certdict['args']
+    model_configs = get_most_recent_files(model_coll,{'__hash__' : model_hash})
+    
+    if isinstance(task,list):
+        task_list = task
+    else:
+        task_list = [task]
+    
+    return model_configs,image_config_gen,model_hash,image_hash, task_list, sample_coll, sample_fs, extraction_coll, extraction_fs
+
+
+def generate_random_sample(task_config,hash,colname):
+
+    ntrain = task_config['sample_size']
+    ntest = 0
+    N = 1
+
+    query = task_config.get('query',{})
+    query['__hash__'] = hash
+    cqueries = [reach_in('config',query)]
+    
+    return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest)[0]
+
