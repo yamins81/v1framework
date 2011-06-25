@@ -1409,7 +1409,7 @@ def get_corr_core(sample,m,convolve_func_name,task,cache_port):
             weights.append(len(b))
         weights = np.array(weights) / float(sum(weights))
         batch_extractions = [r.get() for r in results]
-        extractions = combine_corr_extractions(batch_extractions,weights = weights)
+        extractions = combine_corr(batch_extractions,weights = weights)
     else:
         extractions = get_corr_inner_core(sample_filenames,m,convolve_func_name,0,task,cache_port)
 
@@ -1490,7 +1490,7 @@ def combine_corr(batches,weights=None):
     if len(batches) > 2:
         subweights = weights[:-1]
         subweights = subweights/sum(sumwegiths)
-        res1 = combine_corr_extractions(batches[:-1],weights=subweights) 
+        res1 = combine_corr(batches[:-1],weights=subweights) 
         res2 = batches[-1]
         w1 = sum(weights[:-1])
         w2 = weights[-1]
