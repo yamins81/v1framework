@@ -5,6 +5,7 @@ import os
 import random
 import multiprocessing
 import functools 
+import copy
 
 import scipy as sp
 import numpy as np
@@ -729,6 +730,8 @@ def average_transform(input,config,M):
         return input.ravel()
     elif config['transform_name'] == 'translation_and_fourier':
         return np.abs(np.fft.fft(input.sum(1).sum(0)))
+    elif config['transform_name'] == 'central_slice':
+        return get_central_slice(input,config['ker_shape'])
     else:
         raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
 
@@ -1453,10 +1456,11 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
     s = task['ker_shape']; size = s[0]*s[1]*cshape
     V = np.zeros((size,size))
     M = np.zeros((size,))
+    task = copy.deepcopy(task)
+    task['transform_average'] = {'transform_name':'central_slice','ker_shape':task['ker_shape']}
     for (n,im) in enumerate(images):
-        f = stack_channels(get_features(im, image_fs, filters, m, convolve_func,task,poller))
-        f0 = get_central_slice(f,s)
-        V,M = combine_corr([(V,M),(0,f0)],np.array([1 - (1/(n+1)),1/(n+1)]))
+        f = get_features(im, image_fs, filters, m, convolve_func,task,poller)
+        V,M = combine_corr([(V,M),(0,f)],np.array([1 - (1/(n+1)),1/(n+1)]))
     
     if convolve_func_name == 'cufft':
         context.pop()
