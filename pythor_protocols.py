@@ -1465,7 +1465,7 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
     if convolve_func_name == 'cufft':
         context.pop()
         
-    return {'mean':M, 'variance' : V}
+    return (V,M)
 
 def stack_channels(input):
     X = np.empty(input[0].shape + (len(input),),dtype=input[0].dtype)
