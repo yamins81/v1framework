@@ -59,9 +59,6 @@ model1['layers'][1]['filter']['ker_shape'] = [9,9]
 model1['layers'][1]['filter']['norients'] = 4
 model1['layers'][1]['filter']['divfreqs'] = [2,4,7,8]
 
-model1a = copy.deepcopy(base_model)
-model1a['layers'][2]['filter']['ker_shape'] = [3,3]
-
 model2 = copy.deepcopy(base_model)
 model2['layers'][1]['filter']['ker_shape'] = [21,21]
 model2['layers'][1]['filter']['norients'] = 12
@@ -84,6 +81,20 @@ model3a['layers'][1]['filter']['ker_shape'] = [43,43]
 model3a['layers'][1]['filter']['norients'] = 24
 model3a['layers'][1]['filter']['divfreqs'] = [5,8,9,15,20,30]
 
+model4 = copy.deepcopy(base_model)
+model4['layers'][1]['filter']['ker_shape'] = [13,13]
+model4['layers'][1]['filter']['norients'] = 7
+model4['layers'][1]['filter']['divfreqs'] = [2,4,7,8,11]
+
+model5 = copy.deepcopy(base_model)
+model5['layers'][1]['filter']['ker_shape'] = [17,17]
+model5['layers'][1]['filter']['norients'] = 11
+model5['layers'][1]['filter']['divfreqs'] = [2,4,7,8,11,13,15]
+
+model5 = copy.deepcopy(base_model)
+model5['layers'][1]['filter']['ker_shape'] = [31,31]
+model5['layers'][1]['filter']['norients'] = 18
+model5['layers'][1]['filter']['divfreqs'] = [2,4,7,8,12,14,19,25]
 
 #some pooling/norming in l2
 #different pooling/norming in l1
@@ -104,11 +115,13 @@ model11 = copy.deepcopy(base_model)
 model11['layers'][1]['lpool']['ker_shape'] = [9,9]
 
 models = [model1,
-          model1a,
           model2,
           model2a,
           model3,
           model3a,
+          model4,
+          model5,
+          model6
           model7,
           model8,
           model9,
