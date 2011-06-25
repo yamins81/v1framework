@@ -24,3 +24,4 @@
 ../deploy.py
 ../experiments.py
 ../more_experiments.py
+../correlation_experiments.py
