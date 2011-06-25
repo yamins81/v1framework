@@ -1483,7 +1483,7 @@ def get_central_slice(f,s):
     return f[d0:d0+s[0],d1:d1+s[1]].ravel()
     
 outer = np.outer
-def combine_corr(batches,weights=None):
+def combine_corr(batches,weights=None,printer=False):
     if weights is None:
         weights = np.ones(len(batches)) / len(batches)
     
@@ -1493,7 +1493,7 @@ def combine_corr(batches,weights=None):
         subweights = weights[:-1]
         subweights = subweights/sum(subweights)
         print(subweights,2)
-        res1 = combine_corr(batches[:-1],weights=subweights) 
+        res1 = combine_corr(batches[:-1],weights=subweights,printer=True) 
         res2 = batches[-1]
         w1 = sum(weights[:-1])
         w2 = weights[-1]
@@ -1503,9 +1503,13 @@ def combine_corr(batches,weights=None):
         w1 = weights[0]
         w2 = weights[1]
     
+
+        
     v1,m1 = res1
     v2,m2 = res2
     
+    if printer:
+        print weights,w1,w2,v1,m1,v2,m2
 
     v = w1*v1 + w2*v2 + w1*w2*(outer(m1,m1) + outer(m2,m2) - outer(m1,m2) - outer(m2,m1))
     m = w1*m1 + w2*m2
