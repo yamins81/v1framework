@@ -1454,10 +1454,9 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
     V = np.zeros((size,size))
     M = np.zeros((size,))
     for (n,im) in enumerate(images):
-        n = float(n)
         f = get_features(im, image_fs, filters, m, convolve_func,task,poller)
         f0 = get_central_slice(f,s)
-        V,M = combine_corr_extractions([(V,M),(0,f0)],np.array([n-1,1]))
+        V,M = combine_corr([(V,M),(0,f0)],np.array([1 - (1/(n+1)),1/(n+1)]))
     
     if convolve_func_name == 'cufft':
         context.pop()
@@ -1468,19 +1467,20 @@ def get_central_slice(f,s):
     fshape = f.shape[:2]
     d0 = (fshape[0] - s[0])/2
     d1 = (fshape[1] - s[1])/2
-    return f[d0:d0+s[0],d1:d2+s[1]].ravel()
-
-def combine_corr_extractions(batches,weights=None):
+    return f[d0:d0+s[0],d1:d1+s[1]].ravel()
+    
+outer = np.outer
+def combine_corr(batches,weights=None):
     if weights is None:
         weights = np.ones(len(batches)) / len(batches)
     
     if len(batches) > 2:
-       subweights = weights[:-1]
-       subweights = subweights/sum(sumwegiths)
-       res1 = combine_corr_extractions(batches[:-1],weights=subweights) 
-       res2 = batches[-1]
-       w1 = sum(weights[:-1])
-       w2 = weights[-1]
+        subweights = weights[:-1]
+        subweights = subweights/sum(sumwegiths)
+        res1 = combine_corr_extractions(batches[:-1],weights=subweights) 
+        res2 = batches[-1]
+        w1 = sum(weights[:-1])
+        w2 = weights[-1]
     else:
         res1 = batches[0]
         res2 = batches[-1]
@@ -1490,7 +1490,8 @@ def combine_corr_extractions(batches,weights=None):
     v1,m1 = res1
     v2,m2 = res2
     
-    v = w1*v1 + v2*v2 + w1*w2*(outer(m1,m1) + outer(m2,m2) - outer(m1,m2) - outer(m2,m1))
+
+    v = w1*v1 + w2*v2 + w1*w2*(outer(m1,m1) + outer(m2,m2) - outer(m1,m2) - outer(m2,m1))
     m = w1*m1 + w2*m2
     
     return v,m
