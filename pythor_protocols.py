@@ -1454,7 +1454,7 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
     V = np.zeros((size,size))
     M = np.zeros((size,))
     for (n,im) in enumerate(images):
-        f = get_features(im, image_fs, filters, m, convolve_func,task,poller)
+        f = stack_channels(get_features(im, image_fs, filters, m, convolve_func,task,poller))
         f0 = get_central_slice(f,s)
         V,M = combine_corr([(V,M),(0,f0)],np.array([1 - (1/(n+1)),1/(n+1)]))
     
@@ -1462,7 +1462,16 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
         context.pop()
         
     return {'mean':M, 'variance' : V}
- 
+
+def stack_channels(input):
+    X = np.empty(input[0].shape + (len(input),),dtype=input[0].dtype)
+    K = input.keys()
+    K.sort()
+    for (ind,k) in enumerate(K):
+        X[ind] = input[k]
+    return X
+
+
 def get_central_slice(f,s):
     fshape = f.shape[:2]
     d0 = (fshape[0] - s[0])/2
