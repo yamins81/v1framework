@@ -1397,7 +1397,7 @@ def get_corr_core(sample,m,convolve_func_name,task,cache_port):
         raise ValueError, 'convolve func name not recognized'
 
     print('num_batches',num_batches)
-    if num_batches > 0:
+    if num_batches > 100000:
         batches = get_data_batches(sample_filenames,num_batches)
         results = []
         weights = []
