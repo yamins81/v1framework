@@ -1489,7 +1489,7 @@ def combine_corr(batches,weights=None):
     
     if len(batches) > 2:
         subweights = weights[:-1]
-        subweights = subweights/sum(sumwegiths)
+        subweights = subweights/sum(subweights)
         res1 = combine_corr(batches[:-1],weights=subweights) 
         res2 = batches[-1]
         w1 = sum(weights[:-1])
