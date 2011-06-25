@@ -1509,7 +1509,7 @@ def put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs):
     out_record['filename'] = filename
     out_record['__hash__'] = ext_hash
     print('pickling split ...')
-    out_data = cPickle.dumps(SON([('sample',split)]))
+    out_data = cPickle.dumps(SON([('sample',sample)]))
     print('dump out sample ...')
     sample_fs.put(out_data,**out_record)
 
