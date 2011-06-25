@@ -1286,9 +1286,9 @@ def get_corr_protocol(corr_config_path,model_config_path,image_config_path,convo
         
         performance_certificate = '../.corr_extraction_certificates/' + ext_hash
         if not parallel:
-            op = ('extraction_' + ext_hash,get_corr,(performance_certificate,image_certificate,model_certificate,extract_config_path,convolve_func_name,task,ext_hash))
+            op = ('extraction_' + ext_hash,get_corr,(performance_certificate,image_certificate,model_certificate,corr_config_path,convolve_func_name,task,ext_hash))
         else:
-            op = ('extraction_' + ext_hash,get_corr_parallel,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            op = ('extraction_' + ext_hash,get_corr_parallel,(performance_certificate,image_certificate,model_certificate,corr_config_path,convolve_func_name,task,ext_hash))
         D.append(op)
         DH[ext_hash] = [op]
              
