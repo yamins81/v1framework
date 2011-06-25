@@ -1529,7 +1529,7 @@ def put_in_sample_result(res,image_config_gen,m,task,ext_hash,sampleres_fs):
     sampleres_fs.put(out_data,**out_record)          
 
 
-def prepare_get_corr(ext_hash,image_certificate_file,model_certificate_file,task):
+def prepare_corr(ext_hash,image_certificate_file,model_certificate_file,task):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
