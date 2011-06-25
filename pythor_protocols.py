@@ -1353,7 +1353,7 @@ def get_corr(outfile,image_certificate_file,model_certificate_file,cpath,convolv
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
     
     
-def extract_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,cache_port=None):
+def get_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,cache_port=None):
 
     if cache_port is None:
         cache_port = NETWORK_CACHE_PORT
