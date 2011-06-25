@@ -1319,7 +1319,7 @@ def get_corr_parallel(outfile,image_certificate_file,model_certificate_file,cpat
             classifier_kwargs = task.get('classifier_kwargs',{})    
             print('task',task)
             sample = generate_random_sample(task,image_hash,'images') 
-            put_in_sample(sample,image_config_gen,m,task,ext_hash,ind,sample_fs)  
+            put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs)  
             jobid = qsub(get_corr_parallel_core,(image_config_gen,m,task,ext_hash,convolve_func_name),opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
