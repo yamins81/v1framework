@@ -1402,7 +1402,7 @@ def get_corr_core(sample,m,convolve_func_name,task,cache_port):
         results = []
         weights = []
         for (bn,b) in enumerate(batches):
-            results.append(pool.apply_async(get_core_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
+            results.append(pool.apply_async(get_corr_inner_core,(b,m.to_dict(),convolve_func_name,bn,task.to_dict(),cache_port)))
             weights.append(len(b))
         weights = np.array(weights) / float(sum(weights))
         batch_extractions = [r.get() for r in results]
