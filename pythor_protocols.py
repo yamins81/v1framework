@@ -1565,8 +1565,7 @@ def generate_random_sample(task_config,hash,colname):
     N = 1
 
     query = task_config.get('query',{})
-    query['__hash__'] = hash
     cqueries = [reach_in('config',query)]
     
-    return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest)[0]
+    return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest,universe={'__hash__':hash})[0]
 
