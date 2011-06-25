@@ -1375,7 +1375,7 @@ def get_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,c
 
 def get_corr_core(sample,m,convolve_func_name,task,cache_port):
 
-    sample_filenames = [t['filename'] for t in sample]
+    sample_filenames = map(str,sample)
 
     if convolve_func_name == 'numpy':
         num_batches = multiprocessing.cpu_count()
@@ -1504,7 +1504,7 @@ def put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs):
                       ('task',son_escape(task)),
                  ])   
 
-    
+    sample = [t['filename'] for t in sample['train_data']]    
     filename = get_filename(out_record)
     out_record['filename'] = filename
     out_record['__hash__'] = ext_hash
