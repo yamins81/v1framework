@@ -121,7 +121,7 @@ models = [model1,
           model3a,
           model4,
           model5,
-          model6
+          model6,
           model7,
           model8,
           model9,
