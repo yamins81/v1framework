@@ -115,7 +115,21 @@ def ext_eval_various_random_l3_renderman_subtasks_more(depends_on=('../config/re
                                                   '../config/various_random_l3_grayscale_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    
+    10-way
+    just translation:
+        (85.666666666666671, 75.666666666666671, 81.791666666666671, 2.6070817018267758)
+    just in-plane rotation:
+        (53.333333333333336, 41.0, 47.458333333333329, 3.1773394705493958)
+    just out of plane rotation:
+    	(52.0, 40.0, 45.802083333333336, 3.6501611218243197)
+    just scaling
+    	(81.0, 67.833333333333329, 76.520833333333329, 3.728584684568665)
+    scaling and in plane rotation
+    	(41.833333333333336, 32.5, 36.78125, 2.5838163190972643)
+    translation and inplane rotation
+    	(47.333333333333336, 37.333333333333336, 41.583333333333343, 2.7726341266023535)
+    all rotation:
+    	(35.833333333333336, 29.5, 32.750000000000007, 1.764818215378948)
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
                                             '../config/various_random_l3_grayscale_models.py',
@@ -128,8 +142,12 @@ def ext_eval_various_random_l3_polygon_subtasks(depends_on=('../config/polygon_s
                                                   '../config/polygon_task.py')):
     """
     5way
+    just translation:
+    	98.7,88.3,94.5,3.11
     just rotation:
     	86.3,69,75,4.7
+    just scale:
+    	99.7,90,96.2,2.43
     rotation and scale:
         71.6,53,62.6,5.98
     translation and rotation:
@@ -413,6 +431,22 @@ def ext_eval_various_l2_freq_renderman_subtasks_more(depends_on=('../config/rend
                                                   '../config/various_l2_freq_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    10-way
+    just translation:
+        85.7,67,80.2,4.65
+    just in-plane rotation:
+        46.166666666666664, 36.5, 41.24444444444444, 2.7331074884112909
+    just out of plane rotation:
+    	42.0, 28.5, 35.211111111111109, 3.0577567828736596
+    just scaling
+    	78.5, 63.333333333333336, 73.077777777777769, 4.5529260703935366
+    scaling and in plane rotation
+    	(34.166666666666664, 24.5, 30.988888888888887, 2.7436571070357272)
+    translation and inplane rotation
+    	(39.666666666666664, 30.833333333333332, 34.700000000000003, 2.6170381901854025)
+    all rotation:
+    	(28.5, 21.5, 25.099999999999998, 1.997034838992086)
+    
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
                                             '../config/various_l2_freq_models.py',
@@ -425,8 +459,12 @@ def ext_eval_various_l2_freq_polygon_subtasks(depends_on=('../config/polygon_sub
                                                   '../config/polygon_task.py')):
     """
     5way
+    just translation:
+    	100,97.6,99.2,.728
     just rotation:
     	97,71,91,7.1
+    just scale:
+    	100,95.0,98.2,1.23
     rotation and scale:
         93,55,82,8.7
     translation and rotation:

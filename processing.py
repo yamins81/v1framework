@@ -266,7 +266,6 @@ def image_preprocessing(arr,params):
         orig_imga_conv = colorconv.rg2_convert(orig_imga)
     elif params['color_space'] == 'gray':
         orig_imga_conv = colorconv.gray_convert(orig_imga)
-        print('here')
         orig_imga_conv.shape = orig_imga_conv.shape + (1,)
     elif params['color_space'] == 'opp':
         orig_imga_conv = colorconv.opp_convert(orig_imga)
@@ -283,8 +282,19 @@ def image_preprocessing(arr,params):
     else:
         raise ValueError, "params['color_space'] not understood"
         
+    if  params['preproc'].get('cut'):
+        cut_shape = params['preproc']['cut']['ker_shape']
+        orig_imga_conv = get_central_slice(orig_imga_conv,cut_shape)
+        
     return orig_imga,orig_imga_conv
     
+ 
+def get_central_slice(f,s):
+    fshape = f.shape[:2]
+    d0 = (fshape[0] - s[0])/2
+    d1 = (fshape[1] - s[1])/2
+    return f[d0:d0+s[0],d1:d2+s[1]].ravel()
+
 
 def map_preprocessing(imga0,params): 
     
