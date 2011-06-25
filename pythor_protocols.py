@@ -1276,7 +1276,7 @@ def get_corr_protocol(corr_config_path,model_config_path,image_config_path,convo
     image_certificate = '../.image_certificates/' + image_hash
 
     corr_config = get_config(corr_config_path)
-    task_config = extract_config.pop('extractions')
+    task_config = corr_config.pop('extractions')
 
     D = []
     DH = {}
