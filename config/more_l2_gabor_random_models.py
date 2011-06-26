@@ -50,8 +50,9 @@ base_model = SON([
                     ]))
                 ]),
             SON([('filter',SON([
-                      ('model_name','freq_uniform'),
+                      ('model_name','really_random'),
                       ('ker_shape',(5,5)),
+                      ('num_filters',180)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
