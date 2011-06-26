@@ -70,40 +70,40 @@ model1['layers'][1]['filter']['ker_shape'] = [9,9]
 model1['layers'][1]['filter']['norients'] = 6
 model1['layers'][1]['filter']['divfreqs'] = [2,4,6,7,8]
 
-model2 = copy.deepcopy(base_mod
+model2 = copy.deepcopy(base_model)
 model2['layers'][1]['filter']['ker_shape'] = [7,7]
 model2['layers'][1]['filter']['norients'] = 6
 model2['layers'][1]['filter']['divfreqs'] = [2,3,4,5,7]
 
-model3 = copy.deepcopy(base_mod
+model3 = copy.deepcopy(base_model)
 model3['layers'][1]['filter']['ker_shape'] = [13,13]
 model3['layers'][1]['filter']['norients'] = 6
 model3['layers'][1]['filter']['divfreqs'] = [5,7,9,10,12]
 
 
-model4 = copy.deepcopy(base_mod
+model4 = copy.deepcopy(base_model)
 model4['layers'][1]['filter']['ker_shape'] = [21,21]
 model4['layers'][1]['filter']['norients'] = 12
 model4['layers'][1]['filter']['divfreqs'] = [5,7,9,10,12]
 
 
-model5 = copy.deepcopy(base_mod
+model5 = copy.deepcopy(base_model)
 model5['layers'][1]['filter']['ker_shape'] = [21,21]
 model5['layers'][1]['filter']['norients'] = 6
 model5['layers'][1]['filter']['divfreqs'] = [5,7,9,10,12]
 
-model6 = copy.deepcopy(base_mod
+model6 = copy.deepcopy(base_model)
 model6['layers'][1]['filter']['ker_shape'] = [21,21]
 model6['layers'][1]['filter']['norients'] = 12
 model6['layers'][1]['filter']['divfreqs'] = [6,11,13,15,19]
 
-model7 = copy.deepcopy(base_mod
+model7 = copy.deepcopy(base_model)
 model7['layers'][1]['filter']['ker_shape'] = [21,21]
 model7['layers'][1]['filter']['norients'] = 6
 model7['layers'][1]['filter']['divfreqs'] = [6,11,13,15,19]
 
 
-model8 = copy.deepcopy(base_mod
+model8 = copy.deepcopy(base_model)
 model8['layers'][1]['filter']['ker_shape'] = [21,21]
 model8['layers'][1]['filter']['norients'] = 6
 model8['layers'][1]['filter']['divfreqs'] = [6,11,13,15,17,19]
