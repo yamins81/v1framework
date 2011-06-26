@@ -365,6 +365,13 @@ def make_various_l2_random_random_models(depends_on='../config/various_l2_random
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
 
+
+@protocolize()
+def make_various_big_l2_random_random_models(depends_on='../config/various_big_l2_random_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
     
 @protocolize()
 def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/exploratory_renderman_tasks_for_freq.py',
@@ -518,15 +525,9 @@ def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_pol
                                                   '../config/polygon_task.py')):
     """
     5-way choice (chance is 20%):
-        max: 89.5%
-        min: 55.5%
-        mean: 76.6%
-        std: 9.9%
+        89.5%, 55.5%, 76.6%, 9.9%
     rect vs all (chance is 50%):
-        max: 92.5%
-        min: 67.5%
-        mean: 84%
-        std: 6.4%
+        92.5%, 67.5%, 84%, 6.4%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
@@ -556,7 +557,11 @@ def ext_eval_various_l2_random_random_various_polygon(depends_on=('../config/par
                                                   '../config/various_l2_random_random_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    5 way
+        (76.5, 46.0, 66.15384615384616, 7.9551256224297964)
+    Rect:
+    	(88.75, 70.0, 80.09615384615384, 4.9386023224600999)
+        
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
                                             '../config/various_l2_random_random_models.py',
@@ -579,6 +584,17 @@ def ext_eval_various_l2_freq_from_l1_gabor_various_polygon(depends_on=('../confi
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+@protocolize()
+def ext_eval_various_big_l2_random_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
+                                                  '../config/various_big_l2_random_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+        
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
+                                            '../config/various_big_l2_random_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True) 
                                             
 
 @protocolize()
