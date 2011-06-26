@@ -345,7 +345,7 @@ def make_various_l2_freq_models(depends_on='../config/various_l2_freq_models.py'
     protocols.model_protocol(depends_on,parallel=False,write=True)
     
 @protocolize()
-def make_various_l2_random_models(depends_on='../config/various_l2_random_models.py'):
+def make_various_l2_gabor_random_models(depends_on='../config/various_l2_gabor_random_models.py'):
     """
   
     """
@@ -521,15 +521,15 @@ def ext_eval_various_l2_freq_various_polygon(depends_on=('../config/parallel_pol
 
 
 @protocolize()
-def ext_eval_various_l2_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
-                                                  '../config/various_l2_random_models.py',
+def ext_eval_various_l2_gabor_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
+                                                  '../config/various_l2_gabor_random_models.py',
                                                   '../config/polygon_task.py')):
     """
 
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
-                                            '../config/various_l2_random_models.py',
+                                            '../config/various_l2_gabor_random_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
