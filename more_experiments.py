@@ -601,6 +601,18 @@ def ext_eval_various_l2_freq_from_l1_gabor_various_polygon(depends_on=('../confi
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 @protocolize()
+def ext_eval_various_l2_freq_from_l1_gabor_various_polygon_more_reps(depends_on=('../config/parallel_polygon_tasks_for_freq_morereps2.py',
+                                                  '../config/various_l2_freq_from_l1_gabor_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq_morereps2.py',
+                                            '../config/various_l2_freq_from_l1_gabor_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
 def ext_eval_various_big_l2_random_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
                                                   '../config/various_big_l2_random_random_models.py',
                                                   '../config/polygon_task.py')):
@@ -621,6 +633,11 @@ def ext_eval_more_l2_freq_various_polygon(depends_on=('../config/parallel_polygo
                                                   '../config/more_l2_freq_models.py',
                                                   '../config/polygon_task.py')):
     """
+    5way:
+    (85.75, 61.25, 76.277777777777771, 8.4626995663687179)
+    
+    rect:
+    (92.5, 73.75, 85.902777777777771, 5.4733501375661193)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq_morereps.py',
@@ -633,6 +650,10 @@ def ext_eval_more_l2_gabor_random_various_polygon(depends_on=('../config/paralle
                                                   '../config/more_l2_gabor_random_models.py',
                                                   '../config/polygon_task.py')):
     """
+    5way   
+    (86.0, 63.0, 78.083333333333329, 6.7144123594945615)
+    Rect
+    (91.875, 77.5, 84.930555555555557, 4.1083887382636224)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq_morereps.py',
