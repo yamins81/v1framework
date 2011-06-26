@@ -357,6 +357,14 @@ def make_various_l2_freq_from_l1_gabor_models(depends_on='../config/various_l2_f
   
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def make_various_l2_random_random_models(depends_on='../config/various_l2_random_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
     
 @protocolize()
 def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/exploratory_renderman_tasks_for_freq.py',
@@ -532,21 +540,38 @@ def ext_eval_various_l2_gabor_random_various_polygon(depends_on=('../config/para
                                                   '../config/various_l2_gabor_random_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    5way:
+    	(87.5, 47.0, 74.321428571428569, 10.709820498124177)
+    Rect:
+    	(90.0, 65.0, 82.232142857142861, 5.6334969836954842)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
                                             '../config/various_l2_gabor_random_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
-                                            
+
+@protocolize()
+def ext_eval_various_l2_random_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
+                                                  '../config/various_l2_random_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
+                                            '../config/various_l2_random_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)                                            
 
 @protocolize()
 def ext_eval_various_l2_freq_from_l1_gabor_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq.py',
                                                   '../config/various_l2_freq_from_l1_gabor_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    5way 
+        (89.5, 53.0, 75.961538461538467, 11.016528733019481)
+    Rect:
+    	(93.75, 75.0, 82.692307692307693, 6.1598528377103721)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq.py',
