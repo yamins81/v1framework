@@ -55,4 +55,26 @@ def get_files2():
         I = Image.fromarray(1000*V)
         I.save(os.path.join('testdir',str(ta) + '.' + x['filename'] + '.tif'))
         
+def get_files2():
+    
+    url = 'http://50.19.109.25:9999/db/thor/correlation_extraction.files?query={"__hash__":"814116f5923f14546a06d79d2b23e4e98439f7ae"}&fields=["filename","model"]'    
+    X = json.loads(urllib.urlopen(url).read())
+    url2 = 'http://50.19.109.25:9999/db/thor/performance?query={"__hash__":"0681f20ebdbb3c6b4feff9f17840eb5b41e739a3"}&fields=["model","test_accuracy"]'
+    X2 = json.loads(urllib.urlopen(url2).read())
+    for x in X2:
+    	x['model']['layers'].pop(2)
+    mhashes = dict([(gcs(x['model']),x['test_accuracy']) for x in X2])
+
+    conn = pm.Connection()
+    db = conn['thor']
+    fs = gridfs.GridFS(db,'correlation_extraction')
+    
+    for x in X:
+        print x['filename']
+        mh = gcs(x['model'])
+        ta = mhashes[mh]
+        y = fs.get_version(x['filename']).read()
+        V,M = cPickle.loads(y)['sample_result']
+        I = Image.fromarray(1000*V)
+        I.save(os.path.join('testdir_renderman',str(ta) + '.' + x['filename'] + '.tif'))
         
