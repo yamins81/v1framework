@@ -7,9 +7,9 @@ config = {
 
   SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
-      ('ntrain',400),
-      ('ntest',200),
+      ('N',10), 
+      ('ntrain',200),
+      ('ntest',100),
       ('universe',SON([('image.tx',SON([('$lt',.22),('$gt',-.22)])),
                        ('image.ty',SON([('$lt',.22),('$gt',-.22)])),
                        ('$where' , '(this.config.image.sx / this.config.image.sy < 2.0) && (this.config.image.sx / this.config.image.sy > 1/2.0)')])),
