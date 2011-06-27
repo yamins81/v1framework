@@ -704,7 +704,7 @@ def ext_eval_ht_l2_random_random_polygon(depends_on=('../config/parallel_polygon
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '.../config/ht_l2_random_random_models.py',
                                             '../config/polygon_task.py',
-                                            convolve_func_name='numpy', write=True,parallel=Tru
+                                            convolve_func_name='numpy', write=True,parallel=True)
                                             
 @protocolize()
 def ext_eval_more_l2_gabor_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq_morereps.py',
