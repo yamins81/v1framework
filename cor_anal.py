@@ -53,6 +53,6 @@ def get_files2():
         y = fs.get_version(x['filename']).read()
         V,M = cPickle.loads(y)['sample_result']
         I = Image.fromarray(1000*V)
-        I.save(os.path.join('testdir',x['filename'] + '.' + str(ta) + '.tif'))
+        I.save(os.path.join('testdir',str(ta) + '.' + x['filename'] + '.tif'))
         
         
