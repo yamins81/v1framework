@@ -85,7 +85,7 @@ for k1 in l1_norm_shape:
                 model['layers'][1]['filter']['ker_shape'] = [k4,k4]
                 model['layers'][1]['filter']['norients'] = l1_filter_params[k4][0]
                 model['layers'][1]['filter']['divfreqs'] = l1_filter_params[k4][1]
-                model['layers'][2]['filter']['ker_shape'] = k5
+                model['layers'][2]['filter']['ker_shape'] = [k5,k5]
                 model['layers'][2]['filter']['osample'] = l2_sample(l1_filter_params[k4][0])
                 models.append(model)
 

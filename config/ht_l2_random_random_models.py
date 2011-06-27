@@ -88,7 +88,7 @@ for k1 in l1_norm_shape:
                 model['layers'][1]['lpool']['ker_shape'] = [k2,k2]
                 model['layers'][1]['filter']['ker_shape'] = [k4,k4]
                 model['layers'][1]['filter']['num_filters'] = get_l1_filter_num(l1_filter_params[k4])
-                model['layers'][2]['filter']['ker_shape'] = k5
+                model['layers'][2]['filter']['ker_shape'] = [k5,k5]
                 model['layers'][2]['filter']['num_filters'] = get_l2_filter_num(l1_filter_params[k4])
                 models.append(model)
 
