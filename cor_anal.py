@@ -55,7 +55,7 @@ def get_files2():
         I = Image.fromarray(1000*V)
         I.save(os.path.join('testdir',str(ta) + '.' + x['filename'] + '.tif'))
         
-def get_files2():
+def get_files3():
     
     url = 'http://50.19.109.25:9999/db/thor/correlation_extraction.files?query={"__hash__":"814116f5923f14546a06d79d2b23e4e98439f7ae"}&fields=["filename","model"]'    
     X = json.loads(urllib.urlopen(url).read())
