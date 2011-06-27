@@ -389,6 +389,21 @@ def make_various_big_l2_random_random_models(depends_on='../config/various_big_l
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
     
+
+@protocolize()
+def make_ht_l2_freq_models(depends_on='../config/ht_l2_freq_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+@protocolize()
+def make_ht_l2_random_random_models(depends_on='../config/ht_l2_random_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
 @protocolize()
 def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/exploratory_renderman_tasks_for_freq.py',
                                                   '../config/various_l2_freq_models.py',
@@ -605,7 +620,10 @@ def ext_eval_various_l2_freq_from_l1_gabor_various_polygon_more_reps(depends_on=
                                                   '../config/various_l2_freq_from_l1_gabor_models.py',
                                                   '../config/polygon_task.py')):
     """
-    
+    5way:
+        (93.200000000000003, 66.5, 82.58461538461539, 8.8156195431174371)
+    rect
+    	(94.75, 80.25, 89.134615384615387, 4.3007327021273865)
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq_morereps2.py',
                                             '../config/various_l2_freq_from_l1_gabor_models.py',
@@ -661,6 +679,48 @@ def ext_eval_more_l2_gabor_random_various_polygon(depends_on=('../config/paralle
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+
+@protocolize()
+def ext_eval_ht_l2_freq_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l2_freq_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '.../config/ht_l2_freq_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_ht_l2_random_random_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l2_random_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '.../config/ht_l2_random_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=Tru
+                                            
+@protocolize()
+def ext_eval_more_l2_gabor_random_various_polygon(depends_on=('../config/parallel_polygon_tasks_for_freq_morereps.py',
+                                                  '../config/more_l2_gabor_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+    5way   
+    (86.0, 63.0, 78.083333333333329, 6.7144123594945615)
+    Rect
+    (91.875, 77.5, 84.930555555555557, 4.1083887382636224)
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_freq_morereps.py',
+                                            '../config/more_l2_gabor_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)                                            
 
 @protocolize()
 def make_medium_gabor_mod4_sameconv_model(depends_on='../config/medium_gabor_mod4_with_freq_uniform_sameconv.py'):
