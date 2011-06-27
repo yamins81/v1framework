@@ -173,7 +173,7 @@ def generate_models(outfile,m_hash,config_gen):
     for (i,m) in enumerate(M):
         filterbanks = filter_generation.get_hierarchical_filterbanks(m['model']['layers']) 
         filterbank_string = cPickle.dumps(filterbanks)
-        if (i/100)*100 == i:
+        if (i/5)*5 == i:
             print(i,m) 
         
         y = SON([('config',m)])
