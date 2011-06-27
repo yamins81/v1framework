@@ -689,7 +689,7 @@ def ext_eval_ht_l2_freq_polygon(depends_on=('../config/parallel_polygon_tasks_fo
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
-                                            '.../config/ht_l2_freq_models.py',
+                                            '../config/ht_l2_freq_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
