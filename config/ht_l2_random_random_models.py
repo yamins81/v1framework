@@ -56,7 +56,7 @@ base_model = SON([
 
 l1_norm_shape = [3,5,9]
 l1_pool_shape = [3,5,9]
-l1_filter_shape = [5,7,9,13,17,21,25,31,37,41]
+l1_filter_shape = [5,7,9,13,17,21,25]
 l2_filter_shape = [3,5,7,9]
 
 
