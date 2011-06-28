@@ -10,14 +10,14 @@ eightface_task = SON([
       ('ntrain',320),
       ('ntest',160),
       ('universe',SON([('image.bg_id','gray.tdl')])),
-      ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face1'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face2'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face3'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face4'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face5'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face6'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face7'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['face8'])]))]),
+      ('query',[SON([('image.model_id','face1')]),
+                SON([('image.model_id','face2')]),
+                SON([('image.model_id','face3')]),
+                SON([('image.model_id','face4')]),
+                SON([('image.model_id','face5')]),
+                SON([('image.model_id','face6')]),
+                SON([('image.model_id','face7')]),
+                SON([('image.model_id','face8')]),
                ])
       ])      
 
