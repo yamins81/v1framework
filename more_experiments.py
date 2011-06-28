@@ -403,7 +403,36 @@ def make_ht_l2_random_random_models(depends_on='../config/ht_l2_random_random_mo
   
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
-    
+   
+@protocolize()
+def make_ht_l2_freq_models_2(depends_on='../config/ht_l2_freq_models_2.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def make_ht_l1_gabor_models(depends_on='../config/ht_l1_gabor_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def make_ht_l2_gabor_random_models(depends_on='../config/ht_l2_gabor_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def make_ht_l1_random_models(depends_on='../config/ht_l1_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+   
 @protocolize()
 def ext_eval_various_l2_freq_exploratory_renderman(depends_on=('../config/exploratory_renderman_tasks_for_freq.py',
                                                   '../config/various_l2_freq_models.py',
@@ -705,6 +734,58 @@ def ext_eval_ht_l2_random_random_polygon(depends_on=('../config/parallel_polygon
                                             '../config/ht_l2_random_random_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_ht_l2_freq_2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l2_freq_models_2.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/ht_l2_freq_models_2.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_ht_l1_random_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l1_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/ht_l1_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l2_gabor_random_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/ht_l2_gabor_random_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_ht_l1_gabor_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l1_gabor_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/ht_l1_gabor_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
                                             
 
 @protocolize()
@@ -894,6 +975,6 @@ def ext_eval_l2_random_random_test_3_polygon(depends_on=('../config/parallel_pol
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
-                                            '../config/l2_random_random_test_model_2.py',
+                                            '../config/l2_random_random_test_model_3.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)                                         
