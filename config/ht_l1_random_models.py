@@ -27,8 +27,8 @@ base_model = SON([
                 ('stretch',1)
                 ]))]),          
             SON([('filter',SON([
-                    ('model_name','gridded_gabor'),
-                    ('phases',[0]),
+                    ('model_name','really_random'),
+                    ('num_filters',32)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -40,42 +40,40 @@ base_model = SON([
                     ])),
                 ('lpool',SON([
                     ('stride',2),
-                    ('order',2),
-                    ('ker_shape',[9,9])
                     ]))
                 ]),
-            SON([('filter',SON([
-                      ('model_name','freq_uniform'),
-                    ])),
-                ('activ', SON([
-                    ('min_out' , 0),
-                    ('max_out' , 1),
-                    ])),
-         
-                ])
            ])   
     ])
 
-l1_norm_shape = [3,5]
-l1_filter_params = [(4,[2,4,5,7]),(6,[2,4,5,7,9]),(8,[2,4,5,7,9,11])]
-l1_filter_shape = [5,7,9,11,13,17,21]
-l2_filter_shape = [3,5,7]
+l1_norm_shape = [3,5,9]
+l1_pool_shape = [3,5,9]
+l1_order = [1,2,10]
+l1_filter_shape = [5,7,9,11,13,17]
+
+
+def get_l1_filter_num(p):
+    o,df = p
+    return o*len(df)
+
+                    
+def get_l2_filter_num(p):
+    o,df = p
+    orn = (o/2 if o > 8 else o)
+    return len(df)*(orn**2)
 
 
 #different filter shapes
 models=[]
 for k1 in l1_norm_shape:
-    for k3 in l1_filter_params:
-        for k4 in l1_filter_shape:
-            for k5 in l2_filter_shape:              
+    for k2 in l1_pool_shape:
+        for k3 in l1_order:
+            for k4 in l1_filter_shape:
                 model =  copy.deepcopy(base_model)
                 model['layers'][1]['lnorm']['inker_shape'] = [k1,k1]
                 model['layers'][1]['lnorm']['outker_shape'] = [k1,k1]
-                model['layers'][1]['filter']['norients'] = k3[0]
-                model['layers'][1]['filter']['divfreqs'] = k3[1]
+                model['layers'][1]['lpool']['ker_shape'] = [k2,k2]
+                model['layers'][1]['lpool']['order'] =  k3
                 model['layers'][1]['filter']['ker_shape'] = [k4,k4]
-                model['layers'][2]['filter']['ker_shape'] = [k5,k5]
-
                 models.append(model)
 
 
