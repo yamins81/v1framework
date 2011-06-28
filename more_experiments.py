@@ -754,7 +754,7 @@ def make_l2_freq_test_model(depends_on='../config/vl2_freq_test_model.py'):
     
 
 @protocolize()
-def ext_eval_ht_l2_freq_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+def ext_eval_l2_freq_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
                                                   '../config/l2_freq_test_model.py',
                                                   '../config/polygon_task.py')):
     """
