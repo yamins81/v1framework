@@ -748,7 +748,7 @@ def c_numpy_mixed(arr_in, arr_fb, arr_out=None,
                  stride=DEFAULT_STRIDE
                 ):
     
-    if max(arr_fb.shape[-3:-1]) >= 13:
+    if max(arr_fb.shape[-3:-1]) > 13:
         return pythor3.operation.fbcorr(arr_in, arr_fb, arr_out=None,
                  mode=mode,
                  min_out=min_out,
