@@ -740,3 +740,28 @@ def ext_eval_small_gabor_sameconv_freq_uniform_ten_categories(depends_on=('../co
                                             '../config/small_gabor_with_freq_uniform_sameconv.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=False)
+
+
+
+
+
+@protocolize()
+def make_l2_freq_test_model(depends_on='../config/vl2_freq_test_model.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+
+@protocolize()
+def ext_eval_ht_l2_freq_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_freq_test_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_freq_test_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=False)
