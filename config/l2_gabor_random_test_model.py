@@ -35,8 +35,8 @@ model = SON([(u'color_space', u'gray'),
                                                 (u'ker_shape', [9, 9])]))
                               ]),
                            SON([(u'filter', SON([(u'model_name', u'really_random'),
-                                                 (u'ker_shape', [3, 3])]),
-                                                 (u'num_filters',256)), 
+                                                 (u'ker_shape', [3, 3]),
+                                                 (u'num_filters',256)])), 
                                 (u'activ', SON([(u'min_out', 0), 
                                                 (u'max_out', 1)]))
                               ])
