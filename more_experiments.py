@@ -829,7 +829,7 @@ def ext_eval_small_gabor_sameconv_freq_uniform_ten_categories(depends_on=('../co
 @protocolize()
 def make_l2_freq_test_model(depends_on='../config/l2_freq_test_model.py'):
     """
-
+    
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
     
@@ -839,7 +839,7 @@ def ext_eval_l2_freq_test_polygon(depends_on=('../config/parallel_polygon_tasks_
                                                   '../config/l2_freq_test_model.py',
                                                   '../config/polygon_task.py')):
     """
-
+    confirming performance of a good l2_freq with 10 trials; 86.5% (confirmed)  	
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -851,6 +851,7 @@ def ext_eval_l2_freq_test_polygon(depends_on=('../config/parallel_polygon_tasks_
 @protocolize()
 def make_l2_freq_test_model_2(depends_on='../config/l2_freq_test_model_2.py'):
     """
+    
 
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
@@ -861,7 +862,7 @@ def ext_eval_l2_freq_test_2_polygon(depends_on=('../config/parallel_polygon_task
                                                   '../config/l2_freq_test_model_2.py',
                                                   '../config/polygon_task.py')):
     """
-
+    showing that changing l1 pool order from 2 to 1 drops performance by more than 10% to 75.3%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -873,7 +874,7 @@ def ext_eval_l2_freq_test_2_polygon(depends_on=('../config/parallel_polygon_task
 @protocolize()
 def make_l2_freq_test_model_3(depends_on='../config/l2_freq_test_model_3.py'):
     """
-
+    
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
     
@@ -883,7 +884,7 @@ def ext_eval_l2_freq_test_3_polygon(depends_on=('../config/parallel_polygon_task
                                                   '../config/l2_freq_test_model_3.py',
                                                   '../config/polygon_task.py')):
     """
-
+    taking best l2 freq from highthrouput run and changing l1 pool order, performance climbs almost 10% to 88.8%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -905,11 +906,32 @@ def ext_eval_l2_freq_test_4_polygon(depends_on=('../config/parallel_polygon_task
                                                   '../config/l2_freq_test_model_4.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seeing if changing l1pool order even higher has big effect (nope, perf is 87.9%)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_freq_test_model_4.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_l2_gabor_random_test_model(depends_on='../config/l2_gabor_random_test_model.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+
+@protocolize()
+def ext_eval_l2_gabor_random_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_random_test.py',
+                                                  '../config/polygon_task.py')):
+    """
+    seeing if changing l1pool order influences ersult of gabor random model
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_random_test.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
@@ -928,7 +950,7 @@ def ext_eval_l2_random_random_test_polygon(depends_on=('../config/parallel_polyg
                                                   '../config/l2_random_random_test_model.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seeing of changing l1pool order to 2 drops performance (yes, by 5% to 79%)
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -949,7 +971,8 @@ def ext_eval_l2_random_random_test_2_polygon(depends_on=('../config/parallel_pol
                                                   '../config/l2_random_random_test_model_2.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seeing if increasing number of filters (doubled in each case) increases oerformance of best random l2
+    answer; no, says at 84%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -971,7 +994,8 @@ def ext_eval_l2_random_random_test_3_polygon(depends_on=('../config/parallel_pol
                                                   '../config/l2_random_random_test_model_3.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seeing if dropping number of filters decreases performance of best random l2
+    yes, 10% to to 74.5%
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
