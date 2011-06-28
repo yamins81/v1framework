@@ -77,7 +77,7 @@ for k1 in l1_norm_shape:
                     model['layers'][1]['filter']['divfreqs'] = k3[1]
                     model['layers'][1]['filter']['ker_shape'] = [k4,k4]
                     model['layers'][2]['filter']['ker_shape'] = [k5,k5]
-                    model['layers'][2]['filter']['num_filters'] = [k2,k2]
+                    model['layers'][2]['filter']['num_filters'] = k2
     
                     models.append(model)
 

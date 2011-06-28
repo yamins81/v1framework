@@ -43,15 +43,6 @@ base_model = SON([
                     ('order',2),
                     ('ker_shape',[9,9])
                     ]))
-                ]),
-            SON([('filter',SON([
-                      ('model_name','freq_uniform'),
-                    ])),
-                ('activ', SON([
-                    ('min_out' , 0),
-                    ('max_out' , 1),
-                    ])),
-         
                 ])
            ])   
     ])
