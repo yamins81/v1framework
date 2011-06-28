@@ -746,7 +746,7 @@ def ext_eval_small_gabor_sameconv_freq_uniform_ten_categories(depends_on=('../co
 
 
 @protocolize()
-def make_l2_freq_test_model(depends_on='../config/vl2_freq_test_model.py'):
+def make_l2_freq_test_model(depends_on='../config/l2_freq_test_model.py'):
     """
 
     """
