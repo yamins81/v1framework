@@ -865,6 +865,8 @@ def ext_eval_ht_l1_random_polygon(depends_on=('../config/parallel_polygon_tasks_
                                                   '../config/ht_l1_random_models.py',
                                                   '../config/polygon_task.py')):
     """
+    max,min,mean,std:
+    
     (76.700000000000003, 48.100000000000001, 60.363580246913564, 5.5775648052838154)
     
     """
@@ -878,6 +880,7 @@ def ext_eval_ht_l2_gabor_random_polygon(depends_on=('../config/parallel_polygon_
                                                   '../config/ht_l2_gabor_random_models.py',
                                                   '../config/polygon_task.py')):
     """
+    max,min,mean,std:
         (93.799999999999997, 47.100000000000001, 79.318981481481487, 9.3502802928689039)
     
     """
@@ -891,6 +894,7 @@ def ext_eval_ht_l1_gabor_polygon(depends_on=('../config/parallel_polygon_tasks_f
                                                   '../config/ht_l1_gabor_models.py',
                                                   '../config/polygon_task.py')):
     """
+    max,min,mean,std:
        (87.5, 49.100000000000001, 73.285714285714292, 9.1545089444276275)
     
     """
@@ -1128,10 +1132,31 @@ def ext_eval_l1_gabor_test_polygon(depends_on=('../config/rect_task.py',
                                                   '../config/l1_gabor_test_model.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seeing if the best l1 gabors identified as good for the poly 5-way task does well on the rect task: yes. 87.5%
     
     """
     protocols.extract_and_evaluate_protocol('../config/rect_task.py',
                                             '../config/l1_gabor_test_model.py',
                                             '../config/polygon_task.py',
-                                            convolve_func_name='numpy', write=True,parallel=True)                                                                 
+                                            convolve_func_name='numpy', write=True,parallel=True)                 
+                                            
+@protocolize()
+def make_l1_gabor_test_model_2(depends_on='../config/l1_gabor_test_model_2.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+
+@protocolize()
+def ext_eval_l1_gabor_test_2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l1_gabor_test_model_2.py',
+                                                  '../config/polygon_task.py')):
+    """
+    
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l1_gabor_test_model_2.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)                                                                                                             
