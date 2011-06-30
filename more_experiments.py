@@ -1128,8 +1128,7 @@ def ext_eval_l1_gabor_test_polygon(depends_on=('../config/rect_task.py',
                                                   '../config/l1_gabor_test_model.py',
                                                   '../config/polygon_task.py')):
     """
-    seeing if dropping number of filters decreases performance of best random l2
-    yes, 10% to to 74.5%
+
     
     """
     protocols.extract_and_evaluate_protocol('../config/rect_task.py',
