@@ -1160,6 +1160,20 @@ def ext_eval_l1_gabor_test_2_polygon(depends_on=('../config/parallel_polygon_tas
                                             '../config/l1_gabor_test_model_2.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)                                                                                                             
+
+@protocolize()
+def ext_eval_l1_gabor_test_2_polygon_2(depends_on=('../config/polygon_tasks_2.py',
+                                                  '../config/l1_gabor_test_model_2.py',
+                                                  '../config/polygon_task.py')):
+    """
+    seeing if adding more filters to the best l1 gabor helps -- yes a little, 87.8% (try more?)
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/polygon_tasks_2.py',
+                                            '../config/l1_gabor_test_model_2.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)                                                                                                             
+
                                             
 @protocolize()
 def make_l1_gabor_test_model_3(depends_on='../config/l1_gabor_test_model_3.py'):
