@@ -130,11 +130,51 @@ def ext_eval_various_random_l3_renderman_subtasks_more(depends_on=('../config/re
     	(47.333333333333336, 37.333333333333336, 41.583333333333343, 2.7726341266023535)
     all rotation:
     	(35.833333333333336, 29.5, 32.750000000000007, 1.764818215378948)
+    	
+    cars vs planes:  
+    just translation: (95.833333333333329, 86.666666666666671, 91.770833333333329, 2.6331718041176106)
+    just in-plane rotation: (89.166666666666671, 71.666666666666671, 80.677083333333329, 5.222636609962656)
+    just out of plane rotation: (82.5, 66.666666666666671, 76.09375, 4.504229782937367)
+    just scaling: (94.166666666666671, 82.5, 90.260416666666671, 3.4575645480839059)
+    scaling and in plane rotation: (79.166666666666671, 59.166666666666664, 68.333333333333343, 5.5277079839256666)
+    translation and inplane rotation: (83.333333333333329, 67.5, 75.15625, 3.8552222653535515)
+    all rotation: (79.166666666666671, 57.5, 69.947916666666671, 5.7317702417461467)
+
+    chair vs table:  
+    just translation: (94.166666666666671, 80.0, 88.072916666666657, 3.4575645480839063)
+    just in-plane rotation: (73.333333333333329, 55.833333333333336, 63.437500000000007, 4.3188359253391413)
+    just out of plane rotation: 
+    just scaling: (91.666666666666671, 73.333333333333329, 83.229166666666671, 4.822140416292795)
+    scaling and in plane rotation: (70.0, 50.833333333333336, 58.541666666666664, 6.4717602362537772)
+    translation and inplane rotation: (63.333333333333336, 51.666666666666664, 58.59375, 3.1693895913794585)
+    all rotation: (65.0, 50.833333333333336, 57.343749999999993, 4.5664342816481129)
+    
+    furniture vs animals vs vehicles:
+    just translation: (91.666666666666671, 72.5, 80.572916666666671, 4.4068163544609442)
+    just in-plane rotation: (57.5, 47.5, 52.447916666666664, 2.5424990098872757)
+    just out of plane rotation: (74.166666666666671, 50.833333333333336, 60.572916666666679, 6.3102564082214601)
+    just scaling: (85.0, 68.333333333333329, 75.78125, 4.7550115192932099)
+    scaling and in plane rotation: (59.166666666666664, 41.666666666666664, 48.4375, 4.5821494683172439)
+    translation and inplane rotation: (56.666666666666664, 43.333333333333336, 48.124999999999993, 3.5047091335959828)
+    all rotation: (52.5, 35.833333333333336, 45.989583333333329, 4.3122358010858663)
+
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
                                             '../config/various_random_l3_grayscale_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_various_random_l3_renderman_subtasks_backgrounds(depends_on=('../config/renderman_subtasks_backgrounds.py',
+                                                  '../config/various_random_l3_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_backgrounds.py',
+                                            '../config/various_random_l3_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def ext_eval_various_random_l3_polygon_subtasks(depends_on=('../config/polygon_subtasks.py',
@@ -536,6 +576,33 @@ def ext_eval_various_l2_freq_renderman_subtasks_more(depends_on=('../config/rend
     all rotation:
     	(28.5, 21.5, 25.099999999999998, 1.997034838992086)
     
+    cars vs planes:  
+    just translation: (98.333333333333329, 86.666666666666671, 92.8888888888889, 2.7866524897743212)
+    just in-plane rotation: (85.0, 70.0, 77.499999999999986, 3.9907299991262164)
+    just out of plane rotation: (79.166666666666671, 65.0, 73.222222222222214, 3.7126743214674733)
+    just scaling: (94.166666666666671, 87.5, 90.666666666666671, 1.8053418676968802)
+    scaling and in plane rotation: (68.333333333333329, 55.833333333333336, 64.444444444444443, 3.2441780712569841)
+    translation and inplane rotation: (83.333333333333329, 57.5, 69.944444444444443, 6.1948804031939577)
+    all rotation: (75.833333333333329, 53.333333333333336, 67.222222222222214, 5.9447040441757473)
+
+    chair vs table:  
+    just translation: (90.833333333333329, 81.666666666666671, 86.111111111111128, 2.3700810008557278)
+    just in-plane rotation: (61.666666666666664, 45.833333333333336, 55.111111111111121, 4.2368168810972477)
+    just out of plane rotation: 
+    just scaling: (95.0, 83.333333333333329, 91.222222222222229, 2.948110924760357)
+    scaling and in plane rotation: (69.166666666666671, 48.333333333333336, 60.666666666666671, 5.9488560991915822)
+    translation and inplane rotation: (68.333333333333329, 51.666666666666664, 61.444444444444443, 4.4562343622567724)
+    all rotation: (65.0, 51.666666666666664, 59.111111111111114, 3.4756649599149019)
+    
+    furniture vs animals vs vehicles:
+    just translation: (75.0, 65.833333333333329, 71.0, 2.7419917065006816)
+    just in-plane rotation: (55.833333333333336, 40.0, 45.833333333333343, 3.9557740264262007)
+    just out of plane rotation: (59.166666666666664, 40.0, 45.777777777777779, 4.7284272957673812)
+    just scaling: (70.0, 58.333333333333336, 62.777777777777779, 3.4246744460938769)
+    scaling and in plane rotation: (48.333333333333336, 35.833333333333336, 41.444444444444436, 3.6826252042614556)
+    translation and inplane rotation: (55.0, 34.166666666666664, 43.777777777777779, 5.6344399526702666)
+    all rotation: (46.666666666666664, 28.333333333333332, 40.222222222222221, 4.7284272957673803)
+    
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_subtasks.py',
                                             '../config/various_l2_freq_models.py',
@@ -714,6 +781,7 @@ def ext_eval_ht_l2_freq_polygon(depends_on=('../config/parallel_polygon_tasks_fo
                                                   '../config/ht_l2_freq_models.py',
                                                   '../config/polygon_task.py')):
     """
+    (80.0, 61.299999999999997, 71.869444444444454, 4.3336743099466251)
 
     
     """
@@ -727,7 +795,22 @@ def ext_eval_ht_l2_random_random_polygon(depends_on=('../config/parallel_polygon
                                                   '../config/ht_l2_random_random_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    (84.099999999999994, 47.200000000000003, 73.85277777777776, 6.2112943473269571)
+     -- performance averages for different size l1 filters: 
+    	sizes: [5,7,9,11,13,17]
+    	mean: [76.2, 77.1, 74.95, 73.5, 72.3, 69] 
+   		max: [81.4, 84.1, 83.5, 81.2, 79.4, 79.1]
+     -- l2 filter shape:
+     	sizes: [3,5,7,9]
+    	mean: [75.75, 75.4, 73.42, 70.838888888888903]
+    	max: [83.7, 84.1, 81.2, 79.4]
+     -- l1 norm shape:
+     	sizes: 3,5,9
+     	mean: [76.25, 75.402777777777771, 69.905555555555551]
+     	max: [84.099999999999994, 82.099999999999994, 81.400000000000006])
+     -- l1 pool shape: ([3,5,9])
+        mean: [72.723611111111097, 76.394444444444431, 72.440277777777794]
+        max: [77.900000000000006, 82.099999999999994, 84.099999999999994]
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -740,6 +823,35 @@ def ext_eval_ht_l2_freq_2_polygon(depends_on=('../config/parallel_polygon_tasks_
                                                   '../config/ht_l2_freq_models_2.py',
                                                   '../config/polygon_task.py')):
     """
+    overall:
+        (94.799999999999997, 68.099999999999994, 82.516666666666708, 6.6660327079524651)
+    with 32/256 filters:
+    	(91.700000000000003, 71.200000000000003, 83.133333333333326, 5.1428483245074306)
+    with 16/128 filters:
+        (85.099999999999994, 68.099999999999994, 77.109523809523822, 4.6513597358503951)
+    with 48/384 filters:
+    	(94.799999999999997, 70.299999999999997, 87.307142857142836, 5.7147008777755781)
+    	
+    -- having more filters definitely helps
+    -- performance averages for different size l1 filters: 
+    	sizes: [5,7,9,11,13,17,21]
+    	mean performances: [72.61, 81.75, 85.42, 86.1, 85.7, 84.5, 81.5]
+    	max perforamnces: [78.9, 91.8, 94.8, 93.1, 93.5, 91.1, 90.1]
+    -- l2 filters:
+    	sizes: [3,5,7]
+    	mean: [85.0, 82.5, 80.1]
+    	max: [94.8, 92.1, 89.5]
+    -- l1 norm shape almost no affect:
+    	sizes: [3,5]
+    	mean: [82.8, 82.2]
+    	max: [94.8, 92.8]
+    	
+    -- l1 filters for 32/256 filters:
+        sizes: [5,7,9,11,13,17,21]
+    	mean: [73.4, 80.72, 87.3, 86.55, 87.0, 85.5, 81.4]
+        max: [75.5, 83.8, 91.7, 89.1, 90.4, 90.0, 84.6]
+
+    
 
     
     """
