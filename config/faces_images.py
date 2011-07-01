@@ -116,9 +116,7 @@ base_images = [
                ('rxz',SON([('$gt',-pi/2),('$lt',pi/2)])),
                ('ryz',SON([('$gt',-pi),('$lt',pi)])),
           ]),
-         #level 6
 
-          ])
 ]
 import copy
 
