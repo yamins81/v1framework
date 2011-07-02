@@ -7,8 +7,8 @@ import model_categories as mc
 eightface_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',3), 
-      ('ntrain',320),
-      ('ntest',160),
+      ('ntrain',160),
+      ('ntest',40),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id','face1')]),
                 SON([('image.model_id','face2')]),
@@ -86,7 +86,6 @@ allrot_q = SON([('image.ty',SON([('$exists',False)])),
     
 all_q = SON([('image.ty',SON([('$exists',True)])),
                ('image.tz',SON([('$exists',True)])),
-               ('image.tx',SON([('$exists',True)])),
                ('image.s',SON([('$exists',True)])),
                ('image.rxy',SON([('$exists',True)])),
                ('image.rxz',SON([('$exists',True)])),
