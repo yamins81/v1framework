@@ -7,9 +7,6 @@ import pythor_protocols as protocols
 @Applies(deploy.images,args=('../config/faces_images.py',True))
 def generate_faces_images():
     Apply()
-    
-    
-    
 
 @protocolize()
 def ext_eval_various_random_l3_face_subtasks(depends_on=('../config/face_subtasks.py',
