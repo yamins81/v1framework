@@ -7,8 +7,8 @@ import model_categories as mc
 eightface_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',3), 
-      ('ntrain',160),
-      ('ntest',40),
+      ('ntrain',240),
+      ('ntest',120),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id','face1')]),
                 SON([('image.model_id','face2')]),
