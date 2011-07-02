@@ -13,7 +13,6 @@ eightface_task = SON([
       ('query',[SON([('image.model_id','face1')]),
                 SON([('image.model_id','face2')]),
                 SON([('image.model_id','face3')]),
-                SON([('image.model_id','face4')]),
                 SON([('image.model_id','face5')]),
                 SON([('image.model_id','face6')]),
                 SON([('image.model_id','face7')]),
