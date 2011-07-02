@@ -7,7 +7,7 @@ from model_categories import MODEL_CATEGORIES
 
 MODELS = MODEL_CATEGORIES['faces']
 
-NUM_IMAGES = 500
+NUM_IMAGES = 1000
 USE_CANONICAL = True
 
 base_images = [
@@ -105,7 +105,7 @@ base_images = [
           ]),
          #everything 
           SON([('model_ids',MODELS),
-               ('num_images',10*NUM_IMAGES),
+               ('num_images',5*NUM_IMAGES),
                ('use_canonical',USE_CANONICAL),
                ('generator','renderman'),
                ('selection','random'),
