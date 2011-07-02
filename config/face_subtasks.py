@@ -84,8 +84,17 @@ allrot_q = SON([('image.ty',SON([('$exists',False)])),
                ('image.ryz',SON([('$exists',True)])),
               ])
     
+all_q = SON([('image.ty',SON([('$exists',True)])),
+               ('image.tz',SON([('$exists',True)])),
+               ('image.tx',SON([('$exists',True)])),
+               ('image.s',SON([('$exists',True)])),
+               ('image.rxy',SON([('$exists',True)])),
+               ('image.rxz',SON([('$exists',True)])),
+               ('image.ryz',SON([('$exists',True)])),
+              ])
 
-t0 = eightface_task
+t0 = copy.deepcopy(eightface_task)
+t0['universe'].update(all_q)
 t1 = copy.deepcopy(eightface_task)
 t1['universe'].update(trans_q)
 t2 = copy.deepcopy(eightface_task)
