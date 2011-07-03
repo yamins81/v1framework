@@ -68,7 +68,7 @@ def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht.
 
 
 @protocolize()
-def make_more_l1_gabor_models(depends_on='../config/ht_l1_gabor_models_more.py'):
+def make_ht_l1_gabor_models(depends_on='../config/ht_l1_gabor_models_more.py'):
     """
   
     """
