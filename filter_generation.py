@@ -227,11 +227,11 @@ def get_hierarchical_filterbanks(config):
             else:             
                 filterbanks.append((len(config[1]['filter']['divfreqs']),config[1]['filter']['norients']))
         elif configL2['filter']['model_name'] == 'gridded_gabor':
-            norients = config['norients']
+            norients = configL2['filter']['norients']
             orients = [ (o1*np.pi/norients,o2*np.pi/norients) for o1 in range(norients) for o2 in range(norients) ]
-            divfreqs = config['divfreqs'] 
+            divfreqs = configL2['filter']['divfreqs'] 
             freqs = [1./d for d in divfreqs]
-            phases = config['phases']       
+            phases = configL2['filter']['phases']       
             (fh,fw) = configL2['filter']['ker_shape']
             xc = fw/2
             yc = fh/2
