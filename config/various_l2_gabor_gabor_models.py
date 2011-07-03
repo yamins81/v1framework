@@ -66,7 +66,7 @@ l2_filter_shape = [5,9]
 
 #different filter shapes
 models=[]
-for k1 in l1_filter_params:
+for k1 in l1_filter_shape:
     for k2 in l2_filter_shape:    
         model =  copy.deepcopy(base_model)
         model['layers'][1]['filter']['ker_shape'] = [k1,k1]
