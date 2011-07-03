@@ -79,7 +79,7 @@ def ext_eval_ht_l1_gabor_renderman(depends_on=('../config/renderman_tasks_for_ht
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 
-
+@protocolize()
 def ext_eval_ht_l1_random_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
                                                   '../config/ht_l1_random_models.py',
                                                   '../config/ten_categories_images.py')):
