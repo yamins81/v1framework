@@ -226,6 +226,24 @@ def get_hierarchical_filterbanks(config):
                 filterbanks.append((None,None))
             else:             
                 filterbanks.append((len(config[1]['filter']['divfreqs']),config[1]['filter']['norients']))
+        elif configL2['filter']['model_name'] == 'gridded_gabor':
+            norients = config['norients']
+            orients = [ (o1*np.pi/norients,o2*np.pi/norients) for o1 in range(norients) for o2 in range(norients) ]
+            divfreqs = config['divfreqs'] 
+            freqs = [1./d for d in divfreqs]
+            phases = config['phases']       
+            (fh,fw) = configL2['filter']['ker_shape']
+            xc = fw/2
+            yc = fh/2
+            zc = n1/2
+            values = list(itertools.product(freqs,orients,phases))
+            num_filters = len(values)
+            filterbank = np.empty((num_filters,fh,fw,n1))
+            for (i,(freq,orient,phase)) in enumerate(values):
+                filterbank[i] = v1m.gabor3d(xc,yc,zc,xc,yc,zc,
+                                   freq,orient,phase,
+                                   (fw,fh,n1)) 
+            filterbanks.append(filterbank)
         else:
             filterbanks.append(get_filterbank(configL2))
         for c in config[3:]:
