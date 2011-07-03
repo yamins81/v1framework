@@ -62,7 +62,7 @@ base_model = SON([
     ])
 
 l1_filter_shape = [9,11,13]
-l2_filter_shape = [5]
+l2_filter_shape = [5,9]
 
 #different filter shapes
 models=[]
