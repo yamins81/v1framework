@@ -7,8 +7,8 @@ import model_categories as mc
 tenway_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',5), 
-      ('ntrain',400),
-      ('ntest',200),
+      ('ntrain',300),
+      ('ntest',150),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
@@ -26,8 +26,8 @@ tenway_task = SON([
 car_plane_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',5), 
-      ('ntrain',80),
-      ('ntest',40),
+      ('ntrain',60),
+      ('ntest',20),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
