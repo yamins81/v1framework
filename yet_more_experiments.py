@@ -27,6 +27,8 @@ def ext_eval_various_random_l3_face_subtasks(depends_on=('../config/face_subtask
 
 
 ###############
+
+
 @protocolize()
 def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
                                                   '../config/ht_l2_random_random_models.py',
@@ -64,6 +66,13 @@ def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht.
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+
+@protocolize()
+def make_more_l1_gabor_models(depends_on='../config/ht_l1_gabor_models_more.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
 
 
 @protocolize()
