@@ -29,7 +29,7 @@ base_model = SON([
             SON([('filter',SON([
                     ('model_name','gridded_gabor'),
                     ('norients',8),
-                    ('divfreqs',[2,4,7,9,11])
+                    ('divfreqs',[2,4,7,9,11]),
                     ('phases',[0]),
                     ])),
                 ('activ', SON([
@@ -49,7 +49,7 @@ base_model = SON([
             SON([('filter',SON([
                     ('model_name','gridded_gabor'),
                     ('norients',8),
-                    ('divfreqs',[2,3,4,7])
+                    ('divfreqs',[2,3,4,7]),
                     ('phases',[0]),
                     ])),
                 ('activ', SON([
