@@ -93,3 +93,38 @@ def gabor2d(gw, gh, gx0, gy0, wfreq, worient, wphase, shape):
     
     return gabor
 
+
+def gabor3d(gw, gh, gd, gx0, gy0, gz0, wfreq, worients, wphase, shape):
+    """ Generate a gabor 2d array
+    
+    Inputs:
+      gw -- width of the gaussian envelope
+      gh -- height of the gaussian envelope
+      gx0 -- x indice of center of the gaussian envelope
+      gy0 -- y indice of center of the gaussian envelope
+      wfreq -- frequency of the 2d wave
+      worient -- orientation of the 2d wave
+      wphase -- phase of the 2d wave
+      shape -- shape tuple (height, width)
+
+    Outputs:
+      gabor -- 2d gabor with zero-mean and unit-variance
+
+    """
+    
+    height, width, depth = shape
+    y, x, z = N.mgrid[0:height, 0:width, 0:depth]
+    wphi,wpsi = worients
+    
+    X = x * N.cos(wphi)*N.sin(wpsi) * wfreq
+    Y = y * N.sin(wphi)*N.sin(wpsi)* wfreq
+    Z = z * N.cos(wpsi)*wfreq
+	
+    env = N.exp( -N.pi * ( ((x-gx0)**2./gw**2.) + ((y-gy0)**2./gh**2.) + ((z-gz0)**2./gd**2.) ) )
+    wave = N.exp( 1j*(2*N.pi*(X+Y+Z) + wphase) )
+    gabor = N.real(env * wave)
+    
+    gabor -= gabor.mean()
+    gabor /= fastnorm(gabor)
+    
+    return gabor
