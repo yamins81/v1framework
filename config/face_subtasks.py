@@ -103,11 +103,12 @@ t4 = copy.deepcopy(eightface_task)
 t4['universe'].update(scale_q)
 t5 = copy.deepcopy(eightface_task)
 t5['universe'].update(scale_inrot_q)
+t5['ntrain'] = 196; t5['ntest'] = 98
 t6 = copy.deepcopy(eightface_task)
 t6['universe'].update(trans_inrot_q)
 t7 = copy.deepcopy(eightface_task)
 t7['universe'].update(allrot_q)
-
+t7['ntrain'] = 196; t7['ntest'] = 98
 
 
 config = {
