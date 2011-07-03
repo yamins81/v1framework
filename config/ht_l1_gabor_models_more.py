@@ -50,11 +50,11 @@ base_model = SON([
     ])
 
 param_set = [(0,'lnorm',['inker_shape','outker_shape'], [[3,3],[9,9]]),
-             (1,'lnorm',['inker_shape','outker_shape'], [[3,3],[5,5],[7,7]]),
-             (1,'filter','ker_shape',[[7,7],[9,9],[11,11],[13,13],[17,17],[21,21],[31,31]]),
+             (1,'lnorm',['inker_shape','outker_shape'], [[3,3],[7,7]]),
+             (1,'filter','ker_shape',[[9,9],[11,11],[13,13],[17,17],[21,21],[31,31]]),
              (1,'filter','norients',[8]),
              (1,'filter','divfreqs',[[2,4,7,9,11]]),
-             (1,'activ','min_out',[-.5,0,.5,1]),
+             (1,'activ','min_out',[-.5,0,.5]),
              (1,'lpool','ker_shape',[[5,5],[9,9],[13,13]])]
 
 params = itertools.product(*[ps[3] for ps in param_set])
@@ -69,26 +69,6 @@ for p in params:
         for att in atts:
             model['layers'][level][key][att] = val        
     models.append(model)
-
-param_set2 = [(0,'lnorm',['inker_shape','outker_shape'], [[9,9]]),
-             (1,'lnorm',['inker_shape','outker_shape'], [[3,3],[5,5],[7,7]]),
-             (1,'filter','ker_shape',[[17,17],[21,21],[31,31]]),
-             (1,'filter','norients',[16]),
-             (1,'filter','divfreqs',[[2,4,7,9,11,14,16]]),
-             (1,'lpool','ker_shape',[[9,9]])]
-
-params2 = itertools.product(*[ps[3] for ps in param_set2])
-
-for p in params2:
-    model =  copy.deepcopy(base_model)
-    for (ind,val) in enumerate(p):
-        level,key,atts = param_set[ind][:3]
-        if isinstance(atts,str):
-            atts = [atts]
-        for att in atts:
-            model['layers'][level][key][att] = val        
-    models.append(model)
-
 
 config = {
      'models': models

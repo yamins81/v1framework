@@ -76,13 +76,13 @@ def make_ht_l1_gabor_models(depends_on='../config/ht_l1_gabor_models_more.py'):
 
 
 @protocolize()
-def ext_eval_ht_l1_gabor_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
+def ext_eval_ht_l1_gabor_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l1_gabor_models_more.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l1_gabor_models_more.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
