@@ -5,6 +5,7 @@ import itertools
 import rendering
 import processing
 from bson import SON
+import cPickle
 
 def normalize(Y):
     m = Y.mean()
@@ -215,6 +216,28 @@ def get_hierarchical_filterbanks(config):
                         fnum += 1
             
             filterbanks.append(fbank)       
+        elif configL2['filter']['model_name'] == 'correlation':
+            import pymongo
+            image_spec = son_escape(configL2['filter']['images'])
+            model_spec = config[:2]
+            task_spec = son_escape(configL2['filter']['task'])
+            conn = pymongo.Connection(document_class=SON)
+            db = conn['thor']
+            coll = db['correlation_extraction.files']
+            #fn = configL12['filter']['corr_filename']
+            import gridfs
+            fs = gridfs.GridFS(db,'correlation_extraction')
+            fn = coll.find_one({'model.layers':model_spec,'images':image_spec,'task':task_spec})['filename']
+            fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
+            V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
+            N = configL2['filter']['num_filters']
+            s = (fh,fw,n1)
+            filterbank = np.empty((N,) + s)
+            for ind in range(N):
+                filter = np.random.multivariate_normal(M,V)
+                filter = filter.reshape(s)
+                filterbank[ind] = filter            
+            filterbanks.append(filterbank)
 
         elif configL2['filter']['model_name'] == 'really_random':
             n2 = configL2['filter']['num_filters']

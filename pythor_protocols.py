@@ -1323,7 +1323,7 @@ def get_corr_parallel(outfile,image_certificate_file,model_certificate_file,cpat
             print('task',task)
             sample = generate_random_sample(task,image_hash,'images') 
             put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs)  
-            jobid = qsub(get_corr_parallel_core,(image_config_gen,m,task,ext_hash,convolve_func_name),opstring=opstring)
+            jobid = qsub(get_corr_parallel_core,(image_config_gen,m,task,ext_hash,model_hash,image_hash,convolve_func_name),opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
                 
@@ -1351,12 +1351,12 @@ def get_corr(outfile,image_certificate_file,model_certificate_file,cpath,convolv
             sample = generate_random_sample(task,image_hash,'images') 
             put_in_sample(sample,image_config_gen,m,task,ext_hash,ind,sample_fs)  
             res = get_corr_core(sample,m,convolve_func_name,task,None)    
-            put_in_sample_result(res,image_config_gen,m,task,ext_hash,extraction_fs)
+            put_in_sample_result(res,image_config_gen,m,task,ext_hash,model_hash,image_hash,extraction_fs)
     
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
     
     
-def get_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,cache_port=None):
+def get_corr_parallel_core(image_config_gen,m,task,ext_hash,model_hash,image_hash,convolve_func_name,cache_port=None):
 
     if cache_port is None:
         cache_port = NETWORK_CACHE_PORT
@@ -1373,7 +1373,7 @@ def get_corr_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,c
     sample = cPickle.loads(sample_fs.get_version(sampleconf['filename']).read())['sample']
     res = get_corr_core(sample,m,convolve_func_name,task,cache_port)
     extraction_fs = gridfs.GridFS(db,'correlation_extraction')
-    put_in_sample_result(res,image_config_gen,m,task,ext_hash,extraction_fs)
+    put_in_sample_result(res,image_config_gen,m,task,ext_hash,model_hash,image_hash,mextraction_fs)
 
 
 def get_corr_core(sample,m,convolve_func_name,task,cache_port):
@@ -1527,9 +1527,11 @@ def put_in_sample(sample,image_config_gen,m,task,ext_hash,sample_fs):
     sample_fs.put(out_data,**out_record)
 
 import bson           
-def put_in_sample_result(res,image_config_gen,m,task,ext_hash,sampleres_fs):
+def put_in_sample_result(res,image_config_gen,m,task,ext_hash,model_hash, image_hash, sampleres_fs):
     out_record = SON([('model',m['config']['model']),
+                      ('model_hash',model_hash), 
                       ('images',son_escape(image_config_gen['images'])),
+                      ('image_hash',image_hash),
                       ('task',son_escape(task))
                  ])   
                  
