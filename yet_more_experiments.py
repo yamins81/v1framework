@@ -30,38 +30,38 @@ def ext_eval_various_random_l3_face_subtasks(depends_on=('../config/face_subtask
 
 
 @protocolize()
-def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
+def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l2_random_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_random_random_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 @protocolize()
-def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
+def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l2_gabor_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_random_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 
 @protocolize()
-def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
+def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l2_freq_models.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_freq_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
@@ -89,13 +89,13 @@ def ext_eval_ht_l1_gabor_renderman(depends_on=('../config/renderman_tasks_for_ht
 
 
 @protocolize()
-def ext_eval_ht_l1_random_renderman(depends_on=('../config/renderman_tasks_for_ht.py',
+def ext_eval_ht_l1_random_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l1_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l1_random_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
