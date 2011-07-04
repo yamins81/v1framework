@@ -5,6 +5,7 @@ import itertools
 import rendering
 import processing
 from bson import SON
+import cPickle
 
 def normalize(Y):
     m = Y.mean()
