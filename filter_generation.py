@@ -235,6 +235,7 @@ def get_hierarchical_filterbanks(config):
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
             for ind in range(N):
+                print('Sample %d ...' % ind)
                 filter = np.random.multivariate_normal(M,V)
                 filter = filter.reshape(s)
                 filterbank[ind] = filter            
