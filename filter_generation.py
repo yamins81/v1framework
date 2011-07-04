@@ -6,6 +6,7 @@ import rendering
 import processing
 from bson import SON
 import cPickle
+from dbutils import son_escape
 
 def normalize(Y):
     m = Y.mean()
