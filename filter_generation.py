@@ -230,13 +230,15 @@ def get_hierarchical_filterbanks(config):
             fn = coll.find_one({'model.layers':model_spec,'images':image_spec,'task':task_spec})['filename']
             fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
             V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
+            Z = np.zeros(M.shape)
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
             for ind in range(N):
                 print('Sample %d ...' % ind)
-                filter = np.random.multivariate_normal(M,V)
-                filter = filter.reshape(s)
+                filter = np.random.multivariate_normal(Z,V)
+                #filter = np.random.multivariate_normal(M,V)
+                filter = normalize(filter.reshape(s))
                 filterbank[ind] = filter            
             filterbanks.append(filterbank)
 
