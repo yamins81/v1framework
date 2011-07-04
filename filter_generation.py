@@ -5,8 +5,6 @@ import itertools
 import rendering
 import processing
 from bson import SON
-import cPickle
-from dbutils import son_escape
 
 def normalize(Y):
     m = Y.mean()
@@ -219,9 +217,9 @@ def get_hierarchical_filterbanks(config):
             filterbanks.append(fbank)       
         elif configL2['filter']['model_name'] == 'correlation':
             import pymongo
-            image_spec = son_escape(configL2['filter']['images'])
+            image_spec = configL2['filter']['images']
             model_spec = config[:2]
-            task_spec = son_escape(configL2['filter']['task'])
+            task_spec = configL2['filter']['task']
             conn = pymongo.Connection(document_class=SON)
             db = conn['thor']
             coll = db['correlation_extraction.files']

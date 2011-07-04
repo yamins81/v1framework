@@ -11,6 +11,7 @@ import itertools
 from bson import SON
 import config.ten_categories_images as Images
 import config.renderman_correlation_tasks as Tasks
+from dbutils import son_escape
 
 model = SON([(u'color_space', u'gray'), 
              (u'conv_mode', u'valid'), 
@@ -38,8 +39,8 @@ model = SON([(u'color_space', u'gray'),
                                                (u'ker_shape', [5, 5])]))]),
                           SON([(u'filter',SON([(u'model_name','correlation'),
                                                (u'num_filters',256),
-                                               (u'task',Tasks.config['extractions'][0]),
-                                               (u'images',Images.config['images'])])),
+                                               (u'task',son_escape(Tasks.config['extractions'][0])),
+                                               (u'images',son_escape(Images.config['images']))])),
                                (u'activ', SON([(u'min_out', 0), 
                                                (u'max_out', 1)]))])
                          ]),
