@@ -35,7 +35,7 @@ model = SON([(u'color_space', u'gray'),
                                                (u'stretch', 0.1)])), 
                                (u'lpool', SON([(u'order', 2), 
                                                (u'stride', 2), 
-                                               (u'ker_shape', [5, 5])]))])
+                                               (u'ker_shape', [5, 5])]))]),
                           SON([(u'filter',SON([(u'model_name','correlation'),
                                                (u'num_filters',256),
                                                (u'task',Tasks.config['extractions'][0]),
