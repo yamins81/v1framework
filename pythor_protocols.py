@@ -182,9 +182,9 @@ def generate_models(outfile,m_hash,config_gen):
                     maxmax = layer['activ']['max_out_max']
                     maxmin = layer['activ']['max_out_min']
                     layer['activ']['max_out'] = (maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin
-                if hasattr(layer.get['activ'].get('min_out'),'iter') and not hasattr(layer['activ'].get('max_out'),'iter'):
+                if hasattr(layer['activ'].get('min_out'),'iter') and not hasattr(layer['activ'].get('max_out'),'iter'):
                     layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
-                if hasattr(layer.get['activ'].get('max_out'),'iter') and not hasattr(layer['activ'].get('min_out'),'iter'):
+                if hasattr(layer['activ'].get('max_out'),'iter') and not hasattr(layer['activ'].get('min_out'),'iter'):
                     layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
                     
         filterbank_string = cPickle.dumps(filterbanks)
