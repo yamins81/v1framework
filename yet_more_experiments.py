@@ -34,6 +34,25 @@ def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_task
                                                   '../config/ht_l2_random_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    level 1, lnorm, inker_shape
+    value: [3, 5, 9]
+    max: 41.73, 42.13, 42.67
+    mean: 33.49, 33.17, 33.40
+    
+    level 1, lpool, ker_shape
+    value: [3, 5, 9]
+    max: 36.13, 42.67, 42.13
+    mean: 29.23, 33.22, 37.61
+    
+    level 1, filter, ker_shape
+    value: [5, 7, 9, 11, 13, 17]
+    max: 42.67, 41.47, 40.40, 41.73, 40.40, 37.33
+    mean: 36.19, 34.93, 33.64, 32.99, 32.04, 30.33
+    
+    level 2, filter, ker_shape
+    value: [3, 5, 7, 9]
+    max: 41.20, 41.20, 42.13, 42.67
+    mean: 32.26, 33.49, 33.37, 34.29
     
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
@@ -127,7 +146,7 @@ def ext_eval_ht_l1_random_renderman(depends_on=('../config/renderman_tasks_for_h
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
                                             
-                                            
+ ##################                                           
 @protocolize()
 def make_l2_gabor_corr_test_model(depends_on='../config/l2_gabor_corr_test_model.py'):
     """
@@ -146,6 +165,19 @@ def ext_eval_l2_gabor_corr_test_renderman(depends_on=('../config/renderman_tasks
                                             '../config/l2_gabor_corr_test_model.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_renderman_specific(depends_on=('../config/renderman_tasks_for_corr_test.py',
+                                                  '../config/l2_gabor_corr_test_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_corr_test.py',
+                                            '../config/l2_gabor_corr_test_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def make_l2_gabor_corr_test_model_2(depends_on='../config/l2_gabor_corr_test_model2.py'):
