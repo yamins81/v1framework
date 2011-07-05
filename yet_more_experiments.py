@@ -376,10 +376,33 @@ def ext_eval_various_l2_gabor_gabor_2_renderman(depends_on=('../config/renderman
                                                   '../config/various_l2_gabor_gabor_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    seeing how more 3d gabors do 
+    nothing espec. great
+    (37.600000000000001, 32.93333333333333, 34.977777777777781, 1.6450449354063783)
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/various_l2_gabor_gabor_models2.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
+                                            
+######
+
+@protocolize()
+def make_l2_gabor_eigen_test_polygon_model(depends_on='../config/l2_gabor_eigen_test_polygon_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_eigen_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_eigentest.py',
+                                                  '../config/l2_gabor_eigen_test_polygon_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_eigentest.py',
+                                            '../config/l2_gabor_eigen_test_polygon_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)

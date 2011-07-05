@@ -241,7 +241,31 @@ def get_hierarchical_filterbanks(config):
                 filter = normalize(filter.reshape(s))
                 filterbank[ind] = filter            
             filterbanks.append(filterbank)
-
+        elif configL2['filter']['model_name'] == 'eigenstat':
+            import pymongo
+            image_spec = configL2['filter']['images']
+            model_spec = config[:2]
+            task_spec = configL2['filter']['task']
+            conn = pymongo.Connection(document_class=SON)
+            db = conn['thor']
+            coll = db['correlation_extraction.files']
+            #fn = configL12['filter']['corr_filename']
+            import gridfs
+            fs = gridfs.GridFS(db,'correlation_extraction')
+            fn = coll.find_one({'model.layers':model_spec,'images':image_spec,'task':task_spec})['filename']
+            fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
+            V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
+            print('computing eigenvectors ...')
+            Vals,Vecs = np.linalg.eig(V)
+            print('...done')
+            N = configL2['filter']['num_filters']
+            s = (fh,fw,n1)
+            filterbank = np.empty((N,) + s)
+            for ind in range(N):
+                filter = Vecs[:ind]
+                filter = normalize(filter.reshape(s))
+                filterbank[ind] = filter            
+            filterbanks.append(filterbank)
         elif configL2['filter']['model_name'] == 'really_random':
             n2 = configL2['filter']['num_filters']
             (fh,fw) = configL2['filter']['ker_shape']
