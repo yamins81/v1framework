@@ -261,8 +261,12 @@ def get_hierarchical_filterbanks(config):
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
+            anti = configL2['filter'].get('anti',False)
             for ind in range(N):
-                filter = Vecs[:,ind]
+                if anti:
+                    filter = Vecs[:,-ind]            
+                else:
+                    filter = Vecs[:,ind]
                 filter = normalize(filter.reshape(s))
                 filterbank[ind] = filter            
             filterbanks.append(filterbank)

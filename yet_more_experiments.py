@@ -409,6 +409,25 @@ def ext_eval_l2_gabor_eigen_test_polygon(depends_on=('../config/parallel_polygon
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+@protocolize()
+def make_l2_gabor_eigen_test_polygon_anti_model(depends_on='../config/l2_gabor_eigen_test_polygon_anti_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_eigen_anti_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_eigen_test_polygon_anti_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+  
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_eigen_test_polygon_anti_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def make_l2_gabor_eigen_test_renderman_model(depends_on='../config/l2_gabor_eigen_test_renderman_model.py'):
