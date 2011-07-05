@@ -882,6 +882,11 @@ def ext_eval_ht_l2_gabor_random_polygon(depends_on=('../config/parallel_polygon_
     """
     max,min,mean,std:
         (93.799999999999997, 47.100000000000001, 79.318981481481487, 9.3502802928689039)
+
+	level 1, filter, norients
+	value: [4, 6, 8]
+	max: 93.80, 92.70, 87.70
+	mean: 84.66, 81.13, 72.16
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',

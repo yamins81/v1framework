@@ -171,7 +171,8 @@ def ext_eval_l2_gabor_corr_test_renderman_specific(depends_on=('../config/render
                                                   '../config/l2_gabor_corr_test_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+     seeing if the corr method does better than rando on the restriccted problem of just rotation
+     result: it doesn't
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_corr_test.py',
                                             '../config/l2_gabor_corr_test_model.py',
@@ -234,12 +235,14 @@ def ext_eval_l2_gabor_corr_test_polygon(depends_on=('../config/parallel_polygon_
                                                   '../config/l2_gabor_corr_test_polygon_model.py',
                                                   '../config/polygon_task.py')):
     """
-    
+    bad results: 61%
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_gabor_corr_test_polygon_model.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+
 
 
 @protocolize()
@@ -254,9 +257,30 @@ def ext_eval_l2_gabor_corr_test_polygon_comparison(depends_on=('../config/parall
                                                   '../config/l2_gabor_corr_test_polygon_comparison_models.py',
                                                   '../config/polygon_task.py')):
     """
+    shows that basically both the gabor/freq_uniform and gabor/random do significantly better than the corr -- so corr method is wrong
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_gabor_corr_test_polygon_comparison_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+
+@protocolize()
+def make_l2_gabor_mult_test_polygon_model(depends_on='../config/l2_gabor_mult_test_polygon_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_mult_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_mult_test_polygon_modell.py',
+                                                  '../config/polygon_task.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_mult_test_polygon_model.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)

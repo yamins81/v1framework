@@ -1173,15 +1173,17 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
         
     return array
 
-def multiply(x,s1,s2,all=False,max=False):
+def multiply(x,s1,s2,all=False,max=False,ravel=False):
     
-    if max:
+    if ravel:
+        x = x.ravel()
+    elif max:
         x = x.sum(1).sum(0)
     else:
         x = x.max(1).max(0)
     
     if np.isnan(s1):
-        y = np.array([z1*z2 for z1 in x for z2 in x])
+        y =  np.outer(x,x)[np.triu_indices(len(x))]
     else:
 		if all:
 			S = [[(s2*f1 + i , s2*f2 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for f2 in range(s1) for o in range(s2) if f1 < f2 or (f1 == f2 and o != 0) ]
