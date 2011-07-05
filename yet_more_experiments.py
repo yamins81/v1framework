@@ -400,9 +400,31 @@ def ext_eval_l2_gabor_eigen_test_polygon(depends_on=('../config/parallel_polygon
                                                   '../config/l2_gabor_eigen_test_polygon_model.py',
                                                   '../config/polygon_task.py')):
     """
-
+    seems to show that only a few filters is about as good as many here ... basically the nontrivial
+    eigenvectors; but overall performance is not great.   (neither were many samples from the correlation
+    distribution ....)
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_eigentest.py',
                                             '../config/l2_gabor_eigen_test_polygon_model.py',
                                             '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+@protocolize()
+def make_l2_gabor_eigen_test_renderman_model(depends_on='../config/l2_gabor_eigen_test_renderman_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_eigen_test_renderman(depends_on=('../config/renderman_tasks_for_corr_test.py',
+                                                  '../config/l2_gabor_eigen_test_renderman_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_corr_test.py',
+                                            '../config/l2_gabor_eigen_test_renderman_model.py',
+                                            '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
