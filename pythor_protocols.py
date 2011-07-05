@@ -1205,7 +1205,9 @@ def fbcorr(input,filter,layer_config,convolve_func):
     for cidx in input.keys():
         if layer_config['filter']['model_name'] == 'multiply':
             (s1,s2) = filter
-            output[cidx] = multiply(input[cidx],s1,s2,all=layer_config['filter'].get('all',False),max=layer_config['filter'].get('max',False))
+            output[cidx] = multiply(input[cidx],s1,s2,all=layer_config['filter'].get('all',False),
+                                    max=layer_config['filter'].get('max',False),
+                                    ravel=layer_config['filter'].get('ravel',False))
         else:
             output[cidx] = convolve_func(input[cidx],
                                          filter,

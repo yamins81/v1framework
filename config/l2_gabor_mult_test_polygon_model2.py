@@ -38,7 +38,8 @@ model = SON([(u'color_space', u'gray'),
                                                (u'stride', 10), 
                                                (u'ker_shape', [11, 11])]))]),
                           SON([(u'filter',SON([(u'model_name','multiply'),
-                                               (u'ravel',True),])),
+                                               (u'ravel',True),
+                                               (u'sum_up',False)])),
                               ])
                          ]),
                         
