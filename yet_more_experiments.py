@@ -275,12 +275,12 @@ def make_l2_gabor_mult_test_polygon_model(depends_on='../config/l2_gabor_mult_te
 
 
 @protocolize()
-def ext_eval_l2_gabor_mult_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
-                                                  '../config/l2_gabor_mult_test_polygon_modell.py',
+def ext_eval_l2_gabor_mult_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_test.py',
+                                                  '../config/l2_gabor_mult_test_polygon_model.py',
                                                   '../config/polygon_task.py')):
     """
     """
-    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_test.py',
                                             '../config/l2_gabor_mult_test_polygon_model.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
