@@ -1231,7 +1231,7 @@ def fbcorr(input,filter,layer_config,convolve_func):
                                              filter,
                                              mode=layer_config['filter'].get('mode','valid'))                
                 for ind  in range(output[cidx].shape[2]):
-                    output[cidx] = output[cidx].clip(min_out[ind],max_out[ind])
+                    output[cidx][ind] = output[cidx][ind].clip(min_out[ind],max_out[ind])
             else:
                 output[cidx] = convolve_func(input[cidx],
                                              filter,
