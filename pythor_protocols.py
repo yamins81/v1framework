@@ -172,6 +172,21 @@ def generate_models(outfile,m_hash,config_gen):
     
     for (i,m) in enumerate(M):
         filterbanks = filter_generation.get_hierarchical_filterbanks(m['model']['layers']) 
+        for (layer,filterbank) in zip(m['model']['layers'],filterbanks):
+            if layer.get('activ'):
+                if layer['activ'].get('min_out_gen') == 'random':
+                    minmax = layer['activ']['min_out_max']
+                    minmin = layer['activ']['min_out_min']
+                    layer['activ']['min_out'] = (minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin
+                if layer['activ'].get('max_out_gen') == 'random':
+                    maxmax = layer['activ']['max_out_max']
+                    maxmin = layer['activ']['max_out_min']
+                    layer['activ']['max_out'] = (maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin
+                if hasattr(layer.get['activ'].get('min_out'),'iter') and not hasattr(layer['activ'].get('max_out'),'iter'):
+                    layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
+                if hasattr(layer.get['activ'].get('max_out'),'iter') and not hasattr(layer['activ'].get('min_out'),'iter'):
+                    layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
+                    
         filterbank_string = cPickle.dumps(filterbanks)
         if (i/5)*5 == i:
             print(i,m) 
@@ -1209,11 +1224,20 @@ def fbcorr(input,filter,layer_config,convolve_func):
                                     max=layer_config['filter'].get('max',False),
                                     ravel=layer_config['filter'].get('ravel',False))
         else:
-            output[cidx] = convolve_func(input[cidx],
-                                         filter,
-                                         min_out=layer_config['activ'].get('min_out'),
-                                         max_out=layer_config['activ'].get('max_out'),
-                                         mode=layer_config['filter'].get('mode','valid'))         
+            min_out = layer_config['activ'].get('min_out')
+            max_out=layer_config['activ'].get('max_out')
+            if hasattr(min_out,'iter'):
+                output[cidx] = convolve_func(input[cidx],
+                                             filter,
+                                             mode=layer_config['filter'].get('mode','valid'))                
+                for ind  in range(output[cidx].shape[2]):
+                    output[cidx] = output[cidx].clip(min_out[i],max_out[i])
+            else:
+                output[cidx] = convolve_func(input[cidx],
+                                             filter,
+                                             min_out=min_out,
+                                             max_out=max_out,
+                                             mode=layer_config['filter'].get('mode','valid'))         
     return output
 
 
