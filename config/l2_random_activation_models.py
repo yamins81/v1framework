@@ -81,6 +81,7 @@ model2 = SON([(u'color_space', u'gray'),
                                                (u'min_out_max',.2),
                                                (u'max_out', 1)]))])
                          ]),
+            ])
                         
             
 
