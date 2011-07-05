@@ -1178,9 +1178,9 @@ def multiply(x,s1,s2,all=False,max=False,ravel=False):
     if ravel:
         x = x.ravel()
     elif max:
-        x = x.sum(1).sum(0)
-    else:
         x = x.max(1).max(0)
+    else:
+        x = x.sum(1).sum(0)
     
     if np.isnan(s1):
         y =  np.outer(x,x)[np.triu_indices(len(x))]
