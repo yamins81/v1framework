@@ -79,7 +79,7 @@ random_model = SON([(u'color_space', u'gray'),
             ])
 
 config = {
-     'models': [model]
+     'models': [freq_model,random_model]
 }
  
 
