@@ -159,7 +159,7 @@ def ext_eval_l2_gabor_corr_test_renderman(depends_on=('../config/renderman_tasks
                                                   '../config/l2_gabor_corr_test_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    no different than random 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_corr_test_model.py',
@@ -182,6 +182,7 @@ def ext_eval_l2_gabor_corr_test_renderman_specific(depends_on=('../config/render
 @protocolize()
 def make_l2_gabor_corr_test_model_2(depends_on='../config/l2_gabor_corr_test_model2.py'):
     """
+    trying corr again with different underlying l1 gabor model
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
 
@@ -191,7 +192,7 @@ def ext_eval_l2_gabor_corr_test_2_renderman(depends_on=('../config/renderman_tas
                                                   '../config/l2_gabor_corr_test_model2.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    again, no better than random
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_corr_test_model2.py',
@@ -212,10 +213,30 @@ def ext_eval_l2_gabor_random_corr_test_comparison_renderman(depends_on=('../conf
                                                   '../config/l2_gabor_random_corr_test_comparison_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    the thing against which to compare corr test above - does equally well
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_random_corr_test_comparison_model.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
+
+
+@protocolize()
+def make_l2_gabor_corr_test_polygon_model(depends_on='../config/l2_gabor_corr_test_polygon_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_corr_test_polygon_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    no different than random 
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_corr_test_polygon_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
