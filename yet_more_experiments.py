@@ -279,6 +279,7 @@ def ext_eval_l2_gabor_mult_test_polygon(depends_on=('../config/parallel_polygon_
                                                   '../config/l2_gabor_mult_test_polygon_model.py',
                                                   '../config/polygon_task.py')):
     """
+    trying it out with a kind of multiplation -- reults are bad
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_test.py',
                                             '../config/l2_gabor_mult_test_polygon_model.py',
@@ -288,6 +289,7 @@ def ext_eval_l2_gabor_mult_test_polygon(depends_on=('../config/parallel_polygon_
 @protocolize()
 def make_l2_gabor_mult_test_polygon_model2(depends_on='../config/l2_gabor_mult_test_polygon_model2.py'):
     """
+    trying it out with a kind of multiplation -- reults are bad
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
 
@@ -316,8 +318,28 @@ def ext_eval_l2_gabor_mult_test_old_polygon(depends_on=('../config/parallel_poly
                                                   '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
                                                   '../config/polygon_task.py')):
     """
+    using old mult 
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_test.py',
                                             '../config/medium_gabor_mod4_with_multiplication_no_sum.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+@protocolize()
+def make_l2_gabor_mult_test_polygon_model_old2(depends_on='../config/medium_gabor_then_multiplication.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_mult_test_old2_polygon(depends_on=('../config/parallel_polygon_tasks_for_test2.py',
+                                                  '../config/medium_gabor_then_multiplication.py',
+                                                  '../config/polygon_task.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_test2.py',
+                                            '../config/medium_gabor_then_multiplication.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
