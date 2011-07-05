@@ -251,12 +251,12 @@ def make_l2_gabor_corr_test_polygon_comparison_models(depends_on='../config/l2_g
 
 @protocolize()
 def ext_eval_l2_gabor_corr_test_polygon_comparison(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
-                                                  '../config/l2_gabor_corr_test_polygon_comparison_models..py',
+                                                  '../config/l2_gabor_corr_test_polygon_comparison_models.py',
                                                   '../config/polygon_task.py')):
     """
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
-                                            '../config/l2_gabor_corr_test_polygon_comparison_models..py',
+                                            '../config/l2_gabor_corr_test_polygon_comparison_models.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
