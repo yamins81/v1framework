@@ -1227,6 +1227,7 @@ def ext_eval_various_l2_gabor_gabor_renderman(depends_on=('../config/renderman_t
                                                   '../config/various_l2_gabor_gabor_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    (39.200000000000003, 35.100000000000001, 37.149999999999999, 1.3817259737975058)
 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht.py',
