@@ -177,11 +177,11 @@ def generate_models(outfile,m_hash,config_gen):
                 if layer['activ'].get('min_out_gen') == 'random':
                     minmax = layer['activ']['min_out_max']
                     minmin = layer['activ']['min_out_min']
-                    layer['activ']['min_out'] = (minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin
+                    layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
                 if layer['activ'].get('max_out_gen') == 'random':
                     maxmax = layer['activ']['max_out_max']
                     maxmin = layer['activ']['max_out_min']
-                    layer['activ']['max_out'] = (maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin
+                    layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
                 if hasattr(layer['activ'].get('min_out'),'iter') and not hasattr(layer['activ'].get('max_out'),'iter'):
                     layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
                 if hasattr(layer['activ'].get('max_out'),'iter') and not hasattr(layer['activ'].get('min_out'),'iter'):
