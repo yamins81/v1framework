@@ -232,11 +232,11 @@ def make_l2_gabor_corr_test_polygon_model(depends_on='../config/l2_gabor_corr_te
 @protocolize()
 def ext_eval_l2_gabor_corr_test_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
                                                   '../config/l2_gabor_corr_test_polygon_model.py',
-                                                  '../config/ten_categories_images.py')):
+                                                  '../config/polygon_task.py')):
     """
-    no different than random 
+    
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_gabor_corr_test_polygon_model.py',
-                                            '../config/ten_categories_images.py',
+                                            '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
