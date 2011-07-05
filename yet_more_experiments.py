@@ -34,6 +34,8 @@ def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_task
                                                   '../config/ht_l2_random_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    overall: (42.666666666666664, 24.533333333333335, 33.353086419753076, 4.3761912829302831)
+    
     level 1, lnorm, inker_shape
     value: [3, 5, 9]
     max: 41.73, 42.13, 42.67
@@ -343,3 +345,20 @@ def ext_eval_l2_gabor_mult_test_old2_polygon(depends_on=('../config/parallel_pol
                                             '../config/medium_gabor_then_multiplication.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+                                            
+                                            
+                                            
+###########
+
+@protocolize()
+def ext_eval_l1_gabor_test_renderman(depends_on=('../config/renderman_tasks_for_l1_test.py',
+                                                  '../config/l1_gabor_test_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    the thing against which to compare corr test above - does equally well
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_l1_test.py',
+                                            '../config/l1_gabor_test_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+                                                                                        
