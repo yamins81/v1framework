@@ -22,9 +22,9 @@ queries = [SON([('$or',combine_ors([[SON([('image.model_id',o),
                                                             ('$lt',2*math.pi*(ind % NSEG + 1)/NSEG)]))]) 
                        for (ind,o) in enumerate(mc.MODEL_CATEGORIES[cat])],
                       [SON([('image.rxy',SON([('$exists',False)]))]),
-                       SON([('image.rxy',SON([('$lt',.5)]))])], 
+                       SON([('image.rxy',SON([('$lt',7)]))])], 
                       [SON([('image.rxz',SON([('$exists',False)]))]),
-                       SON([('image.rxz',SON([('$lt',.5)]))])]
+                       SON([('image.rxz',SON([('$lt',6)]))])]
                     ])),
           ('image.rxy',SON([('$exists',False)])),
           ('image.rxz',SON([('$exists',False)]))]) for cat in ['cars',
