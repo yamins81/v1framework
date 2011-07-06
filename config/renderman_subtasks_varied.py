@@ -21,13 +21,13 @@ queries = [SON([('$or',combine_ors([[SON([('image.model_id',o),
                                           ('image.ryz',SON([('$gt',2*math.pi*(ind % NSEG)/NSEG),
                                                             ('$lt',2*math.pi*(ind % NSEG + 1)/NSEG)]))]) 
                        for (ind,o) in enumerate(mc.MODEL_CATEGORIES[cat])],
+                      [SON([('image.s',SON([('$exists',False)]))]),
+                       SON([('image.s',SON([('$lt',1.2),('$gt',1/1.2)]))])],
                       [SON([('image.rxy',SON([('$exists',False)]))]),
-                       SON([('image.rxy',SON([('$lt',7)]))])], 
+                       SON([('image.rxy',SON([('$lt',.3)]))])], 
                       [SON([('image.rxz',SON([('$exists',False)]))]),
-                       SON([('image.rxz',SON([('$lt',6)]))])]
-                    ])),
-          ('image.rxy',SON([('$exists',False)])),
-          ('image.rxz',SON([('$exists',False)]))]) for cat in ['cars',
+                       SON([('image.rxz',SON([('$lt',.3)]))])]
+                    ]))]) for cat in ['cars',
                                                       'planes',
                                                       'boats',
                                                       'faces',
