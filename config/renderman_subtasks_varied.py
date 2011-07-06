@@ -15,7 +15,7 @@ def combine_ors(ors):
     return map(combine_dicts,itertools.product(*ors))
       
 
-NSEG = 5
+NSEG = 4
       
 queries = [SON([('$or',combine_ors([[SON([('image.model_id',o),
                                           ('image.ryz',SON([('$gt',2*math.pi*(ind % NSEG)/NSEG),
