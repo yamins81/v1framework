@@ -32,7 +32,6 @@ queries = [SON([('$or',combine_ors([[SON([('image.model_id',o),
                                                       'boats',
                                                       'faces',
                                                       'chair',
-                                                      'table',
                                                       'plants',
                                                       'reptiles',
                                                       'cats_and_dogs']
@@ -42,24 +41,23 @@ queries = [SON([('$or',combine_ors([[SON([('image.model_id',o),
 control_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',3), 
-      ('ntrain',270),
-      ('ntest',180),
+      ('ntrain',240),
+      ('ntest',120),
       ('universe',SON([('image.bg_id','gray.tdl'),
                        ('$or',combine_ors([[SON([('image.ryz',SON([('$exists',False)]))]),
                                             SON([('image.ryz',SON([('$lt',2*math.pi/NSEG)]))])],
                                            [SON([('image.s',SON([('$exists',False)]))]),
-                                            SON([('image.s',SON([('$lt',1.25),('$gt',1/1.25)]))])],
+                                            SON([('image.s',SON([('$lt',1.2),('$gt',1/1.2)]))])],
                                            [SON([('image.rxy',SON([('$exists',False)]))]),
-                                            SON([('image.rxy',SON([('$lt',.2)]))])], 
+                                            SON([('image.rxy',SON([('$lt',.3)]))])], 
                                            [SON([('image.rxz',SON([('$exists',False)]))]),
-                                            SON([('image.rxz',SON([('$lt',.2)]))])]
+                                            SON([('image.rxz',SON([('$lt',.3)]))])]
                                            ]))])),
       ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['boats'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['faces'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['chair'])]))]),
-                SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['table'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['reptiles'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['plants'])]))]),
                 SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cats_and_dogs'])]))])
@@ -71,8 +69,8 @@ control_task = SON([
 task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
       ('N',3), 
-      ('ntrain',270),
-      ('ntest',180),
+      ('ntrain',240),
+      ('ntest',120),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',queries)
       ])
