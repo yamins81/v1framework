@@ -224,12 +224,15 @@ def get_hierarchical_filterbanks(config):
             conn = pymongo.Connection(document_class=SON)
             db = conn['thor']
             coll = db['correlation_extraction.files']
-            #fn = configL12['filter']['corr_filename']
             import gridfs
             fs = gridfs.GridFS(db,'correlation_extraction')
             fn = coll.find_one({'model.layers':model_spec,'images':image_spec,'task':task_spec})['filename']
             fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
             V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
+            if configL2['filter'].get('random_subset'):
+                const = configL2['filter']['const']
+                R = np.random.binomial(1,const,V.shape)
+                V = R * V 
             Z = np.zeros(M.shape)
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)

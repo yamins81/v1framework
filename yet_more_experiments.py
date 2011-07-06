@@ -175,7 +175,7 @@ def ext_eval_ht_l1_random_renderman(depends_on=('../config/renderman_tasks_for_h
                                             convolve_func_name='numpy', write=True,parallel=True)
                                             
                                             
- ##################                                           
+###################                                           
 @protocolize()
 def make_l2_gabor_corr_test_model(depends_on='../config/l2_gabor_corr_test_model.py'):
     """
@@ -272,8 +272,6 @@ def ext_eval_l2_gabor_corr_test_polygon(depends_on=('../config/parallel_polygon_
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 
-
-
 @protocolize()
 def make_l2_gabor_corr_test_polygon_comparison_models(depends_on='../config/l2_gabor_corr_test_polygon_comparison_models.py'):
     """
@@ -294,6 +292,25 @@ def ext_eval_l2_gabor_corr_test_polygon_comparison(depends_on=('../config/parall
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+
+@protocolize()
+def make_l2_gabor_corr_test_polygon_subset_model(depends_on='../config/l2_gabor_corr_test_polygon_subset_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_corr_test_polygon_subset_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+    now with random subsetting
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_corr_test_polygon_subset_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
 
 
 @protocolize()
