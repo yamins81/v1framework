@@ -468,3 +468,19 @@ def ext_eval_l2_random_activation_models_renderman(depends_on=('../config/render
                                             '../config/l2_random_activation_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+                                            
+                                            
+####                                            ####
+
+
+@protocolize()
+def ext_eval_various_random_l3_renderman_varied_subtasks(depends_on=('../config/renderman_subtasks_varied.py',
+                                                  '../config/various_random_l3_grayscale_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_subtasks_varied.py',
+                                            '../config/various_random_l3_grayscale_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
