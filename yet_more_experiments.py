@@ -67,6 +67,33 @@ def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks
                                                   '../config/ht_l2_gabor_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    overall: (47.466666666666669, 29.06666666666667, 38.211111111111101, 3.232225850805801)
+    with 30/256 filters: (43.06666666666667, 31.333333333333332, 38.527777777777779, 2.6029838054352217)
+    
+	level 1, lnorm, inker_shape
+	value: [3, 5]
+	max: 47.47, 45.20
+	mean: 38.43, 37.99
+	
+	level 1, filter, norients
+	value: [4, 6, 8]
+	max: 44.40, 47.47, 45.20
+	mean: 37.85, 38.53, 38.25
+	
+	level 1, filter, ker_shape
+	value: [5, 7, 9, 11, 13, 17]
+	max: 45.20, 44.40, 44.13, 44.13, 47.47, 39.73
+	mean: 39.83, 39.29, 39.28, 38.39, 37.69, 34.79
+	
+	level 2, filter, ker_shape
+	value: [3, 5]
+	max: 44.67, 47.47
+	mean: 37.51, 38.91
+	
+	level 2, filter, num_filters
+	value: [128, 256, 384]
+	max: 40.80, 43.60, 47.47
+	mean: 35.82, 38.59, 40.22
     
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
@@ -468,7 +495,30 @@ def ext_eval_l2_random_activation_models_renderman(depends_on=('../config/render
                                             '../config/l2_random_activation_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
-                                            
+
+
+
+@protocolize()
+def make_ht_l2_gabor_random_randomactivation_models(depends_on='../config/ht_l2_gabor_random_randomactivation_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_randomactivation_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/ht_l2_gabor_random_randomactivation_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/ht_l2_gabor_random_randomactivation_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+                                           
                                             
 ####                                            ####
 
