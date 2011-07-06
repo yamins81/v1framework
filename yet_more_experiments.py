@@ -511,10 +511,34 @@ def ext_eval_ht_l2_gabor_random_randomactivation_renderman(depends_on=('../confi
                                                   '../config/ht_l2_gabor_random_randomactivation_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    
+    (47.333333333333329, 36.933333333333337, 42.983333333333327, 2.5525042169951)
+     
+    random activations cause a significant improvements, e.g comparison is:
+    		(41.333333333333329, 38.000000000000007, 40.0, 1.225651754056678)
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_random_randomactivation_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+                                           
+@protocolize()
+def make_ht_l2_gabor_random_randomactivation_models2(depends_on='../config/ht_l2_gabor_random_randomactivation_models2.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_randomactivation2_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/ht_l2_gabor_random_randomactivation_models2.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/ht_l2_gabor_random_randomactivation_models2.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
