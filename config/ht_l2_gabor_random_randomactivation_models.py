@@ -50,11 +50,11 @@ base_model = SON([(u'color_space', u'gray'),
 
 param_set = [(1,'filter','ker_shape',[[5,5],[7,7],[13,13]]),
              (1,'activ','min_out_min',[-.5,-.2]),
-             (1,'activ','min_out_min',[.2,.5]),
+             (1,'activ','min_out_max',[.2,.5]),
              (1,'lpool','ker_shape',[[5,5],[7,7],[9,9]]),
              (2,'filter','ker_shape',[[3,3],[5,5],[9,9]]),
              (2,'activ','min_out_min',[-.5,-.2]),
-             (2,'activ','min_out_min',[.2,.5])]
+             (2,'activ','min_out_max',[.2,.5])]
 
 params = itertools.product(*[ps[3] for ps in param_set])
 
