@@ -34,7 +34,7 @@ def ext_eval_ht_l2_random_random_renderman(depends_on=('../config/renderman_task
                                                   '../config/ht_l2_random_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    overall: (42.666666666666664, 24.533333333333335, 33.353086419753076, 4.3761912829302831)
+    overall: 42.67, 24.53, 33.35, 36.70, 4.38              
     
     level 1, lnorm, inker_shape
     value: [3, 5, 9]
@@ -67,8 +67,8 @@ def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks
                                                   '../config/ht_l2_gabor_random_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    overall: (47.466666666666669, 29.06666666666667, 38.211111111111101, 3.232225850805801)
-    with 30/256 filters: (43.06666666666667, 31.333333333333332, 38.527777777777779, 2.6029838054352217)
+    overall: 47.47, 29.07, 38.21, 40.30, 3.23
+    with 30/256 filters: 43.07, 31.33, 38.53, 40.20, 2.60
     
 	level 1, lnorm, inker_shape
 	value: [3, 5]
@@ -284,7 +284,8 @@ def ext_eval_l2_gabor_corr_test_polygon_comparison(depends_on=('../config/parall
                                                   '../config/l2_gabor_corr_test_polygon_comparison_models.py',
                                                   '../config/polygon_task.py')):
     """
-    shows that basically both the gabor/freq_uniform and gabor/random do significantly better than the corr -- so corr method is wrong
+    shows that basically both the gabor/freq_uniform and gabor/random do significantly 
+    better than the corr -- so corr method is wrong
     
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
@@ -305,7 +306,27 @@ def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_p
                                                   '../config/l2_gabor_corr_test_polygon_subset_model.py',
                                                   '../config/polygon_task.py')):
     """
-    now with random subsetting
+    now with random subsetting: 
+    result: ok, back in the game, 81%
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/l2_gabor_corr_test_polygon_subset_model.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+def make_l2_gabor_corr_test_polygon_subset_model(depends_on='../config/l2_gabor_corr_test_polygon_subset_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_corr_test_polygon_subset_model.py',
+                                                  '../config/polygon_task.py')):
+    """
+    random subsetting with fewer l2 filters
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_gabor_corr_test_polygon_subset_model.py',
