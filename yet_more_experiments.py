@@ -188,12 +188,32 @@ def ext_eval_l2_gabor_corr_test_renderman(depends_on=('../config/renderman_tasks
                                                   '../config/l2_gabor_corr_test_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-    no different than random 
+    result: no different than random 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_corr_test_model.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_l2_gabor_corr_test_subset_model(depends_on='../config/l2_gabor_corr_test_subset_model.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_subset_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/l2_gabor_corr_test_subset_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    result: no different than random 
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/l2_gabor_corr_test_subset_model.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def ext_eval_l2_gabor_corr_test_renderman_specific(depends_on=('../config/renderman_tasks_for_corr_test.py',
@@ -326,7 +346,8 @@ def ext_eval_l2_gabor_corr_test_polygon_subset_small(depends_on=('../config/para
                                                   '../config/l2_gabor_corr_test_polygon_subset_model_small.py',
                                                   '../config/polygon_task.py')):
     """
-    random subsetting with fewer l2 filters
+    random subsetting with fewer l2 filters:
+    result: performance degrades a bit to 74.1%
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
                                             '../config/l2_gabor_corr_test_polygon_subset_model_small.py',
