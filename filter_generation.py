@@ -230,7 +230,7 @@ def get_hierarchical_filterbanks(config):
             fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
             V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
             if configL2['filter'].get('random_subset'):
-                const = configL2['filter']['const']
+                const = configL2['filter']['random_subset']['const']
                 R = np.random.binomial(1,const,V.shape)
                 V = R * V 
             Z = np.zeros(M.shape)
