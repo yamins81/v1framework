@@ -207,7 +207,7 @@ def ext_eval_l2_gabor_corr_test_subset_renderman(depends_on=('../config/renderma
                                                   '../config/l2_gabor_corr_test_subset_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-    result: no different than random 
+    no better than random, 39.733333333333334
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_corr_test_subset_model.py',
@@ -264,6 +264,7 @@ def ext_eval_l2_gabor_random_corr_test_comparison_renderman(depends_on=('../conf
                                                   '../config/ten_categories_images.py')):
     """
     the thing against which to compare corr test above - does equally well
+    result: 39.6%, 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_random_corr_test_comparison_model.py',
@@ -594,10 +595,29 @@ def ext_eval_ht_l2_gabor_random_randomactivation2_renderman(depends_on=('../conf
                                                   '../config/ht_l2_gabor_random_randomactivation_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    '49.73, 33.33, 41.55, 43.77, 3.22'
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_random_randomactivation_models2.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_ht_l2_gabor_random_various_activations_models(depends_on='../config/ht_l2_gabor_random_various_activations_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_various_activations_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/ht_l2_gabor_random_various_activations_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/ht_l2_gabor_random_various_activations_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
