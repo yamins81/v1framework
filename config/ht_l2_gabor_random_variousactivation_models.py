@@ -48,7 +48,6 @@ base_model = SON([(u'color_space', u'gray'),
 
 param_set = [(1,'filter','ker_shape',[[7,7]]),
              (1,'activ','min_out',[-.15,0,.15]), 
-             (1,'activ','min_out_max',[.2,.5]),
              (1,'lpool','ker_shape',[[9,9]]),
              (2,'filter','ker_shape',[[9,9]]),
              (2,'activ','min_out',[-.15,0,.15])]
