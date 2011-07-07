@@ -315,21 +315,21 @@ def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_p
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 
-def make_l2_gabor_corr_test_polygon_subset_model(depends_on='../config/l2_gabor_corr_test_polygon_subset_model.py'):
+def make_l2_gabor_corr_test_polygon_subset_small_model(depends_on='../config/l2_gabor_corr_test_polygon_subset_model_small.py'):
     """
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
 
 
 @protocolize()
-def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
-                                                  '../config/l2_gabor_corr_test_polygon_subset_model.py',
+def ext_eval_l2_gabor_corr_test_polygon_subset_small(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/l2_gabor_corr_test_polygon_subset_model_small.py',
                                                   '../config/polygon_task.py')):
     """
     random subsetting with fewer l2 filters
     """
     protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
-                                            '../config/l2_gabor_corr_test_polygon_subset_model.py',
+                                            '../config/l2_gabor_corr_test_polygon_subset_model_small.py',
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
