@@ -603,7 +603,7 @@ def ext_eval_ht_l2_gabor_random_randomactivation2_renderman(depends_on=('../conf
                                             convolve_func_name='numpy', write=True,parallel=True)
 
 @protocolize()
-def make_ht_l2_gabor_random_various_activations_models(depends_on='../config/ht_l2_gabor_random_various_activations_models.py'):
+def make_ht_l2_gabor_random_variousactivation_models(depends_on='../config/ht_l2_gabor_random_variousactivation_models.py'):
     """
   
     """
@@ -611,13 +611,13 @@ def make_ht_l2_gabor_random_various_activations_models(depends_on='../config/ht_
  
 
 @protocolize()
-def ext_eval_ht_l2_gabor_random_various_activations_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
-                                                  '../config/ht_l2_gabor_random_various_activations_models.py',
+def ext_eval_ht_l2_gabor_random_variousactivation_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/ht_l2_gabor_random_variousactivation_model.py',
                                                   '../config/ten_categories_images.py')):
     """
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
-                                            '../config/ht_l2_gabor_random_various_activations_models.py',
+                                            '../config/ht_l2_gabor_random_variousactivation_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
