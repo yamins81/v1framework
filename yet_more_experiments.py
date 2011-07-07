@@ -314,7 +314,7 @@ def ext_eval_l2_gabor_corr_test_polygon_subset(depends_on=('../config/parallel_p
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
-
+@protocolize()
 def make_l2_gabor_corr_test_polygon_subset_small_model(depends_on='../config/l2_gabor_corr_test_polygon_subset_model_small.py'):
     """
     """
