@@ -8,7 +8,8 @@ from bson import SON
 import cPickle
 
 def generate_random_subsamples(M,V,N,p):
-    A = np.linalg.cholesky(V)
+    u,s,v = np.linalg.svd(V)
+    A= np.dot(u, np.diag(np.sqrt(s)))
     R = np.random.binomial(1,p,(N,len(M)))
     X = np.random.multivariate_normal(np.zeros(M.shape),np.identity(V.shape[0]),size=(N,))
     X = R * X
