@@ -238,7 +238,8 @@ def get_hierarchical_filterbanks(config):
                 print('Sample %d ...' % ind)
                 if configL2['filter'].get('random_subset'):
                     const = configL2['filter']['random_subset']['const']
-                    R = np.random.binomial(1,const,V.shape)
+                    R = np.triu(np.random.binomial(1,const,V.shape))
+                    R = R | R.T
                     W = R * V 
                 else:
                     W = V

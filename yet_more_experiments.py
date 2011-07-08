@@ -214,6 +214,25 @@ def ext_eval_l2_gabor_corr_test_subset_renderman(depends_on=('../config/renderma
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+@protocolize()
+def make_various_l2_gabor_corr_subset_models(depends_on='../config/various_l2_gabor_corr_subset_models.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_various_l2_gabor_corr_subset_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/various_l2_gabor_corr_subset_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/various_l2_gabor_corr_subset_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
 
 @protocolize()
 def ext_eval_l2_gabor_corr_test_renderman_specific(depends_on=('../config/renderman_tasks_for_corr_test.py',
