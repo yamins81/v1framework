@@ -247,7 +247,7 @@ def get_hierarchical_filterbanks(config):
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
-            
+            print('generating %d samples from a %d-by-%d covariance matrix ...' % (N,V.shape[0],V.shape[1]))            
             if configL2['filter'].get('random_subset'):
                 const = configL2['filter']['random_subset']['const']
                 filters = generate_random_subsamples(Z,V,N,const)
