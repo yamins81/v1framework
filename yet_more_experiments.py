@@ -635,12 +635,12 @@ def make_ht_l2_gabor_random_variousactivation2_models(depends_on='../config/ht_l
  
 
 @protocolize()
-def ext_eval_ht_l2_gabor_random_variousactivation2_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+def ext_eval_ht_l2_gabor_random_variousactivation2_renderman(depends_on=('../config/renderman_tasks_for_ht3.py',
                                                   '../config/ht_l2_gabor_random_variousactivation2_model.py',
                                                   '../config/ten_categories_images.py')):
     """
     """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht3.py',
                                             '../config/ht_l2_gabor_random_variousactivation2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
