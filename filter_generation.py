@@ -7,6 +7,16 @@ import processing
 from bson import SON
 import cPickle
 
+def generate_random_subsamples(M,V,N,p):
+    A = np.linalg.cholesky(V)
+    R = np.random.binomial(1,p,(N,len(M)))
+    X = np.random.multivariate_normal(np.zeros(M.shape),np.identity(V.shape[0]),size=(N,))
+    X = R * X
+    for ind in range(X.shape[0]):
+        X[ind] = M + np.dot(A,X[ind])
+    return X
+    
+
 def normalize(Y):
     m = Y.mean()
     return (Y - m) / np.sqrt(((Y - m)**2).sum())
@@ -229,25 +239,22 @@ def get_hierarchical_filterbanks(config):
             fn = coll.find_one({'model.layers':model_spec,'images':image_spec,'task':task_spec})['filename']
             fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
             V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
-
-            Z = np.zeros(M.shape)
+            if configL2['filter'].get('use_mean',False):
+                Z = np.zeros(M.shape)
+            else:
+                Z = M
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
-            for ind in range(N):
-                print('Sample %d ...' % ind)
-                if configL2['filter'].get('random_subset'):
-                    const = configL2['filter']['random_subset']['const']
-                    R = np.triu(np.random.binomial(1,const,V.shape))
-                    R = R | R.T
-                    W = R * V 
-                else:
-                    W = V
-                if configL2['filter'].get('use_mean',False):
-                    filter = np.random.multivariate_normal(M,W)
-                else:
-                    filter = np.random.multivariate_normal(Z,W)
-                filter = normalize(filter.reshape(s))
+            
+            if configL2['filter'].get('random_subset'):
+                const = configL2['filter']['random_subset']['const']
+                filters = generate_random_subsamples(Z,V,N,const)
+            else:
+                filters = np.random.multivariate_normal(Z,V,size=(N,))
+            
+            for ind in range(filters.shape[0]):
+                filter = normalize(filters[ind].reshape(s))
                 filterbank[ind] = filter            
             filterbanks.append(filterbank)
         elif configL2['filter']['model_name'] == 'eigenstat':
