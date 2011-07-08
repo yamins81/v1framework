@@ -241,9 +241,9 @@ def get_hierarchical_filterbanks(config):
             fh,fw = coll.find_one({'filename':fn})['task']['ker_shape']
             V,M = cPickle.loads(fs.get_version(fn).read())['sample_result']
             if configL2['filter'].get('use_mean',False):
-                Z = np.zeros(M.shape)
-            else:
                 Z = M
+            else:
+                Z = np.zeros(M.shape)
             N = configL2['filter']['num_filters']
             s = (fh,fw,n1)
             filterbank = np.empty((N,) + s)
