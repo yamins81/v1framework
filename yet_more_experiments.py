@@ -681,6 +681,7 @@ def ext_eval_ht_l2_gabor_random_variousactivation2_renderman(depends_on=('../con
                                                   '../config/ht_l2_gabor_random_variousactivation2_model.py',
                                                   '../config/ten_categories_images.py')):
     """
+    (45.799999999999997, 40.000000000000007, 43.396296296296292, 1.3494346730760
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht3.py',
                                             '../config/ht_l2_gabor_random_variousactivation2_models.py',
