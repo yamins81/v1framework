@@ -77,7 +77,7 @@ def ext_eval_ht_l2_random_random_larger_renderman(depends_on=('../config/renderm
                                                   '../config/ht_l2_random_random_models_larger.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    46.40, 25.33, 35.36, 38.73, 4.43
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_random_random_models_larger.py',
@@ -92,6 +92,7 @@ def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks
     """
     overall: 47.47, 29.07, 38.21, 40.30, 3.23
     with 30/256 filters: 43.07, 31.33, 38.53, 40.20, 2.60
+    with 30/384 filters: 47.47, 34.13, 40.87, 42.70, 2.79
     
 	level 1, lnorm, inker_shape
 	value: [3, 5]
@@ -687,6 +688,27 @@ def ext_eval_ht_l2_gabor_random_variousactivation2_renderman(depends_on=('../con
                                             '../config/ht_l2_gabor_random_variousactivation2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
+
+@protocolize()
+def make_ht_l2_gabor_random_variousactivationranges_models(depends_on='../config/ht_l2_gabor_random_variousactivationranges_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_variousactivationranges_renderman(depends_on=('../config/renderman_tasks_for_ht3.py',
+                                                  '../config/ht_l2_gabor_random_variousactivationranges_model.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht3.py',
+                                            '../config/ht_l2_gabor_random_variousactivationranges_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
                                             
 ####                                            ####
 
