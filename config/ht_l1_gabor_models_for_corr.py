@@ -7,7 +7,7 @@
 #from collections import OrderedDict
 
 import copy
-
+import itertools
 from bson import SON
 
 base_model = SON([
