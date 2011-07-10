@@ -1401,7 +1401,7 @@ def get_corr_parallel_core(image_config_gen,m,task,ext_hash,model_hash,image_has
     sample = cPickle.loads(sample_fs.get_version(sampleconf['filename']).read())['sample']
     res = get_corr_core(sample,m,convolve_func_name,task,cache_port)
     extraction_fs = gridfs.GridFS(db,'correlation_extraction')
-    put_in_sample_result(res,image_config_gen,m,task,ext_hash,model_hash,image_hash,mextraction_fs)
+    put_in_sample_result(res,image_config_gen,m,task,ext_hash,model_hash,image_hash,extraction_fs)
 
 
 def get_corr_core(sample,m,convolve_func_name,task,cache_port):

@@ -702,7 +702,9 @@ def ext_eval_ht_l2_gabor_random_variousactivationranges_renderman(depends_on=('.
                                                   '../config/ht_l2_gabor_random_variousactivationranges_model.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    47.47, 41.33, 43.75, 44.73, 1.60
+    it looks like having ranges helps in the top, and that in particular it helps with L1 activation 
+    around 0, with a range. 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht3.py',
                                             '../config/ht_l2_gabor_random_variousactivationranges_models.py',
