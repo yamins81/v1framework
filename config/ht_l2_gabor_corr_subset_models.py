@@ -26,7 +26,7 @@ for M in l1_models.config['models']:
     for num_filters in [256,384]:
         for task in Tasks.config['extractions']:
             m = copy.deepcopy(M)
-            m['layers'].append(corr_layer)
+            m['layers'].append(copy.deep_copy(corr_layer))
             m['layers'][2]['filter']['task'] = son_escape(task)
             m['layers'][2]['filter']['num_filters'] = num_filters
             models.append(m)
