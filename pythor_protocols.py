@@ -158,22 +158,22 @@ def model_protocol(config_path,write = False,parallel=False):
     return D,model_hash
 
 def get_model(m):
-	filterbanks = filter_generation.get_hierarchical_filterbanks(m['layers']) 
-	for (layer,filterbank) in zip(m['layers'],filterbanks):
-		if layer.get('activ'):
-			if layer['activ'].get('min_out_gen') == 'random':
-				minmax = layer['activ']['min_out_max']
-				minmin = layer['activ']['min_out_min']
-				layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
-			if layer['activ'].get('max_out_gen') == 'random':
-				maxmax = layer['activ']['max_out_max']
-				maxmin = layer['activ']['max_out_min']
-				layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
-			if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
-				layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
-			if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
-				layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
-						
+    filterbanks = filter_generation.get_hierarchical_filterbanks(m['layers']) 
+    for (layer,filterbank) in zip(m['layers'],filterbanks):
+        if layer.get('activ'):
+            if layer['activ'].get('min_out_gen') == 'random':
+                minmax = layer['activ']['min_out_max']
+                minmin = layer['activ']['min_out_min']
+                layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
+            if layer['activ'].get('max_out_gen') == 'random':
+                maxmax = layer['activ']['max_out_max']
+                maxmin = layer['activ']['max_out_min']
+                layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
+            if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
+                layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
+            if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
+                layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
+                        
     return filterbanks
 
 @activate(lambda x : (), lambda x : x[0])    
@@ -194,9 +194,9 @@ def generate_models(outfile,m_hash,config_gen):
         else:
             filterbanks = get_model(m['model'])
             
-		filterbank_string = cPickle.dumps(filterbanks)
-		if (i/5)*5 == i:
-			print(i,m) 
+        filterbank_string = cPickle.dumps(filterbanks)
+        if (i/5)*5 == i:
+            print(i,m) 
         
         y = SON([('config',m)])
         filename = get_filename(m)
@@ -697,16 +697,16 @@ def transform_average(input,config,model_config):
         args = zip(input,config,[{'config':{'model':m}} for m in M])
         vec = sp.concatenate([transform_average(inp,conf,m) for (inp,conf,m) in args])
     else:
-		K = input.keys()
-		K.sort()
-		vec = []
-		if config:
-			for cidx in K:
-				vec.append(average_transform(input[cidx],config,model_config))
-		else:
-			for cidx in K:
-				vec.append(unravel(input[cidx]))
-		vec = sp.concatenate(vec)
+        K = input.keys()
+        K.sort()
+        vec = []
+        if config:
+            for cidx in K:
+                vec.append(average_transform(input[cidx],config,model_config))
+        else:
+            for cidx in K:
+                vec.append(unravel(input[cidx]))
+        vec = sp.concatenate(vec)
     
     return vec
         
@@ -1181,33 +1181,33 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
     if isinstance(m_config,list):
         return [compute_features_core({'config':{'model':m}}) for m in m_config]
     else:
-		conv_mode = m_config['conv_mode']    
-		layers = m_config['layers']
-		
-		array = image2array(m_config,image_fh)
-		array,orig_imga = preprocess(array,m_config)
-		assert len(filters) == len(layers)
-		dtype = array[0].dtype
-		
-		for (filter,layer) in zip(filters,layers):
-		
-			#print('b',array[0].shape) 
-			if filter is not None:
-				array = fbcorr(array, filter, layer , convolve_func)
-			#print('f',array[0].shape) 
-			
-			if layer.get('lpool'):
-				array = lpool(array,conv_mode,layer['lpool'])
-			#print('p',array[0].shape)
-			
-			if layer.get('lnorm'):
-				if layer['lnorm'].get('use_old',False):
-					array = old_norm(array,conv_mode,layer['lnorm'])
-				else:
-					array = lnorm(array,conv_mode,layer['lnorm'])
-			#print('n',array[0].shape)
-			
-		return array
+        conv_mode = m_config['conv_mode']    
+        layers = m_config['layers']
+        
+        array = image2array(m_config,image_fh)
+        array,orig_imga = preprocess(array,m_config)
+        assert len(filters) == len(layers)
+        dtype = array[0].dtype
+        
+        for (filter,layer) in zip(filters,layers):
+        
+            #print('b',array[0].shape) 
+            if filter is not None:
+                array = fbcorr(array, filter, layer , convolve_func)
+            #print('f',array[0].shape) 
+            
+            if layer.get('lpool'):
+                array = lpool(array,conv_mode,layer['lpool'])
+            #print('p',array[0].shape)
+            
+            if layer.get('lnorm'):
+                if layer['lnorm'].get('use_old',False):
+                    array = old_norm(array,conv_mode,layer['lnorm'])
+                else:
+                    array = lnorm(array,conv_mode,layer['lnorm'])
+            #print('n',array[0].shape)
+            
+        return array
 
 def multiply(x,s1,s2,all=False,max=False,ravel=False):
     
@@ -1221,14 +1221,14 @@ def multiply(x,s1,s2,all=False,max=False,ravel=False):
     if np.isnan(s1):
         y =  np.outer(x,x)[np.triu_indices(len(x))]
     else:
-		if all:
-			S = [[(s2*f1 + i , s2*f2 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for f2 in range(s1) for o in range(s2) if f1 < f2 or (f1 == f2 and o != 0) ]
-		else:
-			S = [[(s2*f1 + i , s2*f1 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for o in range(s2)]
-		
-		
-		print(len(S),len(S[0]))
-		y = np.array([sum([x[i]*x[j] for (i,j) in s]) for s in S])
+        if all:
+            S = [[(s2*f1 + i , s2*f2 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for f2 in range(s1) for o in range(s2) if f1 < f2 or (f1 == f2 and o != 0) ]
+        else:
+            S = [[(s2*f1 + i , s2*f1 + (o + i) % s2)  for i in range(s2)] for f1 in range(s1) for o in range(s2)]
+        
+        
+        print(len(S),len(S[0]))
+        y = np.array([sum([x[i]*x[j] for (i,j) in s]) for s in S])
     
     #y = y / np.sqrt((y**2).sum())
     #y = y / y.max()
