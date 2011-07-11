@@ -9,7 +9,7 @@ import copy
 import itertools
 from bson import SON
 import config.ten_categories_images as Images
-import config.renderman_correlation_tasks as Tasks
+import config.renderman_correlation_tasks2 as Tasks
 from dbutils import son_escape
 
 import config.ht_l1_gabor_models_for_corr as l1_models
