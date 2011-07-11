@@ -158,6 +158,7 @@ def model_protocol(config_path,write = False,parallel=False):
     return D,model_hash
 
 def get_model(m):
+    print(m['layers'][2]['filter']['model_name'])
     filterbanks = filter_generation.get_hierarchical_filterbanks(m['layers']) 
     for (layer,filterbank) in zip(m['layers'],filterbanks):
         if layer.get('activ'):
