@@ -157,6 +157,24 @@ def model_protocol(config_path,write = False,parallel=False):
         actualize(D)
     return D,model_hash
 
+def get_model(m):
+	filterbanks = filter_generation.get_hierarchical_filterbanks(m['layers']) 
+	for (layer,filterbank) in zip(m['layers'],filterbanks):
+		if layer.get('activ'):
+			if layer['activ'].get('min_out_gen') == 'random':
+				minmax = layer['activ']['min_out_max']
+				minmin = layer['activ']['min_out_min']
+				layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
+			if layer['activ'].get('max_out_gen') == 'random':
+				maxmax = layer['activ']['max_out_max']
+				maxmin = layer['activ']['max_out_min']
+				layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
+			if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
+				layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
+			if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
+				layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
+						
+    return filterbanks
 
 @activate(lambda x : (), lambda x : x[0])    
 def generate_models(outfile,m_hash,config_gen):
@@ -171,25 +189,14 @@ def generate_models(outfile,m_hash,config_gen):
     M = model_config_generator(config_gen)       
     
     for (i,m) in enumerate(M):
-        filterbanks = filter_generation.get_hierarchical_filterbanks(m['model']['layers']) 
-        for (layer,filterbank) in zip(m['model']['layers'],filterbanks):
-            if layer.get('activ'):
-                if layer['activ'].get('min_out_gen') == 'random':
-                    minmax = layer['activ']['min_out_max']
-                    minmin = layer['activ']['min_out_min']
-                    layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
-                if layer['activ'].get('max_out_gen') == 'random':
-                    maxmax = layer['activ']['max_out_max']
-                    maxmin = layer['activ']['max_out_min']
-                    layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
-                if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
-                    layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
-                if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
-                    layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
-                    
-        filterbank_string = cPickle.dumps(filterbanks)
-        if (i/5)*5 == i:
-            print(i,m) 
+        if isinstance(m['model'],list):
+            filterbanks = [get_model(model) for model in m['model']]
+        else:
+            filterbanks = get_model(m['model'])
+            
+		filterbank_string = cPickle.dumps(filterbanks)
+		if (i/5)*5 == i:
+			print(i,m) 
         
         y = SON([('config',m)])
         filename = get_filename(m)
@@ -199,10 +206,6 @@ def generate_models(outfile,m_hash,config_gen):
         
     createCertificateDict(outfile,{'model_hash':m_hash,'args':config_gen})
     
-
-#goes through everything in relevant collections and loads and does extraction into named new collection.   either in parallel or not
-#in parallel, it splits things up into batches of some size 
-
 
 def extract_features_protocol(image_config_path,
                               model_config_path,
@@ -670,27 +673,41 @@ def generate_splits(task_config,hash,colname):
     query = task_config['query'] 
     if isinstance(query,list):
         cqueries = [reach_in('config',q) for q in query]
-        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest,universe=base_query)
+        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
+                                               ntest,universe=base_query)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
         cquery = reach_in('config',query)
-        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,universe=base_query,use_negate = True)
+        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,
+                                         ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
+                                         universe=base_query,use_negate = True)
 
 def unravel(X):
     return sp.concatenate([X[:,:,i].ravel() for i in range(X.shape[2])])
 
 def transform_average(input,config,model_config):
-    K = input.keys()
-    K.sort()
-    vec = []
-    if config:
-        for cidx in K:
-            vec.append(average_transform(input[cidx],config,model_config))
+    if isinstance(input,list):
+        M = model_config['config']['model']
+        assert isinstance(M,list) and len(M) == len(input)
+        if isinstance(config,list):
+            assert len(config) == len(M)
+        else:
+            config = [copy.deepcopy(config) for ind in range(len(M))]
+        args = zip(input,config,[{'config':{'model':m}} for m in M])
+        vec = sp.concatenate([transform_average(inp,conf,m) for (inp,conf,m) in args])
     else:
-        for cidx in K:
-            vec.append(unravel(input[cidx]))
-    vec = sp.concatenate(vec)
+		K = input.keys()
+		K.sort()
+		vec = []
+		if config:
+			for cidx in K:
+				vec.append(average_transform(input[cidx],config,model_config))
+		else:
+			for cidx in K:
+				vec.append(unravel(input[cidx]))
+		vec = sp.concatenate(vec)
+    
     return vec
         
 def sum_up(x,s1,s2):
@@ -1160,33 +1177,37 @@ def compute_population_results(hash):
 def compute_features_core(image_fh,filters,model_config,convolve_func):
  
     m_config = model_config['config']['model']
-    conv_mode = m_config['conv_mode']
-    layers = m_config['layers']
     
-    array = image2array(m_config,image_fh)
-    array,orig_imga = preprocess(array,m_config)
-    assert len(filters) == len(layers)
-    dtype = array[0].dtype
-    
-    for (filter,layer) in zip(filters,layers):
-
-        #print('b',array[0].shape) 
-        if filter is not None:
-            array = fbcorr(array, filter, layer , convolve_func)
-        #print('f',array[0].shape) 
-        
-        if layer.get('lpool'):
-            array = lpool(array,conv_mode,layer['lpool'])
-        #print('p',array[0].shape)
-        
-        if layer.get('lnorm'):
-            if layer['lnorm'].get('use_old',False):
-                array = old_norm(array,conv_mode,layer['lnorm'])
-            else:
-                array = lnorm(array,conv_mode,layer['lnorm'])
-        #print('n',array[0].shape)
-        
-    return array
+    if isinstance(m_config,list):
+        return [compute_features_core({'config':{'model':m}}) for m in m_config]
+    else:
+		conv_mode = m_config['conv_mode']    
+		layers = m_config['layers']
+		
+		array = image2array(m_config,image_fh)
+		array,orig_imga = preprocess(array,m_config)
+		assert len(filters) == len(layers)
+		dtype = array[0].dtype
+		
+		for (filter,layer) in zip(filters,layers):
+		
+			#print('b',array[0].shape) 
+			if filter is not None:
+				array = fbcorr(array, filter, layer , convolve_func)
+			#print('f',array[0].shape) 
+			
+			if layer.get('lpool'):
+				array = lpool(array,conv_mode,layer['lpool'])
+			#print('p',array[0].shape)
+			
+			if layer.get('lnorm'):
+				if layer['lnorm'].get('use_old',False):
+					array = old_norm(array,conv_mode,layer['lnorm'])
+				else:
+					array = lnorm(array,conv_mode,layer['lnorm'])
+			#print('n',array[0].shape)
+			
+		return array
 
 def multiply(x,s1,s2,all=False,max=False,ravel=False):
     

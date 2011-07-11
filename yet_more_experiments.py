@@ -250,7 +250,7 @@ def ext_eval_various_l2_gabor_corr_subset_renderman(depends_on=('../config/rende
                                                   '../config/various_l2_gabor_corr_subset_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    (40.533333333333331, 29.06666666666667, 34.94358974358974, 3.6200624402081676)
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/various_l2_gabor_corr_subset_models.py',
