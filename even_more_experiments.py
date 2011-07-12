@@ -16,7 +16,7 @@ def make_ht_l2_gabor_random_squared_models(depends_on='../config/ht_l2_gabor_ran
 
 
 @protocolize()
-def ext_eval_ht_l2_random_random_larger_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+def ext_eval_ht_l2_gabor_random_squared_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
                                                   '../config/ht_l2_gabor_random_squared_models.py',
                                                   '../config/ten_categories_images.py')):
     """
