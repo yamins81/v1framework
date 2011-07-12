@@ -48,7 +48,6 @@ def correlation_ht_l1_gabor_renderman(depends_on=('../config/renderman_correlati
                                 '../config/ht_l1_gabor_models_for_corr.py',
                                 '../config/ten_categories_images.py',
                                 convolve_func_name='numpy', write=True,parallel=True)
-                                convolve_func_name='numpy', write=True,parallel=True)
 
                              
 @protocolize()
