@@ -128,13 +128,13 @@ def ext_eval_ht_l2_gabor_random_renderman(depends_on=('../config/renderman_tasks
 
 @protocolize()
 def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
-                                                  '../config/ht_l2_freq_models.py',
+                                                  '../config/ht_l2_freq_models_2.py',
                                                   '../config/ten_categories_images.py')):
     """
     
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
-                                            '../config/ht_l2_freq_models.py',
+                                            '../config/ht_l2_freq_models_2.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
