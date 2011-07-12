@@ -37,6 +37,8 @@ base_model = SON([
                 ('lnorm', SON([
                     ('threshold', 10.0),
                     ('stretch',.1)
+                    ('inker_shape',[5,5]),
+                    ('outker_shape',[5,5]),
                     ])),
                 ('lpool',SON([
                     ('stride',2),
@@ -56,10 +58,9 @@ base_model = SON([
            ])   
     ])
 
-l1_norm_shape = [3,5]
 l1_filter_params = [(4,[2,4,5,7]),(6,[2,4,5,7,9]),(8,[2,4,5,7,9,11])]
-l1_filter_shape = [5,7,9,11,13,17,21]
-l2_filter_shape = [3,5,7]
+l1_filter_shape = [7,9,11,13,17,21]
+l2_filter_shape = [3,7]
 
 
 #different filter shapes
