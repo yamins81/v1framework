@@ -36,7 +36,7 @@ base_model = SON([
                     ])),
                 ('lnorm', SON([
                     ('threshold', 10.0),
-                    ('stretch',.1)
+                    ('stretch',.1),
                     ('inker_shape',[5,5]),
                     ('outker_shape',[5,5]),
                     ])),
@@ -65,18 +65,15 @@ l2_filter_shape = [3,7]
 
 #different filter shapes
 models=[]
-for k1 in l1_norm_shape:
-    for k3 in l1_filter_params:
-        for k4 in l1_filter_shape:
-            for k5 in l2_filter_shape:              
-                model =  copy.deepcopy(base_model)
-                model['layers'][1]['lnorm']['inker_shape'] = [k1,k1]
-                model['layers'][1]['lnorm']['outker_shape'] = [k1,k1]
-                model['layers'][1]['filter']['norients'] = k3[0]
-                model['layers'][1]['filter']['divfreqs'] = k3[1]
-                model['layers'][1]['filter']['ker_shape'] = [k4,k4]
-                model['layers'][2]['filter']['ker_shape'] = [k5,k5]
-                models.append(model)
+for k3 in l1_filter_params:
+    for k4 in l1_filter_shape:
+        for k5 in l2_filter_shape:              
+            model =  copy.deepcopy(base_model)
+            model['layers'][1]['filter']['norients'] = k3[0]
+            model['layers'][1]['filter']['divfreqs'] = k3[1]
+            model['layers'][1]['filter']['ker_shape'] = [k4,k4]
+            model['layers'][2]['filter']['ker_shape'] = [k5,k5]
+            models.append(model)
 
 
 config = {
