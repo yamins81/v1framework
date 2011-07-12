@@ -1179,7 +1179,12 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
     m_config = model_config['config']['model']
     
     if isinstance(m_config,list):
-        return [compute_features_core({'config':{'model':m}}) for m in m_config]
+        reslist = []
+        for (filt,m) in zip(filters,m_config):
+            image_fh.seek(0)
+            res = compute_features_core(image_fh,filt,{'config':{'model':m}},convolve_func)
+            reslist.append(res)
+        return reslist
     else:
         conv_mode = m_config['conv_mode']    
         layers = m_config['layers']
