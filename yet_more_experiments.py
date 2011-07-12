@@ -140,6 +140,27 @@ def ext_eval_ht_l2_freq_renderman(depends_on=('../config/renderman_tasks_for_ht2
 
 
 @protocolize()
+def make_ht_l2_uniform_models(depends_on='../config/ht_l2_uniform_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_ht_l2_uniform_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/ht_l2_uniform_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/ht_l2_uniform_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+
+@protocolize()
 def make_ht_l1_gabor_models(depends_on='../config/ht_l1_gabor_models_more.py'):
     """
   

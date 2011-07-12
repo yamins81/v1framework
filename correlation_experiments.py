@@ -62,7 +62,10 @@ def ext_eval_ht_l2_gabor_corr_subset_renderman(depends_on=('../config/renderman_
                                                   '../config/ht_l2_gabor_corr_subset_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    basically a failure e.g. no better than random (if anything, slightly worse)
+    overall: 43.60, 29.20, 36.33, 38.00, 2.65
+    256 filters: 42.80, 29.20, 35.86, 37.73, 2.72
+    384: 43.60, 31.20, 36.79, 38.27, 2.50
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_corr_subset_models.py',
