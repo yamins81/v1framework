@@ -51,7 +51,7 @@ def correlation_ht_l1_gabor_renderman(depends_on=('../config/renderman_correlati
 
 
 @protocolize()
-def make_corr_test_3_model(depends_on='../config/l2_gabor_corr_test_model3.py'):
+def make_corr_test_3_model(depends_on='../config/l1_gabor_corr_test_model3.py'):
     """
 
     """
@@ -61,10 +61,10 @@ def make_corr_test_3_model(depends_on='../config/l2_gabor_corr_test_model3.py'):
 
 @protocolize()
 def correlation_test_3_model(depends_on=('../config/renderman_correlation_tasks2.py',
-                                                  '../config/l2_gabor_corr_test_model3.py',
+                                                  '../config/l1_gabor_corr_test_model3.py',
                                                   '../config/ten_categories_images.py')):
     protocols.get_corr_protocol('../config/renderman_correlation_tasks2.py',
-                                '../config/l2_gabor_corr_test_model3.py',
+                                '../config/l1_gabor_corr_test_model3.py',
                                 '../config/ten_categories_images.py',
                                 convolve_func_name='numpy', write=True,parallel=True)
                                 
