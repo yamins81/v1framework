@@ -51,7 +51,7 @@ def correlation_ht_l1_gabor_renderman(depends_on=('../config/renderman_correlati
 
 
 @protocolize()
-def make_corr_test_3_model(depends_on='../config/ht_l1_gabor_models_for_corr.py'):
+def make_corr_test_3_model(depends_on='../config/l2_gabor_corr_test_model3.py'):
     """
 
     """
