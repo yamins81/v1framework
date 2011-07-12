@@ -315,27 +315,6 @@ def ext_eval_l2_gabor_corr_test_2_renderman(depends_on=('../config/renderman_tas
                                             
 
 @protocolize()
-def make_l2_gabor_corr_test_model_3(depends_on='../config/l2_gabor_corr_test_model3.py'):
-    """
-    trying corr again with different underlying l1 gabor model
-    """
-    protocols.model_protocol(depends_on,parallel=False,write=True)
-
-
-@protocolize()
-def ext_eval_l2_gabor_corr_test_3_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
-                                                  '../config/l2_gabor_corr_test_model3.py',
-                                                  '../config/ten_categories_images.py')):
-    """
-
-    """
-    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
-                                            '../config/l2_gabor_corr_test_model3.py',
-                                            '../config/ten_categories_images.py',
-                                            convolve_func_name='numpy', write=True,parallel=True)
-
-
-@protocolize()
 def make_l2_gabor_random_corr_test_comparison_model(depends_on='../config/l2_gabor_random_corr_test_comparison_model.py'):
     """
     """

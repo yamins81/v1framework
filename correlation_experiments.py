@@ -48,27 +48,9 @@ def correlation_ht_l1_gabor_renderman(depends_on=('../config/renderman_correlati
                                 '../config/ht_l1_gabor_models_for_corr.py',
                                 '../config/ten_categories_images.py',
                                 convolve_func_name='numpy', write=True,parallel=True)
-
-
-@protocolize()
-def make_corr_test_3_model(depends_on='../config/l1_gabor_corr_test_model3.py'):
-    """
-
-    """
-    protocols.model_protocol(depends_on,parallel=False,write=True)
-
-
-
-@protocolize()
-def correlation_test_3_model(depends_on=('../config/renderman_correlation_tasks2.py',
-                                                  '../config/l1_gabor_corr_test_model3.py',
-                                                  '../config/ten_categories_images.py')):
-    protocols.get_corr_protocol('../config/renderman_correlation_tasks2.py',
-                                '../config/l1_gabor_corr_test_model3.py',
-                                '../config/ten_categories_images.py',
                                 convolve_func_name='numpy', write=True,parallel=True)
-                                
-                                
+
+                             
 @protocolize()
 def make_ht_l2_gabor_corr_subset_models(depends_on='../config/ht_l2_gabor_corr_subset_models.py'):
     """
@@ -89,5 +71,75 @@ def ext_eval_ht_l2_gabor_corr_subset_renderman(depends_on=('../config/renderman_
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_corr_subset_models.py',
                                             '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+                                
+#############
+@protocolize()
+def make_corr_test_3_model(depends_on='../config/l1_gabor_corr_test_model3.py'):
+    """
+
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def correlation_test_3_model(depends_on=('../config/renderman_correlation_tasks2.py',
+                                                  '../config/l1_gabor_corr_test_model3.py',
+                                                  '../config/ten_categories_images.py')):
+    protocols.get_corr_protocol('../config/renderman_correlation_tasks2.py',
+                                '../config/l1_gabor_corr_test_model3.py',
+                                '../config/ten_categories_images.py',
+                                convolve_func_name='numpy', write=True,parallel=True)
+
+
+@protocolize()
+def make_l2_gabor_corr_test_model_3(depends_on='../config/l2_gabor_corr_test_model3.py'):
+    """
+    trying corr again with different underlying l1 gabor model
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_l2_gabor_corr_test_3_renderman(depends_on=('../config/renderman_tasks_for_ht2.py',
+                                                  '../config/l2_gabor_corr_test_model3.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
+                                            '../config/l2_gabor_corr_test_model3.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True,parallel=True)
+
+   
+#############
+
+
+@protocolize()
+def correlation_ht_l1_gabor_polygon(depends_on=('../config/polygon_correlation_tasks2.py',
+                                                  '../config/ht_l1_gabor_models_for_corr.py',
+                                                  '../config/polygon_task.py')):
+    protocols.get_corr_protocol('../config/polygon_correlation_tasks2.py',
+                                '../config/ht_l1_gabor_models_for_corr.py',
+                                '../config/polygon_task.py',)
+   
+@protocolize()
+def make_ht_l2_gabor_corr_subset_polygon_models(depends_on='../config/ht_l2_gabor_corr_subset_polygon_models.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_ht_l2_gabor_corr_subset_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht.py',
+                                                  '../config/ht_l2_gabor_corr_subset_polygon_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht.py',
+                                            '../config/ht_l2_gabor_corr_subset_polygon_models.py',
+                                            '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
                                 
