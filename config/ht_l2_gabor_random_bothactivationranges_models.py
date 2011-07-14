@@ -55,7 +55,7 @@ maxvar2 = [0,.1,.25]
 
 models=[]
 
-for (m1,m2,m3,m4) in itertool.product(minvar1,maxvar1,minvar2,maxvar2):
+for (m1,m2,m3,m4) in itertools.product(minvar1,maxvar1,minvar2,maxvar2):
     model = copy.deepcopy(base_model)
     model['layers'][1]['activ']['min_out_min'] = -m1
     model['layers'][1]['activ']['min_out_max'] = m1
