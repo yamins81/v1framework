@@ -57,15 +57,15 @@ models=[]
 
 for (m1,m2,m3,m4) in itertool.product(minvar1,maxvar1,minvar2,maxvar2):
     model = copy.deepcopy(base_model)
-	model['layers'][1]['activ']['min_out_min'] = -m1
-	model['layers'][1]['activ']['min_out_max'] = m1
-	model['layers'][1]['activ']['max_out_min'] = -m2
-	model['layers'][1]['activ']['max_out_max'] = m2
-	model['layers'][2]['activ']['min_out_min'] = -m3
-	model['layers'][2]['activ']['min_out_max'] = m3
-	model['layers'][2]['activ']['max_out_min'] = -m4
-	model['layers'][2]['activ']['max_out_max'] = m4
-	models.append(model)
+    model['layers'][1]['activ']['min_out_min'] = -m1
+    model['layers'][1]['activ']['min_out_max'] = m1
+    model['layers'][1]['activ']['max_out_min'] = -m2
+    model['layers'][1]['activ']['max_out_max'] = m2
+    model['layers'][2]['activ']['min_out_min'] = -m3
+    model['layers'][2]['activ']['min_out_max'] = m3
+    model['layers'][2]['activ']['max_out_min'] = -m4
+    model['layers'][2]['activ']['max_out_max'] = m4
+    models.append(model)
 
 config = {
      'models': models
