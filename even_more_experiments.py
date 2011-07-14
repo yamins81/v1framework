@@ -54,7 +54,7 @@ def ext_eval_ht_l2_gabor_random_squared_renderman(depends_on=('../config/renderm
 
 
 @protocolize()
-def make_ht_l2_gabor_random_boathactivationranges_models(depends_on='../config/ht_l2_gabor_random_bothactivationranges_models.py'):
+def make_ht_l2_gabor_random_bothactivationranges_models(depends_on='../config/ht_l2_gabor_random_bothactivationranges_models.py'):
     """
   
     """
@@ -63,7 +63,7 @@ def make_ht_l2_gabor_random_boathactivationranges_models(depends_on='../config/h
 
 @protocolize()
 def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../config/renderman_tasks_for_ht3.py',
-                                                  '../config/ht_l2_gabor_random_bothactivationranges_model.py',
+                                                  '../config/ht_l2_gabor_random_bothactivationranges_models.py',
                                                   '../config/ten_categories_images.py')):
     """
 
