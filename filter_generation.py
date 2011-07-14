@@ -242,7 +242,7 @@ def get_hierarchical_filterbanks(config):
                         I = [norients*i + o for o in ors1]
                         J = [norients*i + o for o in ors2]    
                         for ind in I + J:
-                            fbankk[fnum,:,:,ind] = 1
+                            fbank[fnum,:,:,ind] = 1
                         fbank[fnum] = normalize(fbank[fnum])
                         fnum += 1
             
