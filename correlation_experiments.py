@@ -94,7 +94,8 @@ def correlation_test_3_model(depends_on=('../config/renderman_correlation_tasks2
 @protocolize()
 def make_l2_gabor_corr_test_model_3(depends_on='../config/l2_gabor_corr_test_model3.py'):
     """
-    trying corr again with different underlying l1 gabor model
+    trying corr again with different underlying l1 gabor model 
+    with order = 2
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
 
@@ -104,7 +105,7 @@ def ext_eval_l2_gabor_corr_test_3_renderman(depends_on=('../config/renderman_tas
                                                   '../config/l2_gabor_corr_test_model3.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    result is not different/better than with order 1 .... 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/l2_gabor_corr_test_model3.py',

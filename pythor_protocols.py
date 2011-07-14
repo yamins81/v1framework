@@ -697,16 +697,20 @@ def transform_average(input,config,model_config):
         args = zip(input,config,[{'config':{'model':m}} for m in M])
         vec = sp.concatenate([transform_average(inp,conf,m) for (inp,conf,m) in args])
     else:
-        K = input.keys()
-        K.sort()
-        vec = []
-        if config:
-            for cidx in K:
-                vec.append(average_transform(input[cidx],config,model_config))
-        else:
-            for cidx in K:
-                vec.append(unravel(input[cidx]))
-        vec = sp.concatenate(vec)
+        vecs = []
+        for level_input in input.values():
+            K = level_input.keys()
+            K.sort()
+            vec = []
+            if config:
+                for cidx in K:
+                    vec.append(average_transform(level_input[cidx],config,model_config))
+            else:
+                for cidx in K:
+                    vec.append(unravel(level_input[cidx]))
+            vec = sp.concatenate(vec)
+            vecs.append(vec)
+        vec = sp.concatenate(vecs)
     
     return vec
         
@@ -1162,7 +1166,51 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
         actualize(D)
     return DH
 
+############analysis
 
+import scipy.stats as stats
+
+def get_perfq(hash,q,p=75):
+    conn = pm.Connection()
+    coll = conn['thor']['performance']
+    q['__hash__'] = hash
+    res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
+    print(lof([res.max(),res.min(),res.mean(),stats.scoreatpercentile(res,p),res.std()]))
+    return [res.max(),res.min(),res.mean(),stats.scoreatpercentile(res,p),res.std()]
+
+def get_perf(hash,level,key,att,p=75):
+    
+    conn = pm.Connection()
+    coll = conn['thor']['performance']
+
+    level = str(level)
+    q = {'__hash__':hash}
+    vals = coll.find(q).distinct('model.layers.' + level + '.' + key + '.' + att)
+
+    maxs = []
+    mins = []
+    means = []
+    quartiles = []
+    stds = []
+    for val in vals:
+        q['model.layers.' + level + '.' + key + '.' + att] = val
+        res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
+        maxs.append(res.max())
+        means.append(res.mean())
+        mins.append(res.min())
+        quartiles(stats.scoreatepercentile(res,p))
+        stds.append(res.std())
+
+    print('level %s, %s, %s' % (level,key,att))
+    print('value: %s' % repr(vals))
+    print('max: %s' % lof(maxs))
+    print('mean: %s' % lof(means))
+    print('quartiles %s' % lof(quartiles))
+        
+    return maxs,mins,means,quartiles,stds
+
+def lof(mylist):
+    return ", ".join(['%0.2f' % item for item in mylist])
 
 def compute_population_results(hash):
     conn = pm.Connection()
@@ -1171,6 +1219,37 @@ def compute_population_results(hash):
     L = list(coll.find({'__hash__':hash}))
     acc = np.array([l['test_accuracy'] for l in L])
     return acc.max(),acc.min(),acc.mean(),acc.std(),L[0]['task']
+
+def compute_multimodel_perfs(hash,level,key,att,num_models,p=75):
+
+    conn = pm.Connection()
+    coll = conn['thor']['performance']
+
+    level = str(level)
+    bq = {'__hash__':hash}
+    vals = [coll.find(bq).distinct('model.' + str(mn) + '.layers.' + level + '.' + key + '.' + att) for mn in range(num_models)]
+    sizes = tuple(map(len,vals))
+    ranges = [range(s) for s in sizes]
+  
+    maxs = np.zeros(sizes)
+    mins = np.zeros(sizes)
+    means = np.zeros(sizes)
+    quartiles = np.zeros(sizes)
+    stds = np.zeros(sizes)
+    for inds in itertools.product(*ranges):
+        if all([inds[iv] < inds[iv+1] for iv in range(len(inds)-1)]):
+			q = copy.deepcopy(bq)
+			for (mn,ind) in zip(range(num_models),inds):
+				q['model.' + str(mn) + '.layers.' + level + '.' + key + '.' + att] = vals[mn][ind]
+			res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
+			if res:
+				maxs[inds] = res.max()
+				means[inds] = res.mean()
+				mins[inds] = res.min()
+				stds[inds] = res.std()
+				quartiles[inds] = stats.scoreatpercentile(res,p)
+        
+    return maxs,mins,means,quartiles,stds
 
 #=-=-=-=-=-=-=-=core computations
     
@@ -1188,31 +1267,35 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
     else:
         conv_mode = m_config['conv_mode']    
         layers = m_config['layers']
+        feed_up = m_config.get('feed_up',False)
         
         array = image2array(m_config,image_fh)
         array,orig_imga = preprocess(array,m_config)
         assert len(filters) == len(layers)
         dtype = array[0].dtype
         
-        for (filter,layer) in zip(filters,layers):
+        array_dict = {}
+        for (ind,(filter,layer)) in enumerate(zip(filters,layers)):
         
-            #print('b',array[0].shape) 
             if filter is not None:
                 array = fbcorr(array, filter, layer , convolve_func)
-            #print('f',array[0].shape) 
             
             if layer.get('lpool'):
                 array = lpool(array,conv_mode,layer['lpool'])
-            #print('p',array[0].shape)
-            
+
             if layer.get('lnorm'):
                 if layer['lnorm'].get('use_old',False):
                     array = old_norm(array,conv_mode,layer['lnorm'])
                 else:
                     array = lnorm(array,conv_mode,layer['lnorm'])
-            #print('n',array[0].shape)
             
-        return array
+            if feed_up:
+                array_dict[ind] = array
+            
+        if not feed_up:
+            array_dict[len(layers)-1] = array
+            
+        return array_dict
 
 def multiply(x,s1,s2,all=False,max=False,ravel=False):
     

@@ -156,7 +156,21 @@ def norm(input,conv_mode,params):
     return output
 
 
+def get_local_filter(shape,inds,pos,rads):
+    X = np.zeros(shape)
 
+    assert len(pos) == len(rads) == len(inds)
+    
+    for (ind,p,r) in zip(inds,pos,rads):
+        px,py = p
+        lx = px - np.arange(s1)
+        ly = py - np.arange(s2)
+        d = np.outer(lx**2 , np.ones((s2,))) + np.outer(np.ones((s1,)),ly**2)
+    	X[ind][d <= r] = 1
+    	
+    return X
+    	
+        
 def get_hierarchical_filterbanks(config):
 
     filterbanks = [None]
@@ -211,18 +225,24 @@ def get_hierarchical_filterbanks(config):
             freq2 = len(f1['divfreqs'])
             or2 = f1['norients']/osample
                     
-            fbank = np.zeros((freq2*or2**2,fh,fw,n1))
+            doub = configL2['filter'].get('double',True)
+            if doub:
+            	n2 = freq2*or2**2
+            else:
+                n2 = freq2*or2*(or2-1)/2
+            fbank = np.zeros((n2,fh,fw,n1))
             fnum = 0
+                
             for i in range(freq2):
                 for j in range(or2):
-                    for k in range(or2):            
+                    kk = 0 if doub else j + 1
+                    for k in range(kk,or2):            
                         ors1 = range(j*osample,(j+1)*osample)
                         ors2 = range(k*osample,(k+1)*osample)
-
                         I = [norients*i + o for o in ors1]
                         J = [norients*i + o for o in ors2]    
                         for ind in I + J:
-                            fbank[fnum,:,:,ind] = 1
+                            fbankk[fnum,:,:,ind] = 1
                         fbank[fnum] = normalize(fbank[fnum])
                         fnum += 1
             
