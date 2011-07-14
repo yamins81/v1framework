@@ -29,22 +29,22 @@ base_model = SON([(u'color_space', u'gray'),
                                                 (u'divfreqs', [2, 4, 7, 8, 11]), 
                                                 (u'norients', 8)])), 
                                (u'activ', SON([(u'min_out_gen','random'),
-                                               (u'max_out_gen','random')), 
+                                               (u'max_out_gen','random')])), 
                                (u'lnorm', SON([(u'inker_shape', [3, 3]), 
                                                (u'outker_shape', [3, 3]), 
                                                (u'threshold', 10.0), 
                                                (u'stretch', 0.1)])), 
-                               (u'lpool', SON([(u'order', 2), 
-                                               (u'stride', 2), 
+                               (u'lpool', SON([(u'stride', 2), 
+                                               (u'order', 1),
                                                (u'ker_shape', [9, 9])]))]),
                           SON([(u'filter',SON([(u'model_name','really_random'),
                                                (u'num_filters',256),
                                                (u'ker_shape',[9,9])])),
                                (u'activ', SON([(u'min_out_gen','random'),
-                                               (u'max_out_gen','random'))])  
-                         ]),
-            ])
-                        
+                                               (u'max_out_gen','random')]))])
+                             
+                        ])
+            ])                       
 
 
 
