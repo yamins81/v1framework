@@ -622,6 +622,7 @@ FEATURE_CACHE = {}
 def get_from_cache(obj,cache):
     hash = hashlib.sha1(repr(obj)).hexdigest()
     if hash in cache:
+        print('using cache for %s' % str(hash))
         return cache[hash]
         
 def put_in_cache(obj,value,cache):
