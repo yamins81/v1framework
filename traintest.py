@@ -334,7 +334,7 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
     
     if overlap:
         assert isinstance(overlap,float) and 0 < overlap <= 1, 'overlap must be a float in (0,1]'
-        for (_i,td,ntr,nte) in enumerate(zip(task_data,ntrain_vec,ntest_vec)):
+        for (_i,(td,ntr,nte)) in enumerate(zip(task_data,ntrain_vec,ntest_vec)):
             eff_n = int(math.ceil((ntr+nte)*(1/overlap)))
             perm = sp.random.permutation(len(td))
             task_data[_i] = [td[_j] for _j in perm[:eff_n]]
