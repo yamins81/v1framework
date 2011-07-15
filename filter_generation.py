@@ -235,7 +235,7 @@ def get_hierarchical_filterbanks(config):
                 
             for i in range(freq2):
                 for j in range(or2):
-                    kk = 0 if doub else j + 1
+                    kk = 0 if doub else j
                     for k in range(kk,or2):            
                         ors1 = range(j*osample,(j+1)*osample)
                         ors2 = range(k*osample,(k+1)*osample)
