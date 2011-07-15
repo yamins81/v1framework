@@ -83,7 +83,7 @@ def make_ht_l2_gabor_random_o2_models(depends_on='../config/ht_l2_gabor_random_o
  
 
 @protocolize()
-def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+def ext_eval_ht_l2_gabor_random_o2_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
                                                   '../config/ht_l2_gabor_random_os_models.py',
                                                   '../config/ten_categories_images.py')):
     """
