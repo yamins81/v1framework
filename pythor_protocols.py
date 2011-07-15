@@ -663,7 +663,7 @@ def get_features(im,im_fs,filter,m,convolve_func,task,network_cache):
     return output
     
 
-def generate_splits(task_config,hash,colname):
+def generate_splits(task_config,hash,colname,overlap=None):
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
@@ -674,14 +674,16 @@ def generate_splits(task_config,hash,colname):
     if isinstance(query,list):
         cqueries = [reach_in('config',q) for q in query]
         return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
-                                               ntest,universe=base_query)
+                                               ntest,universe=base_query,
+                                               overlap=overlap)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
         cquery = reach_in('config',query)
         return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,
                                          ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
-                                         universe=base_query,use_negate = True)
+                                         universe=base_query,use_negate = True,
+                                         overlap=overlap)
 
 def unravel(X):
     return sp.concatenate([X[:,:,i].ravel() for i in range(X.shape[2])])
@@ -1090,7 +1092,6 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:
-            classifier_kwargs = task.get('classifier_kwargs',{})    
             print('task',task)
             splits = generate_splits(task,image_hash,'images') 
             for (ind,split) in enumerate(splits):
@@ -1106,6 +1107,70 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
         bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
         raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)
     
+    
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:
+            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+
+def extract_and_evaluate_semi_parallel_core(image_config_gen,m,task,ext_hash,convolve_func_name,cache_port=None):
+
+    if cache_port is None:
+        cache_port = NETWORK_CACHE_PORT
+    cache_port = None
+        
+               
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    split_col = db['splits.files']
+    split_fs = gridfs.GridFS(db,'splits')
+
+    splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
+    for splitconf in split_confs:
+        split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
+        res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
+        splitperf_fs = gridfs.GridFS(db,'split_performance')
+        put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+
+
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def extract_and_evaluate_semi_parallel(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,task,ext_hash):
+        
+    (model_configs, image_config_gen, model_hash, image_hash, task_list,
+     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_extract_and_evaluate(ext_hash,
+                                                                                                  image_certificate_file,
+                                                                                                  model_certificate_file,
+                                                                                                  task)
+
+    
+    jobids = []
+    if convolve_func_name == 'numpy':
+        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
+    elif convolve_func_name == 'cufft':
+        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
+    
+    for task in task_list:
+        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+        for m in model_configs: 
+            print('Evaluating model',m)
+            print('On task',task)              
+            for (ind,split) in enumerate(splits):
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
+            jobid = qsub(extract_and_evaluate_semi_parallel_core,
+                         (image_config_gen,m,task,ext_hash,convolve_func_name),
+                         opstring=opstring)
+            print('Submitted job', jobid)
+            jobids.append(jobid)
+                
+    print('Waiting for jobs', jobids) 
+    statuses = wait_and_get_statuses(jobids)
+    
+    if not all([status == 0 for status in statuses]):
+        bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
+        raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)    
     
     for m in model_configs: 
         print('Evaluating model',m)
@@ -1156,15 +1221,26 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
         
         performance_certificate = '../.performance_certificates/' + ext_hash
         if not parallel:
-            op = ('evaluation_' + ext_hash,extract_and_evaluate,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            func = extract_and_evaluate
+        elif parallel == 'semi':
+            func = extract_and_evaluate_semi_parallel
         else:
-            op = ('evaluation_' + ext_hash,extract_and_evaluate_parallel,(performance_certificate,image_certificate,model_certificate,evaluate_config_path,convolve_func_name,task,ext_hash))
+            func = extract_and_evaluate_parallel
+                                                
+        op = ('evaluation_' + ext_hash,func, (performance_certificate,
+                                              image_certificate,
+                                              model_certificate,
+                                              evaluate_config_path,
+                                              convolve_func_name,
+                                              task,
+                                              ext_hash))                                                
         D.append(op)
         DH[ext_hash] = [op]
              
     if write:
         actualize(D)
     return DH
+    
 
 ############analysis
 
@@ -1238,16 +1314,16 @@ def compute_multimodel_perfs(hash,level,key,att,num_models,p=75):
     stds = np.zeros(sizes)
     for inds in itertools.product(*ranges):
         if all([inds[iv] < inds[iv+1] for iv in range(len(inds)-1)]):
-			q = copy.deepcopy(bq)
-			for (mn,ind) in zip(range(num_models),inds):
-				q['model.' + str(mn) + '.layers.' + level + '.' + key + '.' + att] = vals[mn][ind]
-			res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
-			if res:
-				maxs[inds] = res.max()
-				means[inds] = res.mean()
-				mins[inds] = res.min()
-				stds[inds] = res.std()
-				quartiles[inds] = stats.scoreatpercentile(res,p)
+            q = copy.deepcopy(bq)
+            for (mn,ind) in zip(range(num_models),inds):
+                q['model.' + str(mn) + '.layers.' + level + '.' + key + '.' + att] = vals[mn][ind]
+            res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
+            if res:
+                maxs[inds] = res.max()
+                means[inds] = res.mean()
+                mins[inds] = res.min()
+                stds[inds] = res.std()
+                quartiles[inds] = stats.scoreatpercentile(res,p)
         
     return maxs,mins,means,quartiles,stds
 

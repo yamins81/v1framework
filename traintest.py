@@ -1,4 +1,5 @@
 import cPickle
+import math  
 import pymongo as pm
 import scipy as sp
 from bson import SON
@@ -13,7 +14,8 @@ train / test
 """
 
 
-def train_test(query,dbname, colname, ntrain,ntest,ntrain_pos = None,classifier = None,classifier_kwargs = None,N=10,universe=None):
+def train_test(query,dbname, colname, ntrain,ntest,ntrain_pos = None,
+               classifier = None,classifier_kwargs = None,N=10,universe=None):
 
     print('Q',query)
     print('U',universe)
@@ -143,7 +145,9 @@ def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = No
 import numpy as np
 import tabular as tb    
 import copy
-def generate_split2(dbname,collectionname,task_query,N,ntrain,ntest,ntrain_pos = None, ntest_pos = None, universe = None,use_negate = False):
+def generate_split2(dbname,collectionname,task_query,N,ntrain,ntest,
+                    ntrain_pos = None, ntest_pos = None, universe = None,
+                    use_negate = False, overlap=None):
 
     task_query = copy.deepcopy(task_query)
     print('Generating splits ...')
@@ -179,7 +183,8 @@ def generate_split2(dbname,collectionname,task_query,N,ntrain,ntest,ntrain_pos =
     N_nontask = len(nontask_data)
 
     assert ntrain + ntest <= N_task + N_nontask, "Not enough training and/or testing examples " + str([N_task,N_nontask])
-      
+    
+        
     splits = []  
     for ind in range(N):
         print('... split', ind)
@@ -298,8 +303,8 @@ def generate_multi_split(dbname,collectionname,queries,ntrain,ntest,ntrain_pos =
            }
 
  
- 
-def generate_multi_split2(dbname,collectionname,task_queries,N,ntrain,ntest,universe = None,labels=None):
+def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
+                          ntest, universe=None, labels=None, overlap=None):
 
     nq = len(task_queries)
     if labels is None:
@@ -326,6 +331,13 @@ def generate_multi_split2(dbname,collectionname,task_queries,N,ntrain,ntest,univ
     
     for (tq,td,ntr,nte) in zip(task_queries,task_data,ntrain_vec,ntest_vec):
         assert ntr + nte <= len(td), 'not enough examples to train/test for %s, %d needed, but only have %d' % (repr(tq),ntr+nte,len(td))
+    
+    if overlap:
+        assert isinstance(overlap,float) and 0 < overlap <= 1, 'overlap must be a float in (0,1]'
+        for (_i,td,ntr,nte) in enumerate(zip(task_data,ntrain_vec,ntest_vec)):
+            eff_n = int(math.ceil((ntr+nte)*(1/overlap)))
+            perm = sp.random.permutation(len(td))
+            task_data[_i] = [td[_j] for _j in perm[:eff_n]]
     
     splits = []  
     for ind in range(N):
