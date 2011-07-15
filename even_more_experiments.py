@@ -84,13 +84,13 @@ def make_ht_l2_gabor_random_o2_models(depends_on='../config/ht_l2_gabor_random_o
 
 @protocolize()
 def ext_eval_ht_l2_gabor_random_o2_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
-                                                  '../config/ht_l2_gabor_random_os_models.py',
+                                                  '../config/ht_l2_gabor_random_o2_models.py',
                                                   '../config/ten_categories_images.py')):
     """
 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht_overlap.py',
-                                            '../config/ht_l2_gabor_o2_models.py',
+                                            '../config/ht_l2_gabor_random_o2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True, parallel='semi')
 
