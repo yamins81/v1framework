@@ -1131,6 +1131,7 @@ def extract_and_evaluate_semi_parallel_core(image_config_gen,m,task,ext_hash,con
     splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
     for splitconf in splitconfs:
         split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
+        split_id = splitconf['split_id']
         res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
         splitperf_fs = gridfs.GridFS(db,'split_performance')
         put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
