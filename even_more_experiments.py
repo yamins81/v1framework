@@ -118,7 +118,7 @@ def ext_eval_ht_l2_gabor_random_o2_polygon(depends_on=('../config/parallel_polyg
 
 #random random o2
 @protocolize()
-def make_ht_l2_random_random_o2_models(depends_on='../config/ht_l2_gabor_random_o2_models.py'):
+def make_ht_l2_random_random_o2_models(depends_on='../config/ht_l2_random_random_o2_models.py'):
     """
   
     """
