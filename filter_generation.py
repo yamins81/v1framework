@@ -229,7 +229,7 @@ def get_hierarchical_filterbanks(config):
             if doub:
             	n2 = freq2*or2**2
             else:
-                n2 = freq2*or2*(or2-1)/2
+                n2 = freq2*or2*(or2+1)/2
             fbank = np.zeros((n2,fh,fw,n1))
             fnum = 0
                 
