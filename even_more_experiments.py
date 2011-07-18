@@ -93,4 +93,27 @@ def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../c
                                             '../config/ht_l2_gabor_o2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True, parallel='semi')
+                                            
+                                            
+############mixed up tasks#########
+
+
+@protocolize()
+def make_ht_l2_gabor_random_o2_top5_renderman_models(depends_on='../config/ht_l2_gabor_random_o2_top5_renderman_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../config/renderman_mixedup_tasks.py',
+                                                  '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+                                            
 
