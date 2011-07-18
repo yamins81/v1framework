@@ -12,7 +12,7 @@ tenway_cats = [['cars'],['planes'],['boats'],['guns'],['faces'],['chair'],
     
 tenway_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',300),
       ('ntest',150),
       ('universe',SON([('image.bg_id','gray.tdl')])),
@@ -21,7 +21,7 @@ tenway_task = SON([
 
 tenway_mixup_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',300),
       ('ntest',150),
       ('universe',SON([('image.bg_id','gray.tdl')])),
@@ -33,7 +33,7 @@ car_plane_cats = [['cars'],['planes']]
 
 car_vs_plane_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',60),
       ('ntest',30),
       ('universe',SON([('image.bg_id','gray.tdl')])),
@@ -42,7 +42,7 @@ car_vs_plane_task = SON([
       
 car_vs_plane_mixup_task = SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',60),
       ('ntest',30),
       ('universe',SON([('image.bg_id','gray.tdl')])),
@@ -53,7 +53,7 @@ fav_cats = [['chair','table'],['cats_and_dogs','reptiles'],['cars','boats']]
 
 furniture_vs_animals_vs_vehicles_task =  SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',90),
       ('ntest',45),
       ('universe',SON([('image.bg_id','gray.tdl')])),
@@ -62,7 +62,7 @@ furniture_vs_animals_vs_vehicles_task =  SON([
 
 furniture_vs_animals_vs_vehicles_mixup_task =  SON([
       ('transform_average', SON([('transform_name','translation'),('max',True)])),
-      ('N',5), 
+      ('N',10), 
       ('ntrain',90),
       ('ntest',45),
       ('universe',SON([('image.bg_id','gray.tdl')])),
