@@ -15,6 +15,7 @@ tenway_task = SON([
       ('N',10), 
       ('ntrain',300),
       ('ntest',150),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',uset(CAT,k))]))]) for k in tenway_cats])
       ])      
@@ -24,6 +25,7 @@ tenway_mixup_task = SON([
       ('N',10), 
       ('ntrain',300),
       ('ntest',150),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',k)]))]) for k in mixup(CAT,tenway_cats)])
       ])      
@@ -36,6 +38,7 @@ car_vs_plane_task = SON([
       ('N',10), 
       ('ntrain',60),
       ('ntest',30),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',uset(CAT,k))]))]) for k in car_plane_cats])
       ])  
@@ -45,6 +48,7 @@ car_vs_plane_mixup_task = SON([
       ('N',10), 
       ('ntrain',60),
       ('ntest',30),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',k)]))]) for k in mixup(CAT,car_plane_cats)])
       ])  
@@ -56,6 +60,7 @@ furniture_vs_animals_vs_vehicles_task =  SON([
       ('N',10), 
       ('ntrain',90),
       ('ntest',45),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',uset(CAT,k))]))]) for k in fav_cats])
       ])  
@@ -65,6 +70,7 @@ furniture_vs_animals_vs_vehicles_mixup_task =  SON([
       ('N',10), 
       ('ntrain',90),
       ('ntest',45),
+      ('overlap',.75),
       ('universe',SON([('image.bg_id','gray.tdl')])),
       ('query',[SON([('image.model_id',SON([('$in',k)]))]) for k in mixup(CAT,fav_cats)])
       ])  
