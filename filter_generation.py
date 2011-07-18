@@ -229,13 +229,13 @@ def get_hierarchical_filterbanks(config):
             if doub:
             	n2 = freq2*or2**2
             else:
-                n2 = freq2*or2*(or2-1)/2
+                n2 = freq2*or2*(or2+1)/2
             fbank = np.zeros((n2,fh,fw,n1))
             fnum = 0
                 
             for i in range(freq2):
                 for j in range(or2):
-                    kk = 0 if doub else j + 1
+                    kk = 0 if doub else j
                     for k in range(kk,or2):            
                         ors1 = range(j*osample,(j+1)*osample)
                         ors2 = range(k*osample,(k+1)*osample)

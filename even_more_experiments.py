@@ -66,6 +66,9 @@ def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../c
                                                   '../config/ht_l2_gabor_random_bothactivationranges_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    44.87, 31.93, 38.23, 41.13, 3.35    
+            --> comparison is 
+                (41.333333333333329, 38.000000000000007, 40.0, 1.225651754056678)
 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht3.py',
@@ -73,7 +76,11 @@ def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../c
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True,parallel=True)
 
+######
+######
+######
 
+#gabor random o2
 @protocolize()
 def make_ht_l2_gabor_random_o2_models(depends_on='../config/ht_l2_gabor_random_o2_models.py'):
     """
@@ -82,15 +89,16 @@ def make_ht_l2_gabor_random_o2_models(depends_on='../config/ht_l2_gabor_random_o
     protocols.model_protocol(depends_on,parallel=False,write=True)
  
 
+#gabor random o2 on renderman
 @protocolize()
-def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
-                                                  '../config/ht_l2_gabor_random_os_models.py',
+def ext_eval_ht_l2_gabor_random_o2_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_o2_models.py',
                                                   '../config/ten_categories_images.py')):
     """
 
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht_overlap.py',
-                                            '../config/ht_l2_gabor_o2_models.py',
+                                            '../config/ht_l2_gabor_random_o2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True, parallel='semi')
                                             
@@ -116,4 +124,102 @@ def ext_eval_ht_l2_gabor_random_bothactivationranges_renderman(depends_on=('../c
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
                                             
+
+#gabor random o2 on polygon
+@protocolize()
+def ext_eval_ht_l2_gabor_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_o2_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                            '../config/ht_l2_gabor_random_o2_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True, parallel='semi')
+
+
+#random random o2
+@protocolize()
+def make_ht_l2_random_random_o2_models(depends_on='../config/ht_l2_random_random_o2_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+ 
+#random random o2 on polygon
+@protocolize()
+def ext_eval_ht_l2_random_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_random_random_o2_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                            '../config/ht_l2_random_random_o2_models.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True, parallel='semi')
+
+#random random o2 on renderman
+@protocolize()
+def ext_eval_ht_l2_random_random_o2_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_random_random_o2_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht_overlap.py',
+                                            '../config/ht_l2_random_random_o2_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True, parallel='semi')
+
+#gabor freq uniform
+@protocolize()
+def make_ht_l2_gabor_freq_models(depends_on='../config/ht_l2_freq_models_3.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+ 
+#gabor freq uniform on polygon 
+@protocolize()
+def ext_eval_ht_l2_gabor_freq_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_freq_models_3.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                            '../config/ht_l2_freq_models_3.py',
+                                            '../config/polygon_task.py',
+                                            convolve_func_name='numpy', write=True, parallel='semi')
+
+
+
+
+#gabor random activation ranges
+@protocolize()
+def make_ht_l2_gabor_random_activation_ranges_models(depends_on='../config/ht_l2_gabor_random_activation_ranges_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+#gabor random activation ranges on renderman
+@protocolize()
+def ext_eval_ht_l2_gabor_random_activation_ranges_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_activation_ranges_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht_overlap.py',
+                                            '../config/ht_l2_gabor_random_activation_ranges_models.py',
+                                            '../config/ten_categories_images.py',
+                                            convolve_func_name='numpy', write=True, parallel='semi')
+
+
 
