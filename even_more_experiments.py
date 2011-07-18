@@ -128,7 +128,7 @@ def make_ht_l2_gabor_random_o2_fewer_filter_models(depends_on='../config/ht_l2_g
  
 #gabor random o2 fewer_filter on polygon
 @protocolize()
-def ext_eval_ht_l2_gabor_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+def ext_eval_ht_l2_gabor_random_o2_fewer_filter_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
                                                   '../config/ht_l2_gabor_random_o2_fewer_filter_models.py',
                                                   '../config/polygon_task.py')):
     """
@@ -184,7 +184,7 @@ def make_ht_l2_random_random_o2_fewer_filter_models(depends_on='../config/ht_l2_
  
 #random random o2 fewer_filter on polygon
 @protocolize()
-def ext_eval_ht_l2_random_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+def ext_eval_ht_l2_random_random_o2_fewer_filter_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
                                                   '../config/ht_l2_random_random_o2_fewer_filter_models.py',
                                                   '../config/polygon_task.py')):
     """
