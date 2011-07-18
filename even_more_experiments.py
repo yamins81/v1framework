@@ -117,6 +117,26 @@ def ext_eval_ht_l2_gabor_random_o2_polygon(depends_on=('../config/parallel_polyg
                                             '../config/polygon_task.py',
                                             convolve_func_name='numpy', write=True, parallel='semi')
 
+#gabor random fewer filters to balance freq model
+@protocolize()
+def make_ht_l2_gabor_random_o2_fewer_filter_models(depends_on='../config/ht_l2_gabor_random_o2_fewer_filter_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+ 
+#gabor random o2 fewer_filter on polygon
+@protocolize()
+def ext_eval_ht_l2_gabor_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_o2_fewer_filter_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+
 
 #random random o2
 @protocolize()
@@ -152,6 +172,27 @@ def ext_eval_ht_l2_random_random_o2_renderman(depends_on=('../config/renderman_t
                                             '../config/ht_l2_random_random_o2_models.py',
                                             '../config/ten_categories_images.py',
                                             convolve_func_name='numpy', write=True, parallel='semi')
+
+#random random fewer filters 
+@protocolize()
+def make_ht_l2_random_random_o2_fewer_filter_models(depends_on='../config/ht_l2_random_random_o2_fewer_filter_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+ 
+#random random o2 fewer_filter on polygon
+@protocolize()
+def ext_eval_ht_l2_random_random_o2_polygon(depends_on=('../config/parallel_polygon_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_random_random_o2_fewer_filter_models.py',
+                                                  '../config/polygon_task.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+
 
 #gabor freq uniform
 @protocolize()
@@ -218,7 +259,15 @@ def ext_eval_ht_l2_gabor_random_o2_top5_renderman_mixedup_renderman(depends_on=(
                                                   '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    10 way control: (43.399999999999999, 40.199999999999996, 41.546666666666667, 1.0802468853615528)
+    10 way mixed up: (22.266666666666669, 19.333333333333336, 20.546666666666667, 0.97378984728054507)
+    	--> fairy large drop, but mixed up is still 2x chance (10%)
+    car/plane control: (80.0, 75.999999999999986, 77.599999999999994, 1.3727506854649372)
+    car/plane mixed up: (50.0, 46.0, 47.600000000000001, 1.3727506854649327)
+    	--> big drop, all the way to chance (50%)
+    furn/anim/veh control: (56.000000000000014, 49.555555555555557, 53.066666666666677, 2.6006646823693877)
+    furn/anim/veh mixed up: (39.55555555555555, 35.555555555555557, 37.555555555555557, 1.3626408637116323)
+    	--> less big drop (since control is not great) but goes down close to chance (33%)
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
