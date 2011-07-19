@@ -20,7 +20,7 @@ base_images = [SON([('model_ids',[m]),
                     ('ty',SON([('$gt',-.6),('$lt',.6)])),
                     ('tz',SON([('$gt',-.6),('$lt',.6)])),
                     ('ryz',SON([('$lt',2*pi/NSEG)]))
-                    ]), 
+                    ])
                for (ind,m) in enumerate(MODELS)]
 
 import copy
