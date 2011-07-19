@@ -500,7 +500,7 @@ def ext_eval_ht_l1_gabor_top5_renderman_mixedup_renderman(depends_on=('../config
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')    
 
 @protocolize()
-def make_ht_l1_random_top5_polygon_models(depends_on='../config/ht_l1_gabor_top5_polygon_models.py'):
+def make_ht_l1_random_top5_polygon_models(depends_on='../config/ht_l1_random_top5_polygon_models.py'):
     """
   
     """
