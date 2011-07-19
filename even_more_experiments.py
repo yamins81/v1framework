@@ -180,6 +180,20 @@ def ext_eval_ht_l2_gabor_random_o2_fewer_filter_polygon(depends_on=('../config/p
                                                   '../config/ht_l2_gabor_random_o2_fewer_filter_models.py',
                                                   '../config/polygon_task.py')):
     """
+    
+    92.70, 61.00, 78.08, 83.60, 7.32
+    
+    level 2, filter, num_filters
+    value: [40, 105, 216]
+    max: 77.50, 86.00, 92.70
+    mean: 70.37, 79.08, 84.79
+    quartiles 70.75, 80.10, 84.95
+    
+    level 1, filter, ker_shape
+    value: [5, 7, 9, 11, 13, 17]
+    max: 80.10, 86.40, 87.30, 87.80, 90.00, 92.70
+    mean: 71.88, 75.37, 78.34, 80.45, 79.67, 82.78
+    quartiles 72.95, 75.70, 80.35, 80.10, 80.80, 83.70    
 
     """
     a,b,c = depends_on
@@ -287,7 +301,19 @@ def ext_eval_ht_l2_random_random_o2_fewer_filter_polygon(depends_on=('../config/
                                                   '../config/ht_l2_random_random_o2_fewer_filter_models.py',
                                                   '../config/polygon_task.py')):
     """
-
+    82.00, 55.00, 69.53, 76.35, 7.28
+    
+    level 2, filter, num_filters
+    value: [40, 105, 216]
+    max: 66.70, 76.00, 82.00
+    mean: 61.86, 69.23, 77.49
+    quartiles 62.65, 69.70, 78.10
+    
+    level 1, filter, ker_shape
+    value: [5, 7, 9, 11, 13, 17]
+    max: 82.00, 81.20, 80.10, 79.80, 78.90, 78.10
+    mean: 70.39, 72.30, 70.98, 69.61, 68.48, 65.40
+    quartiles 69.70, 72.70, 69.90, 67.00, 70.45, 66.00
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -297,6 +323,7 @@ def ext_eval_ht_l2_random_random_o2_fewer_filter_polygon(depends_on=('../config/
 @protocolize()
 def make_ht_l2_gabor_freq_models(depends_on='../config/ht_l2_freq_models_3.py'):
     """
+
   
     """
     protocols.model_protocol(depends_on,parallel=False,write=True)
@@ -308,6 +335,8 @@ def ext_eval_ht_l2_gabor_freq_polygon(depends_on=('../config/parallel_polygon_ta
                                                   '../config/ht_l2_freq_models_3.py',
                                                   '../config/polygon_task.py')):
     """
+    92.40, 70.90, 83.64, 88.83, 6.24
+    
     level 1, filter, norients
     value: [4, 6, 8]  =  [16/40 , 30/105, 48/216  L1/L2 filters]
     max: 83.40, 90.20, 92.40
