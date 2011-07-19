@@ -465,3 +465,53 @@ def ext_eval_ht_l2_gabor_random_o2_top5_renderman_mixedup_sub_renderman(depends_
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
 
+
+@protocolize()
+def make_ht_l2_random_random_o2_top5_renderman_models(depends_on='../config/ht_l2_random_random_o2_top5_renderman_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+
+@protocolize()
+def ext_eval_ht_l2_random_random_o2_top5_renderman_mixedup_renderman(depends_on=('../config/renderman_mixedup_alltasks.py',
+                                                  '../config/ht_l2_random_random_o2_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+
+@protocolize()
+def make_ht_l1_gabor_top5_renderman_models(depends_on='../config/ht_l1_gabor_top5_renderman_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+    
+@protocolize()
+def ext_eval_ht_l1_gabor_top5_renderman_mixedup_renderman(depends_on=('../config/renderman_mixedup_alltasks.py',
+                                                  '../config/ht_l1_gabor_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')    
+
+@protocolize()
+def make_ht_l1_random_top5_polygon_models(depends_on='../config/ht_l1_gabor_top5_polygon_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)    
+
+@protocolize()
+def ext_eval_ht_l1_random_top5_polygon_mixedup_renderman(depends_on=('../config/renderman_mixedup_alltasks.py',
+                                                  '../config/ht_l1_random_top5_polygon_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')  
+    
