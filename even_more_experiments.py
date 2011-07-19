@@ -20,31 +20,31 @@ def ext_eval_ht_l2_gabor_random_squared_renderman(depends_on=('../config/renderm
                                                   '../config/ht_l2_gabor_random_squared_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-    47.60, 34.00, 40.86, 42.67, 2.40	 overall
+    47.60, 34.00, 40.86, 42.67, 2.40     overall
     
        
     about a 2% improvement over direct comparison, e.g. 
-    	44.27, 38.27, 42.15, 43.30, 1.74  (this run with l0 norm shape = 9 and ker_size < 21 -- this is a small sample)
-    	47.60, 34.00, 41.23, 42.97, 2.34  (this run with just with l1 ker_shape < 21 restriction)
+        44.27, 38.27, 42.15, 43.30, 1.74  (this run with l0 norm shape = 9 and ker_size < 21 -- this is a small sample)
+        47.60, 34.00, 41.23, 42.97, 2.34  (this run with just with l1 ker_shape < 21 restriction)
     vs.
-    	47.47, 32.27, 39.89, 41.47, 2.67  (gabor/random l2 with 384 l2 filters with ker_shape > 5)
+        47.47, 32.27, 39.89, 41.47, 2.67  (gabor/random l2 with 384 l2 filters with ker_shape > 5)
     
     clearly increases performance -- esp. seen in quartile -- on various combinations:
-    	l1 filter ker in [7,13]:
-    		47.60, 38.40, 42.40, 44.20, 2.36    for 7 & 13
-         	46.27, 39.60, 43.08, 44.40, 1.65    for 7 & 9
-         	46.27, 39.47, 42.69, 43.73, 1.81    for 7 & 11
-         	46.27, 36.80, 41.20, 43.13, 2.38    for 7 & 17
-         	46.27, 34.93, 40.49, 42.67, 2.98    for 7 & 21
-         	
-    		44.40, 38.13, 41.07, 41.87, 1.73    for just 7
-    		44.13, 38.00, 41.49, 42.70, 1.69    for just 9
-    		44.13, 37.87, 40.36, 41.63, 1.96    for just 11
-    		47.47, 37.33, 39.82, 41.03, 2.67    for just 13
-    		44.40, 38.13, 41.07, 41.87, 1.73    for just 17
-         	
+        l1 filter ker in [7,13]:
+            47.60, 38.40, 42.40, 44.20, 2.36    for 7 & 13
+            46.27, 39.60, 43.08, 44.40, 1.65    for 7 & 9
+            46.27, 39.47, 42.69, 43.73, 1.81    for 7 & 11
+            46.27, 36.80, 41.20, 43.13, 2.38    for 7 & 17
+            46.27, 34.93, 40.49, 42.67, 2.98    for 7 & 21
+            
+            44.40, 38.13, 41.07, 41.87, 1.73    for just 7
+            44.13, 38.00, 41.49, 42.70, 1.69    for just 9
+            44.13, 37.87, 40.36, 41.63, 1.96    for just 11
+            47.47, 37.33, 39.82, 41.03, 2.67    for just 13
+            44.40, 38.13, 41.07, 41.87, 1.73    for just 17
+            
     
-         	
+            
     """
     protocols.extract_and_evaluate_protocol('../config/renderman_tasks_for_ht2.py',
                                             '../config/ht_l2_gabor_random_squared_models.py',
@@ -431,13 +431,13 @@ def ext_eval_ht_l2_gabor_random_o2_top5_renderman_mixedup_renderman(depends_on=(
     """
     10 way control: (43.399999999999999, 40.199999999999996, 41.546666666666667, 1.0802468853615528)
     10 way mixed up: (22.266666666666669, 19.333333333333336, 20.546666666666667, 0.97378984728054507)
-    	--> fairy large drop, but mixed up is still 2x chance (10%)
+        --> fairy large drop, but mixed up is still 2x chance (10%)
     car/plane control: (80.0, 75.999999999999986, 77.599999999999994, 1.3727506854649372)
     car/plane mixed up: (50.0, 46.0, 47.600000000000001, 1.3727506854649327)
-    	--> big drop, all the way to chance (50%)
+        --> big drop, all the way to chance (50%)
     furn/anim/veh control: (56.000000000000014, 49.555555555555557, 53.066666666666677, 2.6006646823693877)
     furn/anim/veh mixed up: (39.55555555555555, 35.555555555555557, 37.555555555555557, 1.3626408637116323)
-    	--> less big drop (since control is not great) but goes down close to chance (33%)
+        --> less big drop (since control is not great) but goes down close to chance (33%)
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -479,25 +479,25 @@ def ext_eval_ht_l2_random_random_o2_top5_renderman_mixedup_renderman(depends_on=
                                                   '../config/ht_l2_random_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-	10 way control all: 41.266667 39.266667 39.786667 0.759415 
-	10 way control trans: 89.000000 86.466667 88.066667 0.884433 
-	10 way control inrot: 50.666667 46.933333 49.213333 1.729432 
-	10 way mixedup all: 22.000000 19.066667 20.933333 1.056619 
-	10 way mixedup trans: 74.800000 68.866667 71.120000 2.018316 
-	10 way mixedup inrot: 31.066667 26.733333 29.026667 1.750987 
-	carpln control all: 80.333333 71.000000 76.533333 3.159465 
-	carpln control trans: 97.000000 92.000000 94.666667 1.873796 
-	carpln control inrot: 89.000000 83.000000 86.400000 2.004440 
-	carpln mixedup all: 60.333333 55.666667 58.333333 1.520234 
-	carpln mixedup trans: 88.333333 83.666667 86.466667 1.939072 
-	carpln mixedup inrot: 69.000000 66.000000 67.533333 1.127436 
-	fav control all: 61.333333 59.111111 59.644444 0.850272 
-	fav control trans: 91.555556 89.111111 90.222222 0.888889 
-	fav control inrot: 57.333333 53.777778 55.600000 1.516331 
-	fav mixedup all: 43.777778 34.666667 39.600000 2.898786 
-	fav mixedup trans: 67.555556 62.666667 64.355556 1.857118 
-	fav mixedup inrot: 47.777778 36.444444 41.111111 3.887301 
-		
+    10 way control all: 41.266667 39.266667 39.786667 0.759415 
+    10 way control trans: 89.000000 86.466667 88.066667 0.884433 
+    10 way control inrot: 50.666667 46.933333 49.213333 1.729432 
+    10 way mixedup all: 22.000000 19.066667 20.933333 1.056619 
+    10 way mixedup trans: 74.800000 68.866667 71.120000 2.018316 
+    10 way mixedup inrot: 31.066667 26.733333 29.026667 1.750987 
+    carpln control all: 80.333333 71.000000 76.533333 3.159465 
+    carpln control trans: 97.000000 92.000000 94.666667 1.873796 
+    carpln control inrot: 89.000000 83.000000 86.400000 2.004440 
+    carpln mixedup all: 60.333333 55.666667 58.333333 1.520234 
+    carpln mixedup trans: 88.333333 83.666667 86.466667 1.939072 
+    carpln mixedup inrot: 69.000000 66.000000 67.533333 1.127436 
+    fav control all: 61.333333 59.111111 59.644444 0.850272 
+    fav control trans: 91.555556 89.111111 90.222222 0.888889 
+    fav control inrot: 57.333333 53.777778 55.600000 1.516331 
+    fav mixedup all: 43.777778 34.666667 39.600000 2.898786 
+    fav mixedup trans: 67.555556 62.666667 64.355556 1.857118 
+    fav mixedup inrot: 47.777778 36.444444 41.111111 3.887301 
+        
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -514,24 +514,24 @@ def ext_eval_ht_l1_gabor_top5_renderman_mixedup_renderman(depends_on=('../config
                                                   '../config/ht_l1_gabor_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-	10 way control all: 34.400000 31.800000 33.146667 0.869636 
-	10 way control trans: 68.400000 64.533333 66.453333 1.501051 
-	10 way control inrot: 41.133333 38.666667 39.533333 0.840106 
-	10 way mixedup all: 16.133333 12.600000 14.960000 1.306803 
-	10 way mixedup trans: 40.800000 33.866667 37.653333 2.927084 
-	10 way mixedup inrot: 20.133333 17.600000 18.853333 0.890842 
-	carpln control all: 73.666667 68.666667 71.133333 1.808621 
-	carpln control trans: 89.000000 84.000000 85.800000 1.916014 
-	carpln control inrot: 78.000000 74.000000 75.933333 1.583246 
-	carpln mixedup all: 57.666667 50.000000 53.866667 3.138294 
-	carpln mixedup trans: 71.333333 65.666667 68.933333 2.164358 
-	carpln mixedup inrot: 62.000000 56.333333 59.333333 2.086997 
-	fav control all: 47.777778 43.333333 45.333333 1.709812 
-	fav control trans: 68.666667 63.777778 65.866667 1.753163 
-	fav control inrot: 52.444444 48.222222 49.955556 1.641439 
-	fav mixedup all: 38.888889 33.111111 36.444444 2.140728 
-	fav mixedup trans: 57.111111 50.888889 53.377778 2.183666 
-	fav mixedup inrot: 42.666667 39.333333 41.155556 1.328881 
+    10 way control all: 34.400000 31.800000 33.146667 0.869636 
+    10 way control trans: 68.400000 64.533333 66.453333 1.501051 
+    10 way control inrot: 41.133333 38.666667 39.533333 0.840106 
+    10 way mixedup all: 16.133333 12.600000 14.960000 1.306803 
+    10 way mixedup trans: 40.800000 33.866667 37.653333 2.927084 
+    10 way mixedup inrot: 20.133333 17.600000 18.853333 0.890842 
+    carpln control all: 73.666667 68.666667 71.133333 1.808621 
+    carpln control trans: 89.000000 84.000000 85.800000 1.916014 
+    carpln control inrot: 78.000000 74.000000 75.933333 1.583246 
+    carpln mixedup all: 57.666667 50.000000 53.866667 3.138294 
+    carpln mixedup trans: 71.333333 65.666667 68.933333 2.164358 
+    carpln mixedup inrot: 62.000000 56.333333 59.333333 2.086997 
+    fav control all: 47.777778 43.333333 45.333333 1.709812 
+    fav control trans: 68.666667 63.777778 65.866667 1.753163 
+    fav control inrot: 52.444444 48.222222 49.955556 1.641439 
+    fav mixedup all: 38.888889 33.111111 36.444444 2.140728 
+    fav mixedup trans: 57.111111 50.888889 53.377778 2.183666 
+    fav mixedup inrot: 42.666667 39.333333 41.155556 1.328881 
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')    
@@ -548,25 +548,59 @@ def ext_eval_ht_l1_random_top5_polygon_mixedup_renderman(depends_on=('../config/
                                                   '../config/ht_l1_random_top5_polygon_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-	10 way control all: 30.466667 26.666667 28.866667 1.257157 
-	10 way control trans: 66.733333 59.000000 63.533333 2.594010 
-	10 way control inrot: 36.266667 34.133333 35.266667 0.747143 
-	10 way mixedup all: 16.066667 13.733333 15.226667 0.866769 
-	10 way mixedup trans: 40.066667 32.733333 36.520000 3.046718 
-	10 way mixedup inrot: 20.466667 15.866667 18.053333 1.665013 
-	carpln control all: 71.333333 65.000000 67.866667 2.526306 
-	carpln control trans: 91.333333 85.333333 88.866667 2.166410 
-	carpln control inrot: 76.333333 67.666667 72.733333 2.961981 
-	carpln mixedup all: 53.666667 48.000000 51.400000 1.959592 
-	carpln mixedup trans: 86.333333 64.333333 74.866667 7.476184 
-	carpln mixedup inrot: 64.666667 53.000000 58.000000 3.983298 
-	fav control all: 53.777778 46.666667 50.444444 2.330686 
-	fav control trans: 79.111111 65.333333 73.333333 4.464400 
-	fav control inrot: 44.666667 38.666667 42.844444 2.128699 
-	fav mixedup all: 40.888889 32.888889 37.688889 3.249615 
-	fav mixedup trans: 50.666667 44.000000 47.377778 2.201683 
-	fav mixedup inrot: 42.888889 35.333333 38.977778 2.889231 
+    10 way control all: 30.466667 26.666667 28.866667 1.257157 
+    10 way control trans: 66.733333 59.000000 63.533333 2.594010 
+    10 way control inrot: 36.266667 34.133333 35.266667 0.747143 
+    10 way mixedup all: 16.066667 13.733333 15.226667 0.866769 
+    10 way mixedup trans: 40.066667 32.733333 36.520000 3.046718 
+    10 way mixedup inrot: 20.466667 15.866667 18.053333 1.665013 
+    carpln control all: 71.333333 65.000000 67.866667 2.526306 
+    carpln control trans: 91.333333 85.333333 88.866667 2.166410 
+    carpln control inrot: 76.333333 67.666667 72.733333 2.961981 
+    carpln mixedup all: 53.666667 48.000000 51.400000 1.959592 
+    carpln mixedup trans: 86.333333 64.333333 74.866667 7.476184 
+    carpln mixedup inrot: 64.666667 53.000000 58.000000 3.983298 
+    fav control all: 53.777778 46.666667 50.444444 2.330686 
+    fav control trans: 79.111111 65.333333 73.333333 4.464400 
+    fav control inrot: 44.666667 38.666667 42.844444 2.128699 
+    fav mixedup all: 40.888889 32.888889 37.688889 3.249615 
+    fav mixedup trans: 50.666667 44.000000 47.377778 2.201683 
+    fav mixedup inrot: 42.888889 35.333333 38.977778 2.889231 
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')  
     
+
+
+##############################################
+###############varied rotations###############
+
+@Applies(deploy.images,args=('../config/ten_categories_rotated_images.py',True))
+def generate_rotated_images():
+    Apply()
+    
+@Applies(deploy.images,args=('../config/ten_categories_unrotated_images.py',True))
+def generate_unrotated_images():
+    Apply()
+    
+    
+@protocolize()
+def ext_eval_ht_l2_gabor_random_o2_top5_renderman_rotated_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
+                                                  '../config/ten_categories_rotated_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+    
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_o2_top5_renderman_unrotated_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
+                                                  '../config/ten_categories_unrotated_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
