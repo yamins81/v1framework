@@ -579,6 +579,7 @@ def ext_eval_ht_l1_random_top5_polygon_mixedup_renderman(depends_on=('../config/
 def generate_rotated_images():
     Apply()
     
+    
 @Applies(deploy.images,args=('../config/ten_categories_unrotated_images.py',True))
 def generate_unrotated_images():
     Apply()
