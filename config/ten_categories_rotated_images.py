@@ -5,8 +5,7 @@ from starflow.utils import ListUnion
 from bson import SON
 from model_categories import MODEL_CATEGORIES
 
-#MODELS = ListUnion(MODEL_CATEGORIES.values())
-MODELS = ['face4']
+MODELS = ListUnion(MODEL_CATEGORIES.values())
 
 NUM_IMAGES = 20
 USE_CANONICAL = True
