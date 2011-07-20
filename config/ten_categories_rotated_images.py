@@ -7,10 +7,10 @@ from model_categories import MODEL_CATEGORIES
 
 MODELS = ListUnion(MODEL_CATEGORIES.values())
 
-NUM_IMAGES = 50
+NUM_IMAGES = 20
 USE_CANONICAL = True
 
-NSEG = 10
+NSEG = 20
 
 base_images = [SON([('model_ids',[m]),
                     ('num_images',NUM_IMAGES),
