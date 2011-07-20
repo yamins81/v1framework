@@ -36,7 +36,7 @@ inrot_q = SON([('image.ty',SON([('$exists',False)])),
 
 task_set = []             
 for (ind1,cat1) in enumerate(tenway_cats):
-    for cat2 in tenway_cats[ind1+1:]
+    for cat2 in tenway_cats[ind1+1:]:
         ctask =  SON([('transform_average', SON([('transform_name','translation'),('max',True)])),
                      ('N',NUM_SPLITS), 
                      ('ntrain',NTRAIN),
