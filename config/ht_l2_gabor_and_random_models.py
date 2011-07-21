@@ -86,7 +86,7 @@ for k1 in l1_norm_shape:
                     model['layers'][1]['filter']['model_name'] = 'really_random'
                     model['layers'][1]['lnorm']['inker_shape'] = [k1,k1]
                     model['layers'][1]['lnorm']['outker_shape'] = [k1,k1]
-                    model['layers'][1]['filter']['num_filters'] = k[3][0]*k3[1]
+                    model['layers'][1]['filter']['num_filters'] = k3[0]*k3[1]
                     model['layers'][1]['filter']['ker_shape'] = [k4,k4]
                     model['layers'][2]['filter']['ker_shape'] = [k5,k5]
                     model['layers'][2]['filter']['num_filters'] = k2
