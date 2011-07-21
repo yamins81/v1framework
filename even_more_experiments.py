@@ -612,7 +612,7 @@ def ext_eval_ht_l2_gabor_random_o2_top5_renderman_rotated_renderman(depends_on=(
                                                   '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_rotated_images.py')):
     """
-
+    82.53, 77.93, 80.71, 81.93, 1.59   what?? 
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -623,12 +623,23 @@ def ext_eval_ht_l2_gabor_random_o2_top5_renderman_unrotated_renderman(depends_on
                                                   '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_unrotated_images.py')):
     """
-
+    87.60, 85.07, 85.91, 86.27, 0.94
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
     
-    
+
+@protocolize()
+def ext_eval_ht_l2_gabor_random_o2_top5_renderman_mixedup_rotated_renderman(depends_on=('../config/renderman_mixedup_tasks.py',
+                                                  '../config/ht_l2_random_random_o2_top5_renderman_models.py',
+                                                  '../config/ten_categories_rotated_images.py')):
+    """
+      
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+  
+
     
 ############################################
 ###############pairwise tasks###############
