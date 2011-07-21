@@ -413,6 +413,27 @@ def ext_eval_ht_l2_gabor_random_activation_ranges_renderman(depends_on=('../conf
 
 
 
+#gabor random o2
+@protocolize()
+def make_ht_l2_gabor_and_random_models(depends_on='../config/ht_l2_gabor_and_random_models.py'):
+    """
+  
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+ 
+
+#gabor random o2 on renderman
+@protocolize()
+def ext_eval_ht_l2_gabor_and_random_fav(depends_on=('../config/fav_task.py',
+                                                  '../config/ht_l2_gabor_and_random_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
+                                            
+
+
 ############mixed up tasks#########
 
 
