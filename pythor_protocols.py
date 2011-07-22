@@ -1067,7 +1067,11 @@ def extract_and_evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,'split_id':split_id,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})[0]
+    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,
+                                                 'split_id':split_id,
+                                                 'model':m['config']['model'],
+                                                 'task':son_escape(task),
+                                                 'images':son_escape(image_config_gen['images'])})[0]
     split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
     res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
     splitperf_fs = gridfs.GridFS(db,'split_performance')
@@ -1129,7 +1133,10 @@ def extract_and_evaluate_semi_parallel_core(image_config_gen,m,task,ext_hash,con
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
+    splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,
+                                                  'model':m['config']['model'],
+                                                  'task':son_escape(task),
+                                                  'images':son_escape(image_config_gen['images'])})
     for splitconf in splitconfs:
         split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
         split_id = splitconf['split_id']
