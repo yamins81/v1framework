@@ -39,7 +39,9 @@ model = SON([
                     ])),
                 ('lnorm', SON([
                     ('threshold', 10.0),
-                    ('stretch',.1)
+                    ('stretch',.1),
+                    ('inker_shape' , (3,3)),
+                    ('outker_shape' , (3,3)),
                     ])),
                 ('lpool',SON([
                     ('stride',2),
@@ -60,6 +62,8 @@ model = SON([
                 ('lnorm', SON([
                     ('threshold', 10.0),
                     ('stretch',.1)
+                    ('inker_shape' , (3,3)),
+                    ('outker_shape' , (3,3)),
                     ])),
                 ('lpool',SON([
                     ('stride',2),
@@ -79,7 +83,9 @@ model = SON([
                     ])),
                 ('lnorm', SON([
                     ('threshold', 10.0),
-                    ('stretch',.1)
+                    ('stretch',.1),
+                    ('inker_shape' , (3,3)),
+                    ('outker_shape' , (3,3)),
                     ])),
                 ('lpool',SON([
                     ('stride',1),
@@ -99,7 +105,9 @@ model = SON([
                     ])),
                 ('lnorm', SON([
                     ('threshold', 10.0),
-                    ('stretch',.1)
+                    ('stretch',.1),
+                    ('inker_shape' , (3,3)),
+                    ('outker_shape' , (3,3)),
                     ])),
                 ('lpool',SON([
                     ('stride',1),
@@ -119,7 +127,7 @@ model1 = copy.deepcopy(model)
 model1['layers'][2]['lpool']['stride'] = 1
 
 config = {
-     'models': [model]
+     'models': [model,model1]
 }
  
 
