@@ -1361,6 +1361,9 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
         
         array_dict = {}
         for (ind,(filter,layer)) in enumerate(zip(filters,layers)):
+
+            if feed_up:
+                array_dict[ind] = array
         
             if filter is not None:
                 array = fbcorr(array, filter, layer , convolve_func)
@@ -1373,12 +1376,8 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
                     array = old_norm(array,conv_mode,layer['lnorm'])
                 else:
                     array = lnorm(array,conv_mode,layer['lnorm'])
-            
-            if feed_up:
-                array_dict[ind] = array
-            
-        if not feed_up:
-            array_dict[len(layers)-1] = array
+                
+        array_dict[len(layers)-1] = array
             
         return array_dict
 
