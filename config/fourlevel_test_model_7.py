@@ -61,7 +61,7 @@ model = SON([
                     ])),
                 ('lnorm', SON([
                     ('threshold', 10.0),
-                    ('stretch',.1)
+                    ('stretch',.1),
                     ('inker_shape' , (3,3)),
                     ('outker_shape' , (3,3)),
                     ])),
