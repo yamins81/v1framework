@@ -177,6 +177,7 @@ def get_hierarchical_filterbanks(config):
     filterbank1 = get_filterbank(config[1])
     filterbanks.append(filterbank1)
     n1 = len(filterbank1)
+    NUM_FILTERS = [0,n1]
     if len(config) > 2:
         configL2 = config[2]
         if configL2['filter']['model_name'] == 'uniform':
@@ -335,17 +336,16 @@ def get_hierarchical_filterbanks(config):
                                    freq,orient,phase,
                                    (fw,fh,n1)) 
             filterbanks.append(filterbank)
-        else:
-            filterbanks.append(get_filterbank(configL2))
+
+        NUM_FILTERS.append(n2)
         for c in config[3:]:
-            configL3 = config[3]
-            if configL3['filter']['model_name'] == 'really_random':
-                n3 = configL3['filter']['num_filters']
-                (fh,fw) = configL3['filter']['ker_shape']
-                filterbank = get_random_filterbank((n3,fh,fw,n2),normalization=configL3['filter'].get('normalize',True))
+            if c['filter']['model_name'] == 'really_random':
+                num_filters = c['filter']['num_filters']
+                (fh,fw) = c['filter']['ker_shape']
+                filterbank = get_random_filterbank((num_filters,fh,fw,NUM_FILTERS[-1]),normalization=c['filter'].get('normalize',True))
                 filterbanks.append(filterbank)
-            else:
-                filterbanks.append(get_filterbank(c))
+            NUM_FILTERS.append(num_filters)
+
     
     for (ind,fb) in enumerate(filterbanks):
         if fb is not None:
