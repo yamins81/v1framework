@@ -736,3 +736,18 @@ def ext_eval_fourlevel_test_model_5_renderman(depends_on=('../config/renderman_t
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')  
+
+@protocolize()
+def make_fourlevel_test_model_6(depends_on='../config/fourlevel_test_model_6.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)    
+
+@protocolize()
+def ext_eval_fourlevel_test_model_6_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+                                                  '../config/fourlevel_test_model_6.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')  
