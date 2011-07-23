@@ -711,7 +711,8 @@ def transform_average(input,config,model_config):
             else:
                 for cidx in K:
                     vec.append(unravel(level_input[cidx]))
-            vec = sp.concatenate(vec)
+            if vec[0].ndim > 0:
+                vec = sp.concatenate(vec)
             vecs.append(vec)
         vec = sp.concatenate(vecs)
     
@@ -1361,9 +1362,9 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
         
         array_dict = {}
         for (ind,(filter,layer)) in enumerate(zip(filters,layers)):
-
+            
             if feed_up:
-                array_dict[ind] = array
+                array_dict[ind-1] = array
         
             if filter is not None:
                 array = fbcorr(array, filter, layer , convolve_func)

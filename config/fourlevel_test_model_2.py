@@ -30,7 +30,7 @@ model = SON([
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('mode','same'),
-                    ('num_filters',32),
+                    ('num_filters',64),
                     ('ker_shape',[11,11])
                     ])),
                 ('activ', SON([
@@ -44,13 +44,13 @@ model = SON([
                 ('lpool',SON([
                     ('stride',2),
                     ('order',2),
-                    ('ker_shape',[9,9])
+                    ('ker_shape',[11,11])
                     ]))
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
                     ('mode','same'),
-                    ('num_filters',128),
+                    ('num_filters',256),
                     ('ker_shape',[9,9])
                     ])),
                 ('activ', SON([
