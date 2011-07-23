@@ -31,6 +31,7 @@ model = SON([
                     ('model_name','really_random'),
                     ('mode','valid'),
                     ('num_filters',32)
+                    ('ker_shape',11)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -50,6 +51,7 @@ model = SON([
                     ('model_name','really_random'),
                     ('mode','valid'),
                     ('num_filters',128)
+                    ('ker_shape',9)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -69,6 +71,7 @@ model = SON([
                     ('model_name','really_random'),
                     ('mode','valid'),
                     ('num_filters',128)
+                    ('ker_shape',7)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
@@ -88,6 +91,7 @@ model = SON([
                     ('model_name','really_random'),
                     ('mode','valid'),
                     ('num_filters',128)
+                    ('ker_shape',5)
                     ])),
                 ('activ', SON([
                     ('min_out' , 0),
