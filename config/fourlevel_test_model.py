@@ -12,7 +12,7 @@ from bson import SON
 
 model = SON([
     ('color_space','gray'),
-    ('conv_mode','valid'),
+    ('conv_mode','same'),
     ('feed_up',True),
     ('preproc', SON([
         ('max_edge' , 150),
@@ -29,7 +29,7 @@ model = SON([
                 ]))]),          
             SON([('filter',SON([
                     ('model_name','really_random'),
-                    ('mode','valid'),
+                    ('mode','same'),
                     ('num_filters',32),
                     ('ker_shape',[11,11])
                     ])),
@@ -49,7 +49,7 @@ model = SON([
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
-                    ('mode','valid'),
+                    ('mode','same'),
                     ('num_filters',128),
                     ('ker_shape',[9,9])
                     ])),
@@ -69,7 +69,7 @@ model = SON([
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
-                    ('mode','valid'),
+                    ('mode','same'),
                     ('num_filters',128),
                     ('ker_shape',[7,7])
                     ])),
@@ -89,7 +89,7 @@ model = SON([
                 ]),
             SON([('filter',SON([
                     ('model_name','really_random'),
-                    ('mode','valid'),
+                    ('mode','same'),
                     ('num_filters',128),
                     ('ker_shape',[5,5])
                     ])),
