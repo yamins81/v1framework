@@ -35,7 +35,6 @@ level_1 = SON([('filter',SON([
                 ('lpool',SON([
                     ('order',2),
                     ('stride',1),
-                    ('ker_shape',[9,9])
                     ]))
                 ])
 
@@ -65,8 +64,7 @@ for fs in filter_shape:
             lev = copy.deepcopy(level_1)
             lev['filter']['num_filters'] = n
             lev['filter']['ker_shape'] = [fs,fs]
-            lev['lpool']['inker_shape'] = [ps,ps]
-            lev['lpool']['outker_shape'] = [ps,ps]
+            lev['lpool']['ker_shape'] = [ps,ps]
             m['layers'] += [copy.deepcopy(lev) for ind in range(L)]
             m1 = copy.deepcopy(m)
             m['layers'][1]['lpool']['stride'] = 2
