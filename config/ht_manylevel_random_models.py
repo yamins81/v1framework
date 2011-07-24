@@ -50,7 +50,7 @@ base_model = SON([
         ('resize_method','bicubic'),
         ('whiten', False)
     ])),
-    ('layers',[layer_0])   
+    ('layers',[level_0])   
     ])
 
 filter_shape = [3,5,7,9]
