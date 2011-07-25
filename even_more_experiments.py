@@ -782,3 +782,19 @@ def ext_eval_ht_manylevel_random_models_renderman(depends_on=('../config/renderm
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')      
+    
+
+@protocolize()
+def make_ht_manylevel_random_models_2(depends_on='../config/ht_manylevel_random_models_2.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True)    
+
+@protocolize()
+def ext_eval_ht_manylevel_random_models_2_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap2.py',
+                                                  '../config/ht_manylevel_random_models_2.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')          

@@ -726,11 +726,28 @@ def sum_up(x,s1,s2):
         y.extend([sum([x[ss] for ss in s]) for s in S])
     return np.array(y)
     
+def mean2d(x):
+    return np.array([x[:,:,i].mean() for i in range(x.shape[2])])
+
+def max2d(x):
+    return np.array([x[:,:,i].max() for i in range(x.shape[2])])
+    
+def min2d(x):
+    return np.array([x[:,:,i].min() for i in range(x.shape[2])])
+
+def argmax2d(x):
+    return np.array([x[:,:,i].argmax() for i in range(x.shape[2])])
+
+def argmin2d(x):
+    return np.array([x[:,:,i].argmin() for i in range(x.shape[2])])
+
 
 def average_transform(input,config,M):
     if config['transform_name'] == 'translation':
         if config.get('max',False):
             return input.max(1).max(0)
+        elif config.get('various_stats',False):
+            return sp.concatenate([max2d(input),min2d(input),mean2d(input),argmax2d(input),argmin2d(input)])
         else:
             return input.sum(1).sum(0)
     elif config['transform_name'] == 'translation_and_orientation':
