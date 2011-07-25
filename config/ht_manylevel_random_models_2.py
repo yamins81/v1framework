@@ -53,9 +53,13 @@ base_model = SON([
     ('layers',[level_0])   
     ])
 
-filter_shape = [5,7,9,11]
-sizes = [(128,3),(96,4),(77,5),(64,6),
-         (86,3),(64,4),(51,5),(43,6)]
+filter_shape = [5,7,9,11,13,17]
+sizes = [(192,2),(128,3),(96,4),(77,5),(64,6)]
+gabors = {192:(16,[2,3,4,5,6,7,8,9,10,11,12,13]),
+          128:(16,[2,4,5,7,9,11,13,15]),
+          96:(16,[2,4,7,9,11,13]),
+          77:(11,[2,4,7,9,11,13,15]),
+          64:(8,[2,4,5,7,9,11,13,15])}
 
 models = []
 for fs in filter_shape:
@@ -72,6 +76,17 @@ for fs in filter_shape:
         m1['layers'][1]['lpool']['stride'] = 2
         models.append(m)
         models.append(m1)
+        
+        m2 = copy.deepcopy(m)
+        m3 = copy.deepcopy(m1)
+        for M in [m2,m3]:
+            M['layers'][1]['filter'].pop('num_filters')
+            M['layers'][1]['filter']['model_name'] = 'gridded_gabor'
+            M['layers'][1]['filter']['norients'] = gabors[n][0]
+            M['layers'][1]['filter']['divfreqs'] = gabors[n][1]
+            M['layers'][1]['filter']['phases'] = [0]
+        
+
 
 config = {
      'models': models
