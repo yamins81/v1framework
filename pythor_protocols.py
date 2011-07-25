@@ -727,19 +727,34 @@ def sum_up(x,s1,s2):
     return np.array(y)
     
 def mean2d(x):
-    return np.array([x[:,:,i].mean() for i in range(x.shape[2])])
+    if x.ndim <= 2:
+        return x.mean()
+    else:
+        return np.array([x[:,:,i].mean() for i in range(x.shape[2])])
 
 def max2d(x):
-    return np.array([x[:,:,i].max() for i in range(x.shape[2])])
+    if x.ndim <= 2:
+        return x.max()
+    else:
+        return np.array([x[:,:,i].max() for i in range(x.shape[2])])
     
 def min2d(x):
-    return np.array([x[:,:,i].min() for i in range(x.shape[2])])
+    if x.ndim <= 2:
+        return x.min()
+    else:
+        return np.array([x[:,:,i].min() for i in range(x.shape[2])])
 
 def argmax2d(x):
-    return np.array([x[:,:,i].argmax() for i in range(x.shape[2])])
+    if x.ndim <= 2:
+        return x.argmax()
+    else:
+        return np.array([x[:,:,i].argmax() for i in range(x.shape[2])])
 
 def argmin2d(x):
-    return np.array([x[:,:,i].argmin() for i in range(x.shape[2])])
+    if x.ndim <= 2:
+        return x.argmin()
+    else:
+        return np.array([x[:,:,i].argmin() for i in range(x.shape[2])])
 
 
 def average_transform(input,config,M):
