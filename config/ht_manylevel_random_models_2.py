@@ -85,7 +85,8 @@ for fs in filter_shape:
             M['layers'][1]['filter']['norients'] = gabors[n][0]
             M['layers'][1]['filter']['divfreqs'] = gabors[n][1]
             M['layers'][1]['filter']['phases'] = [0]
-        
+        models.append(m2)
+        models.append(m3)        
 
 
 config = {
