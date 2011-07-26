@@ -132,8 +132,7 @@ def generate_images_parallel(outfile,im_hash,config_gen):
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
     return {'child_jobs':jobids}
- 
- 
+    
 
 def model_protocol_hash(config_path):
     config = get_config(config_path)

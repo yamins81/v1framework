@@ -1,11 +1,16 @@
+import math
+import cPickle
+
+import numpy as np
+from bson import SON
+
 import v1like_math as v1m
 import v1like_funcs as v1f
-import numpy as np
 import itertools
 import rendering
 import processing
-from bson import SON
-import cPickle
+
+
 
 def generate_random_subsamples(M,V,N,p):
     u,s,v = np.linalg.svd(V)
@@ -329,13 +334,34 @@ def get_hierarchical_filterbanks(config):
             yc = fh/2
             zc = n1/2
             values = list(itertools.product(freqs,orients,phases))
-            num_filters = len(values)
-            filterbank = np.empty((num_filters,fh,fw,n1))
+            n2 = len(values)
+            filterbank = np.empty((n2,fh,fw,n1))
             for (i,(freq,orient,phase)) in enumerate(values):
                 filterbank[i] = v1m.gabor3d(xc,yc,zc,xc,yc,zc,
                                    freq,orient,phase,
                                    (fw,fh,n1)) 
             filterbanks.append(filterbank)
+        elif configL2['filter']['model_name'] == 'random_gabor':
+            n2 = configL2['filter']['num_filters']
+            (fh,fw) = configL2['filter']['ker_shape']
+            xc = fw/2
+            yc = fh/2
+            zc = n1/2
+            filterbank = np.empty((n2,fh,fw,n1))
+            zcmin = configL2['filter']['z_envelope_center']['min']
+            zcmax = configL2['filter']['z_envelope_center']['max']
+            zcmin = math.trunc(zcmin*n1)
+            zcmax = math.trunc(zcmax*n1)
+            zc0 =  np.random.randint(zcmin,high=zcmax,size = (n2,))
+            orient = (2*np.pi*np.random.random(size=(n2,2))).tolist()
+            freq = (configL2['filter']['frequency_multiplier']*np.random.random(size=(n2,3))).tolist()
+            phase = 0
+            for i in range(n2):                
+                filterbank[i] = v1m.gabor3d(xc,yc,zc,xc,yc,zc0[i],
+                                   freq[i],orient[i],phase,
+                                   (fw,fh,n1)) 
+            filterbanks.append(filterbank)
+
 
         NUM_FILTERS.append(n2)
         for c in config[3:]:

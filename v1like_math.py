@@ -112,13 +112,19 @@ def gabor3d(gw, gh, gd, gx0, gy0, gz0, wfreq, worients, wphase, shape):
 
     """
     
+    if not hasattr(wfreq,'__iter__'):
+        wfreq = (wfreq,wfreq,wfreq)
+    else:
+        wfreq = tuple(wfreq)
+    wf1,wf2,wf3 = wfreq
+    
     height, width, depth = shape
     y, x, z = N.mgrid[0:height, 0:width, 0:depth]
     wphi,wpsi = worients
     
-    X = x * N.cos(wphi)*N.sin(wpsi) * wfreq
-    Y = y * N.sin(wphi)*N.sin(wpsi)* wfreq
-    Z = z * N.cos(wpsi)*wfreq
+    X = x * N.cos(wphi) * N.sin(wpsi) * wf1
+    Y = y * N.sin(wphi) * N.sin(wpsi) * wf2
+    Z = z * N.cos(wpsi) * wf3
 	
     env = N.exp( -N.pi * ( ((x-gx0)**2./gw**2.) + ((y-gy0)**2./gh**2.) + ((z-gz0)**2./gd**2.) ) )
     wave = N.exp( 1j*(2*N.pi*(X+Y+Z) + wphase) )
