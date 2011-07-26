@@ -52,7 +52,7 @@ for fs in filter_shape:
     for (n,L) in sizes:
         for sz in me:
             m = copy.deepcopy(base_model)
-            m['preproc']['max_edge'] = me
+            m['preproc']['max_edge'] = sz
             lev = copy.deepcopy(level_1)
             lev['filter']['num_filters'] = n
             lev['filter']['ker_shape'] = [fs,fs]
