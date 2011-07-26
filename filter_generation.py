@@ -353,10 +353,22 @@ def get_hierarchical_filterbanks(config):
             zcmin = math.trunc(zcmin*n1)
             zcmax = math.trunc(zcmax*n1)
             zc0 =  np.random.randint(zcmin,high=zcmax,size = (n2,))
-            orient = (2*np.pi*np.random.random(size=(n2,2))).tolist()
-            freq = (configL2['filter']['frequency_multiplier']*np.random.random(size=(n2,3))).tolist()
+            phi_m, psi_m = configL2['filter'].get('orient_ranges',[(0.2*np.pi),(0,2*np.pi)])
+            orient_phi = ((phi_m[1]-phi_m[0])* np.random.random(size=(n2,)) + phi_m[0]).tolist()
+            orient_psi = ((psi_m[1]-psi_m[0])* np.random.random(size=(n2,)) + psi_m[0]).tolist()
+            orient = zip(orient_phi,orient_psi)
+            freq_m = configL2['filter']['frequency_range']
+            if isinstance(freq_m[0],list):                
+                freq0 = ((freq_m[0][1]-freq_m[0][0])*np.random.random(size=(n2,)) + freq_m[0][0]).tolist()
+                freq1 = ((freq_m[1][1]-freq_m[1][0])*np.random.random(size=(n2,)) + freq_m[1][0]).tolist()
+                freq2 = ((freq_m[2][1]-freq_m[2][0])*np.random.random(size=(n2,)) + freq_m[2][0]).tolist()
+            else:
+                freq0 = ((freq_m[1]-freq_m[0])*np.random.random(size=(n2,)) + freq_m[0]).tolist()
+                freq1 = freq0[:]
+                freq2 = freq0[:]
+            freq =zip(freq0,freq1,freq2)
             phase = 0
-            for i in range(n2):                
+            for i in range(n2):  
                 filterbank[i] = v1m.gabor3d(xc,yc,zc,xc,yc,zc0[i],
                                    freq[i],orient[i],phase,
                                    (fw,fh,n1)) 
