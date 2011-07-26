@@ -57,6 +57,7 @@ for fs in filter_shape:
             lev['filter']['num_filters'] = n
             lev['filter']['ker_shape'] = [fs,fs]
             lev['lpool']['ker_shape'] = [fs,fs]
+            m['layers'] += [copy.deepcopy(lev) for ind in range(L)]
             models.append(m)
 
     
