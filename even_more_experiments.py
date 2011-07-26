@@ -826,7 +826,7 @@ def make_lt_l2_gabor_gabor_models(depends_on='../config/lt_l2_gabor_gabor_models
     protocols.model_protocol(depends_on,parallel=False,write=True)    
 
 @protocolize()
-def ext_eval_lt_l2_gabor_gabor_models_models_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
+def ext_eval_lt_l2_gabor_gabor_models_renderman(depends_on=('../config/renderman_tasks_for_ht_overlap.py',
                                                   '../config/lt_l2_gabor_gabor_models.py',
                                                   '../config/ten_categories_images.py')):
     """
