@@ -5,7 +5,6 @@ import pythor_protocols as protocols
 
 
 
-
 ##############################################
 ###############varied rotations###############
 

@@ -42,7 +42,7 @@ def config_gen(config):
     return params
         
 def specific_config_gen(config):
-    images = config['images']
+    images = config['specs']
     return [SON([('image',m)]) for m in images]  
     
 def random_config_gen(config):

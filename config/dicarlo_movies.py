@@ -6,10 +6,8 @@ from starflow.utils import ListUnion
 
 from bson import SON
 
-base_image = SON([('generator','renderman'),
-               ('selection','specific')
-               ('ryz',-pi/2),
-               ('tz',1.5)
+base_image = SON([('ryz',-pi/2),
+               ('tz',1.5),
                ('tx',-3),
                ('bg_id','DH-ITALY10SN.tdl')])
                
@@ -19,7 +17,7 @@ NSEG = 200
 images = []
 for ind in range(NSEG):
     im = copy.deepcopy(base_image)
-    im['rxy'] = im['bg_phi'] = 2*math.pi/NSEG * ind
+    im['rxy'] = im['bg_phi'] = 2*pi/NSEG * ind
     
     #gorilla
     im['model_id'] = 'MB28626'
@@ -32,4 +30,6 @@ for ind in range(NSEG):
    
 
 
-config = {'images' : images}
+config = {'images' : SON([('selection','specific'),
+                          ('generator','renderman'),
+                          ('specs',images)])}
