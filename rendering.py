@@ -30,7 +30,9 @@ def config_gen(config):
         config['images'] = [config['images']]
     params = []
     for I in config['images']:    
-        if I['selection'] == 'gridded':
+        if I['selection'] == 'specific':
+            newparams = specific_config_gen(I)
+        elif I['selection'] == 'gridded':
             newparams = gridded_config_gen(I)
         elif I['selection'] == 'random':
             newparams = random_config_gen(I)
@@ -39,6 +41,10 @@ def config_gen(config):
         params.extend(newparams)
     return params
         
+def specific_config_gen(config):
+    images = config['images']
+    return [SON([('image',m)]) for m in images]  
+    
 def random_config_gen(config):
     if config['generator'] == 'cairo':
         return cairo_random_config_gen(config)
