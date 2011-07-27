@@ -34,6 +34,7 @@ inrot_q = SON([('image.ty',SON([('$exists',False)])),
 
 task_cats = [['reptiles','plants'],['reptiles','planes']]
 
+task_set = []
 for cat1,cat2 in task_cats:
     
     base_task =  SON([('N',NUM_SPLITS), 
