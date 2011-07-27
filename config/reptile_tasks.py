@@ -37,7 +37,7 @@ task_cats = [['reptiles','plants'],['reptiles','planes']]
 for cat1,cat2 in task_cats:
     
     base_task =  SON([('N',NUM_SPLITS), 
-              ('transform_average',SON([('transform_name','translation'),('max',True)]),
+              ('transform_average',SON([('transform_name','translation'),('max',True)])),
               ('ntrain',NTRAIN),
               ('ntest',NTEST),
               ('overlap',OVERLAP),
