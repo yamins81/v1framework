@@ -65,7 +65,7 @@ for cat1,cat2 in task_cats:
     t2f = copy.deepcopy(t2)
     t2f['transform_average']['fourier'] = True
     t2f['task_label'] += ' fourier'
-    task_set.append(t1f)
+    task_set.append(t2f)
     
 
     
