@@ -759,11 +759,15 @@ def argmin2d(x):
 def average_transform(input,config,M):
     if config['transform_name'] == 'translation':
         if config.get('max',False):
-            return input.max(1).max(0)
+            V = [input.max(1).max(0)]
         elif config.get('various_stats',False):
-            return sp.concatenate([max2d(input),min2d(input),mean2d(input),argmax2d(input),argmin2d(input)])
+            V = [max2d(input),min2d(input),mean2d(input),argmax2d(input),argmin2d(input)]
         else:
-            return input.sum(1).sum(0)
+            V = [input.sum(1).sum(0)]
+        if config.get('fourier',False):
+            V = V + [np.abs(np.fft.fft(v)) for v in V]
+        return sp.concatenate(V)
+            
     elif config['transform_name'] == 'translation_and_orientation':
         model_config = M['config']['model'] 
         assert model_config.get('filter') and model_config['filter']['model_name'] == 'gridded_gabor'

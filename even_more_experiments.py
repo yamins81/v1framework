@@ -811,6 +811,7 @@ def ext_eval_ht_manylevel_random_scale_comparison_models_renderman(depends_on=('
                                                   '../config/ht_manylevel_random_scale_comparison_models.py',
                                                   '../config/ten_categories_images.py')):
     """
+    trends not strong enoght to learn much
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')              
