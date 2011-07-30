@@ -12,6 +12,8 @@ extraction =  SON([ ('transform_average',SON([('transform_name','translation'),(
                                   ('image.s',SON([('$exists',False)])),
                                   ('image.rxy',SON([('$exists',False)])),
                                   ('image.rxz',SON([('$exists',False)])),
+                                  ('$or',[SON([('image.ty',SON([('$exists',True)])),('image.tz',SON([('$exists',True)]))]),
+                                          SON([('image.ryz',SON([('$exists',True)]))])])
                                  ]))
                   ]) 
                 

@@ -244,7 +244,7 @@ def extraction_protocol(extraction_config_path,model_config_path,image_config_pa
     image_certificate = '../.image_certificates/' + image_hash
 
     extraction_config = get_config(extraction_config_path)
-    task_config = evaluate_config.pop('extractions')
+    extraction_config = extraction_config.pop('extractions')
 
     D = []
     DH = {}
@@ -261,7 +261,7 @@ def extraction_protocol(extraction_config_path,model_config_path,image_config_pa
         op = ('evaluation_' + ext_hash,func, (extraction_certificate,
                                               image_certificate,
                                               model_certificate,
-                                              evaluate_config_path,
+                                              extraction_config_path,
                                               convolve_func_name,
                                               task,
                                               ext_hash,
@@ -310,8 +310,8 @@ def extract_parallel(outfile,
                                                                          model_certificate_file, 
                                                                          task)
     
-    if cache_port is None:
-        cache_port = NETWORK_CACHE_PORT
+#    if cache_port is None:
+#        cache_port = NETWORK_CACHE_PORT
     cache_port = None    
     
     jobids = []
@@ -339,8 +339,8 @@ def extract_parallel(outfile,
 
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
     
-    
-def extract_core(image_hash,m,task,convolve_func_name,save_to_db,batch,cache_port):
+ 
+def extract_core(image_hash,m,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -361,7 +361,7 @@ def extract_core(image_hash,m,task,convolve_func_name,save_to_db,batch,cache_por
         num_inner_batches = multiprocessing.cpu_count()
         if num_inner_batches > 1:
             print('found %d processors, using that many processes' % num_inner_batches)
-            pool = multiprocessing.Pool(num_batches)
+            pool = multiprocessing.Pool(num_inner_batches)
             print('allocated pool')
         else:
             pool = multiprocessing.Pool(1)
@@ -468,6 +468,10 @@ def put_in_extraction(features,image_configs,m,model_hash,image_hash,task,ext_ha
                       ('image_hash',image_hash),
                       ('extraction',son_escape(task)),
                  ])   
+
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    feature_fs = gridfs.GridFS(db,'features')
     
     for (feat,config) in zip(features,image_configs):
         out_record = copy.deep_copy(out_record)
@@ -481,7 +485,7 @@ def put_in_extraction(features,image_configs,m,model_hash,image_hash,task,ext_ha
         print('pickling split result...')
         out_data = cPickle.dumps(feat)
         print('dumping out split result ...')
-        feature_col.put(out_data,**out_record)          
+        feature_fs.put(out_data,**out_record)          
                       
 
 def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task):
@@ -1386,8 +1390,8 @@ def get_extraction_batches(image_hash,task):
         conn = pm.Connection(document_class=bson.SON)
         db = conn[DB_NAME]
         coll = db['images.files']
-        q = dbutils.reach_in('config',task.get('query',SON([])))
-        q['__hash__'] = hash
+        q = reach_in('config',task.get('query',SON([])))
+        q['__hash__'] = image_hash
         count = coll.find(q).count()
         num_batches = int(math.ceil(count/batch_size))
         return [(batch_size*ind,batch_size*(ind+1)) for ind in range(num_batches)]
@@ -1399,8 +1403,8 @@ def get_extraction_configs(image_hash,task,batch):
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
     coll = db['images.files']
-    q = dbutils.reach_in('config',task.get('query',SON([])))
-    q['__hash__'] = hash
+    q = reach_in('config',task.get('query',SON([])))
+    q['__hash__'] = image_hash
     if batch:
         skip = batch[0]
         delta = batch[1] - skip 
