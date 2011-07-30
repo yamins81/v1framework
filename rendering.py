@@ -7,6 +7,7 @@ import json
 
 import numpy as np
 import cairo
+import pythor3.wildwest.notation.compute
 
 import renderer
 
@@ -22,6 +23,10 @@ def render_image(config,returnfh=False):
          return renderman_render(config,returnfh=returnfh)
      elif generator == 'cairo':
          return cairo_render(config,returnfh=returnfh)
+     elif generator = 'dataset_api':
+         DatasetObject = pythor3.wildwest.notation.compute.compute_instance(I)
+         row = DatasetObject.query({"id":config["id"]})[0]
+         return open(row['img_fullpath']).read()
      else:
          raise ValueError, 'image generator not recognized'
          
@@ -36,6 +41,12 @@ def config_gen(config):
             newparams = gridded_config_gen(I)
         elif I['selection'] == 'random':
             newparams = random_config_gen(I)
+        elif I['selection'] == 'dataset_api':
+            DatasetObject = pythor3.wildwest.notation.compute.compute_instance(I)
+            meta = DataObject.columns['meta']
+            newparams = []
+            for n in meta:
+                newparams.append(SON([('image',n)]))
         for np in newparams:
             np['image']['generator'] = I['generator']
         params.extend(newparams)
