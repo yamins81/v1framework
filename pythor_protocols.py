@@ -206,12 +206,14 @@ def generate_models(outfile,m_hash,config_gen):
     createCertificateDict(outfile,{'model_hash':m_hash,'args':config_gen})
     
 
-def extract_features_protocol(image_config_path,
+def extract_features_protocol(feature_config_path
+							  image_config_path,
                               model_config_path,
                               convolve_func_name = 'numpy',
                               write = False,
                               parallel=False,
-                              batch_size=1000):
+                              batch_size=1000,
+                              save_to_db=False):
 
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -221,67 +223,27 @@ def extract_features_protocol(image_config_path,
     image_hash = get_config_string(image_config_gen['images'])
     image_certificate = '../.image_certificates/' + image_hash
     
-    overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images'])])
+    
+    feature_config_gen = get_config(feature_config_path)
+    overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),
+                              ('extractions',feature_config_gen['extractions']))])
     feature_hash = get_config_string(overall_config_gen)
     feature_certificate = '../.feature_certificates/' + feature_hash
        
-    if not parallel:
-        D = [('extract_features',
-              extract_features,(feature_certificate,
-                                image_certificate,
-                                model_certificate,
-                                overall_config_gen,
-                                feature_hash,
-                                convolve_func_name))]
-    else:
-        D = [('extract_features',
-              extract_features_parallel,(feature_certificate,
+    D = [('extract_features', extract_features_parallel,(feature_certificate,
+                                         feature_config_gen,
                                          image_certificate,
                                          model_certificate,
                                          overall_config_gen,
                                          feature_hash,
                                          convolve_func_name,
-                                         batch_size))]
+                                         batch_size,
+                                         save_to_db))]
     
     if write:
         actualize(D)
     return D, feature_hash
 
-
-@activate(lambda x : (x[1],x[2]), lambda x : x[0])    
-def extract_features(feature_certificate,
-                     image_certificate,
-                     model_certificate,
-                     feature_config,
-                     feature_hash,
-                     convolve_func_name):
-
-    image_certdict = cPickle.load(open(image_certificate))
-    image_hash = image_certdict['image_hash']
-    image_args = image_certdict['args']
-
-    model_certdict = cPickle.load(open(model_certificate))
-    model_hash = model_certdict['model_hash']
-    model_args = model_certdict['args']
-
-    conn = pm.Connection(document_class = SON)
-    db = conn[DB_NAME]
-    f_coll = db['features.files']
-    f_fs = gridfs.GridFS(db,'features')
-    
-    remove_existing(f_coll,f_fs,feature_hash)
-
-    extract_features_core(image_certificate,
-                          model_certificate,
-                          feature_hash,
-                          image_hash,
-                          model_hash,
-                          convolve_func_name)
-     
-    createCertificateDict(feature_certificate,{'feature_hash':feature_hash,
-                                               'image_hash':image_hash,
-                                               'model_hash':model_hash,
-                                               'args':feature_config,})
 
 @activate(lambda x : (x[1],x[2]), lambda x : x[0])    
 def extract_features_parallel(feature_certificate,
@@ -290,7 +252,8 @@ def extract_features_parallel(feature_certificate,
                               feature_config,
                               feature_hash,
                               convolve_func_name,
-                              batch_size):
+                              batch_size,
+                              save_to_db):
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
     
@@ -302,6 +265,8 @@ def extract_features_parallel(feature_certificate,
     model_hash = model_certdict['model_hash']
     model_args = model_certdict['args']
 
+    im_query = feature_config.get('im_query',SON([]))
+    m_query = feature_config.get('m_query',SON([]))
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
     f_coll = db['features.files']
@@ -309,7 +274,8 @@ def extract_features_parallel(feature_certificate,
     
     remove_existing(f_coll,f_fs,feature_hash)
     
-    limits = get_feature_batches(image_hash,model_hash,db['images.files'],db['models.files'],batch_size = batch_size)
+    limits = get_feature_batches(image_hash,model_hash,db['images.files'],db['models.files'],batch_size = batch_size,
+                                 im_query,m_query)
     
     jobids = []
 
@@ -327,10 +293,13 @@ def extract_features_parallel(feature_certificate,
                                              image_hash,
                                              model_hash,
                                              convolve_func_name),
-                                             {'im_skip':im_from,
+                                             {'im_query':im_query,
+                                              'm_query':m_query,
+                                              'im_skip':im_from,
                                               'im_limit':im_to-im_from,
                                               'm_skip':m_from,
-                                              'm_limit':m_to-m_from
+                                              'm_limit':m_to-m_from,
+                                              'save_to_db':save_to_db
                                               }],
                                             opstring=opstring)
         jobids.append(jobid)
@@ -368,23 +337,10 @@ def extract_features_core(image_certificate,
                           model_hash,
                           convolve_func_name,
                           im_query=None,
-                          m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0):
+                          m_query=None,im_skip=0,im_limit=0,m_skip=0,m_limit=0,
+                          save_to_db = False):
 
-    if convolve_func_name == 'numpy':
-        num_batches = multiprocessing.cpu_count()
-        if num_batches > 1:
-            pool = multiprocessing.Pool()
-    elif convolve_func_name == 'cufft':
-        num_batches = get_num_gpus()
-        if num_batches > 1:
-            pool = multiprocessing.Pool(processes = num_batches)
-        else:
-            pool = None
-    else:
-        raise ValueError, 'convolve func name not recognized'
-
-    if num_batches == 1:
-        extract_features_inner_core(image_certificate,
+    extract_features_inner_core(image_certificate,
                           model_certificate,
                           feature_hash,
                           image_hash,
@@ -392,44 +348,11 @@ def extract_features_core(image_certificate,
                           convolve_func_name,
                           0,
                           im_query,
-                          m_query,im_skip,im_limit,m_skip,m_limit)
-    else:
-        if im_query is None:
-            im_query = {}
-        if m_query is None:
-            m_query = {}
-            
-        im_query['__hash__'] = image_hash
-        m_query['__hash__'] = model_hash
-    
-        conn = pm.Connection(document_class = SON)
-        db = conn[DB_NAME]
-        
-        image_col = db['images.files'] 
-        model_col = db['models.files'] 
-
-        batches = get_feature_batches(image_hash,model_hash,image_col,model_col,im_skip=im_skip,
-                                      im_limit = im_limit, m_skip = m_skip, 
-                                      m_limit = m_limit, num_batches=num_batches)
-
-        print('batches',batches)
-        res = []
-        for (batch_num,(s0,l0,s1,l1)) in enumerate(batches):
-            args = (image_certificate,
-                          model_certificate,
-                          feature_hash,
-                          image_hash,
-                          model_hash,
-                          convolve_func_name,
-                          batch_num,
-                          im_query,m_query,s0,l0,s1,l1)
-            res.append(pool.apply_async(extract_features_inner_core,args))
-
-        finished = [r.get() for r in res]
+                          m_query,im_skip,im_limit,m_skip,m_limit,save_to_db)
 
 def extract_features_inner_core(image_certificate, model_certificate, feature_hash, image_hash,
      model_hash, convolve_func_name,device_id, im_query, m_query, im_skip,
-     im_limit, m_skip, m_limit):
+     im_limit, m_skip, m_limit, save_to_db):
 
     if im_query is None:
         im_query = {}
@@ -462,14 +385,15 @@ def extract_features_inner_core(image_certificate, model_certificate, feature_ha
     for model_config in L2: 
         filter_fh = model_fs.get_version(model_config['filename'])
         filter = cPickle.loads(filter_fh.read())
-    
         for image_config in L1:
-            features = compute_features(image_config['filename'], image_fs, filter, model_config, convolve_func)
+            features = transform_average(compute_features(image_config['filename'], image_fs, filter,  model_config, convolve_func) , task.get('transform_average'),model_config)
             features_string = cPickle.dumps(features)
             y = SON([('config',SON([('model',model_config['config']['model']),('image',image_config['config']['image'])]))])
             filename = get_filename(y['config'])
             y['filename'] = filename
             y['__hash__'] = feature_hash
+            if save_to_db:
+                y['result'] = features.tolist()
             feature_fs.put(features_string,**y)
             
             
