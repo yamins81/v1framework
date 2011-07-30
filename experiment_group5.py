@@ -59,4 +59,4 @@ def extract_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_
             
     """
     a,b,c = depends_on
-    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True)
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)

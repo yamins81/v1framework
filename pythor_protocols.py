@@ -233,7 +233,8 @@ def generate_models(outfile,m_hash,config_gen):
 #################EXTRACTION#############
 
 def extraction_protocol(extraction_config_path,model_config_path,image_config_path,
-                        convolve_func_name='numpy', write=False,parallel=False,save_to_db=False):
+                        convolve_func_name='numpy', write=False,parallel=False,save_to_db=False,
+                        batch_size=None):
                         
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -265,7 +266,7 @@ def extraction_protocol(extraction_config_path,model_config_path,image_config_pa
                                               convolve_func_name,
                                               task,
                                               ext_hash,
-                                              save_to_db))                                                
+                                              save_to_db,batch_size))                                                
         D.append(op)
         DH[ext_hash] = [op]
              
@@ -277,7 +278,7 @@ def extraction_protocol(extraction_config_path,model_config_path,image_config_pa
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
 def extract(outfile,image_certificate_file,model_certificate_file,cpath,convolve_func_name,
-            task, ext_hash, save_to_db):
+            task, ext_hash, save_to_db,batch_size):
 
     (model_configs, model_hash, image_hash, task_list) = prepare_extract(ext_hash,
                                                                          image_certificate_file, 
@@ -303,7 +304,8 @@ def extract_parallel(outfile,
                      convolve_func_name,
                      task,
                      ext_hash,
-                     save_to_db):
+                     save_to_db,
+                     batch_size):
         
     (model_configs, model_hash, image_hash, task_list) = prepare_extract(ext_hash,
                                                                          image_certificate_file, 
@@ -324,7 +326,7 @@ def extract_parallel(outfile,
         print('Evaluating model',m)
         for task in task_list:
             print('task',task)
-            batches = get_extraction_batches(image_hash,task)
+            batches = get_extraction_batches(image_hash,task,batch_size)
             for batch in batches:
                 jobid = qsub(extract_core,(image_hash,m,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port),opstring=opstring)
                 print('Submitted job', jobid)
@@ -1384,8 +1386,7 @@ def generate_random_sample(task_config,hash,colname):
     return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,ntest,universe={'__hash__':hash})[0]
 
 
-def get_extraction_batches(image_hash,task):
-    batch_size = task.get('batch_size',None)
+def get_extraction_batches(image_hash,task,batch_size):
     if batch_size:
         conn = pm.Connection(document_class=bson.SON)
         db = conn[DB_NAME]
