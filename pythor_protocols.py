@@ -289,7 +289,7 @@ def extract(outfile,image_certificate_file,model_certificate_file,cpath,convolve
         print('Evaluating model',m)
         for task in task_list:  
             print('task',task)
-            extract_core(image_hash,m,task,ext_hash,convolve_func_name,save_to_db,None,None)    
+            extract_core(image_hash,m,model_hash,task,ext_hash,convolve_func_name,save_to_db,None,None)    
         
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
     
@@ -328,7 +328,7 @@ def extract_parallel(outfile,
             print('task',task)
             batches = get_extraction_batches(image_hash,task,batch_size)
             for batch in batches:
-                jobid = qsub(extract_core,(image_hash,m,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port),opstring=opstring)
+                jobid = qsub(extract_core,(image_hash,m,model_hash,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port),opstring=opstring)
                 print('Submitted job', jobid)
                 jobids.append(jobid)
                 
@@ -342,7 +342,7 @@ def extract_parallel(outfile,
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
     
  
-def extract_core(image_hash,m,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port):
+def extract_core(image_hash,m,model_hash,task,ext_hash,convolve_func_name,save_to_db,batch,cache_port):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -476,14 +476,15 @@ def put_in_extraction(features,image_configs,m,model_hash,image_hash,task,ext_ha
     feature_fs = gridfs.GridFS(db,'features')
     
     for (feat,config) in zip(features,image_configs):
-        out_record = copy.deep_copy(out_record)
-        out_record['image'] = config['image']
+        out_record = copy.deepcopy(out_record)
+        out_record['image'] = config['config']['image']
         out_record['image_filename'] = config['filename']
         
         out_record['filename'] = get_filename(out_record)
         out_record['__hash__'] = ext_hash
         if save_to_db:
-            out_record['feature'] = feat
+            out_record['feature'] = feat.tolist()
+            out_record['feature_length'] = len(feat)
         print('pickling split result...')
         out_data = cPickle.dumps(feat)
         print('dumping out split result ...')
