@@ -649,7 +649,8 @@ def ext_eval_ht_l2_gabor_random_o2_top5_pairwise_renderman(depends_on=('../confi
                                                   '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    documented in nugget 2
+    bottom line: 
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -659,7 +660,7 @@ def ext_eval_ht_l2_gabor_random_o2_top5_pairwise_renderman_backgrounds(depends_o
                                                   '../config/ht_l2_gabor_random_o2_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
     """
-
+    #documented in nugget 2
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')
@@ -668,6 +669,11 @@ def ext_eval_ht_l2_gabor_random_o2_top5_pairwise_renderman_backgrounds(depends_o
 
 #########################################
 ###############many levels###############
+
+#basically, putting a bunch of levels (between 3-6) with about the same number of filters per level
+#often without strides, e.g. not getting smaller at each level
+#and using feed up 
+#bottom line: can add alot
 
 @protocolize()
 def make_fourlevel_test_model(depends_on='../config/fourlevel_test_model.py'):
@@ -805,6 +811,7 @@ def ext_eval_ht_manylevel_random_models_2_renderman(depends_on=('../config/rende
                                                   '../config/ht_manylevel_random_models_2.py',
                                                   '../config/ten_categories_images.py')):
     """
+    many levels can add a lot, especially with feed up and mvarious stats
     """
     a,b,c = depends_on
     protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True, parallel='semi')          
@@ -829,6 +836,9 @@ def ext_eval_ht_manylevel_random_scale_comparison_models_renderman(depends_on=('
     
 ##########################################   
 #################3d gabor#################
+
+#using 3d-like gabors
+#bottom line: doesn't seem to beat random in higher levels, but maybe can do about as well
 
 @protocolize()
 def make_lt_l2_gabor_gabor_models(depends_on='../config/lt_l2_gabor_gabor_models.py'):

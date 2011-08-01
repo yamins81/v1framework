@@ -61,6 +61,16 @@ def extract_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_
     a,b,c = depends_on
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
 
+@protocolize()
+def extract_various_l1_gabors_face_and_table(depends_on=('../config/face_table_extraction.py',
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
 
 @protocolize()
 def evaluate_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_tasks3.py',
