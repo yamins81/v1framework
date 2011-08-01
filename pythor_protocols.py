@@ -1080,7 +1080,7 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
     D = []
     DH = {}
     for task in task_config:
-        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('task',task)])
+        overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('task',task)])
         ext_hash = get_config_string(overall_config_gen)    
         
         performance_certificate = '../.performance_certificates/' + ext_hash
