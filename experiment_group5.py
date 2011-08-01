@@ -63,11 +63,12 @@ def extract_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_
 
 
 @protocolize()
-def ext_eval_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_tasks3.py',
+def evaluate_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_tasks3.py',
+                                                  '../config/reptile_plane_extraction.py', 
                                                   '../config/various_l1_gabor_models.py',
                                                   '../config/ten_categories_images.py')):
     """
             
     """
-    a,b,c = depends_on
-    protocols.extract_and_evaluate_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel='semi')
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)

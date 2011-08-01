@@ -53,19 +53,11 @@ for cat1,cat2 in task_cats:
     t1['universe'].update(trans_q)
     t1['task_label'] = cat1 + '/' + cat2 + ' trans'
     task_set.append(t1)
-    t1f = copy.deepcopy(t1)
-    t1f['transform_average']['fourier'] = True
-    t1f['task_label'] += ' fourier'
-    task_set.append(t1f)
-    
+
     t2 = copy.deepcopy(base_task)
     t2['universe'].update(inrot_q)
     t2['task_label'] = cat1 + '/' + cat2 + ' inrot'
     task_set.append(t2)
-    t2f = copy.deepcopy(t2)
-    t2f['transform_average']['fourier'] = True
-    t2f['task_label'] += ' fourier'
-    task_set.append(t2f)
     
 
     

@@ -526,131 +526,183 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
 #################EVALUATION#############
 #################EVALUATION#############    
     
-def evaluate_protocol(evaluate_config_path,model_config_path,image_config_path,write=False):
-    
+STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
+
+def evaluate_protocol(evaluate_config_path,extraction_config_path,model_config_path,image_config_path,
+                      convolve_func_name='numpy', write=False,parallel=False):
+                        
     model_config_gen = get_config(model_config_path)
+    model_hash = get_config_string(model_config_gen['models'])
+    model_certificate = '../.model_certificates/' + model_hash
+    
     image_config_gen = get_config(image_config_path)
-    
-    overall_config_gen = SON([('models',model_config_gen['models']),
-                              ('images',image_config_gen['images'])])
-    feature_hash = get_config_string(overall_config_gen)
-    feature_certificate = '../.feature_certificates/' + feature_hash   
- 
-    evaluate_config = get_config(evaluate_config_path)
-    task_config = evaluate_config.pop('train_test')
-    
+    image_hash =  get_config_string(image_config_gen['images'])
+    image_certificate = '../.image_certificates/' + image_hash
+
+    extraction_config = get_config(extraction_config_path)
+    extraction_config = extraction_config.pop('extractions')
+
+    evaluation_config = get_config(evaluation_config_path)
+    evaluation_config = evaluation_config.pop('train_test')
+
     D = []
-    ext_hashes = []
-    for task in task_config:
-        overall_config_gen = SON([('models',model_config_gen),
-                                  ('image',image_config_gen),('task',task)])
-        ext_hash = get_config_string(overall_config_gen)
-        outfile = '../.performance_certificates/' + ext_hash
-        op = ('svm_evaluation_' + ext_hash,evaluate,(outfile,feature_certificate,
-                                            evaluate_config_path,task,ext_hash))
-        D.append(op)
-        ext_hashes.append(ext_hash)
+    DH = {}
+    for extraction in extraction_config:
+        extraction_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('extraction',extraction)])
+        extraction_hash = get_config_string(extraction_config_gen)
+        extraction_certificate = '../.extraction_certificates/' + extraction_hash
+        
+        for evaluation in evaluation_config:
+            overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('extraction',extraction),('train_test',evaluation)])
+            ext_hash = get_config_string(overall_config_gen)    
+            
+            performance_certificate = '../.performance_certificates/' + ext_hash
+            if not parallel:
+                func = evaluate
+            else:
+                func = evaluate_parallel
+                                                    
+            op = ('evaluation_' + ext_hash,func, (performance_certificate,
+                                                  extraction_certificate, 
+                                                  image_certificate,
+                                                  model_certificate,
+                                                  convolve_func_name,
+                                                  evaluation,
+                                                  ext_hash))                                                
+            D.append(op)
+            DH[ext_hash] = [op]
+             
     if write:
         actualize(D)
-    return D,ext_hashes
+    return DH
 
-STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']   
 
-@activate(lambda x : (x[1],x[2]),lambda x : x[0])
-def evaluate(outfile,feature_certificate,cpath,task,ext_hash):
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def evaluate(outfile,extraction_certificate,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+
+    (model_configs, image_config_gen, model_hash, image_hash, task_list, 
+    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
+                                                image_certificate_file,
+                                                model_certificate_file,
+                                                task)
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:  
+            print('task',task)
+            split_results = []
+            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+            for (ind,split) in enumerate(splits):
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
+                print('evaluating split %d' % ind)
+                res = evaluate_core(split,m,convolve_func_name,task)    
+                put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
+                split_results.append(res)
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+
+        
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
+
+
+@activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
+def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+        
+    (model_configs, image_config_gen, model_hash, image_hash, task_list,
+     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
+                                                                                                  image_certificate_file,
+                                                                                                  model_certificate_file,
+                                                                                                  task)
+
+    
+    jobids = []
+    if convolve_func_name == 'numpy':
+        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
+    elif convolve_func_name == 'cufft':
+        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
+    
+    for task in task_list:
+        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+        for m in model_configs: 
+            print('Evaluating model',m)
+            print('On task',task)              
+            for (ind,split) in enumerate(splits):
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
+            jobid = qsub(evaluate_parallel_core,
+                         (image_config_gen,m,task,ext_hash,convolve_func_name),
+                         opstring=opstring)
+            print('Submitted job', jobid)
+            jobids.append(jobid)
+                
+    print('Waiting for jobs', jobids) 
+    statuses = wait_and_get_statuses(jobids)
+    
+    if not all([status == 0 for status in statuses]):
+        bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
+        raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)    
+    
+    for m in model_configs: 
+        print('Evaluating model',m)
+        for task in task_list:
+            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
+
+def evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id,convolve_func_name):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
-    
-    perf_fs = gridfs.GridFS(db,'performance')
-    perf_coll = db['performance.files']
-    
-    remove_existing(perf_coll,perf_fs,ext_hash)
+    split_col = db['splits.files']
+    split_fs = gridfs.GridFS(db,'splits')
 
-    feature_certdict = cPickle.load(open(feature_certificate))
-    feature_hash = feature_certdict['feature_hash']
-    image_hash = feature_certdict['image_hash']
-    model_hash = feature_certdict['model_hash']
-    image_config_gen = feature_certdict['args']['images']
-    model_col = db['models.files']
+    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,
+                                                 'split_id':split_id,
+                                                 'model':m['config']['model'],
+                                                 'task':son_escape(task),
+                                                 'images':son_escape(image_config_gen['images'])})[0]
+    split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
+    res = evaluate_core(split,m,convolve_func_name,task)
+    splitperf_fs = gridfs.GridFS(db,'split_performance')
+    put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+
+
+def evaluate_core(split,m,convolve_func_name,task):
+    classifier_kwargs = task.get('classifier_kwargs',{})  
+    train_data = split['train_data']
+    test_data = split['test_data']
+    train_labels = split['train_labels']
+    test_labels = split['test_labels']                
+    train_filenames = [t['filename'] for t in train_data]
+    test_filenames = [t['filename'] for t in test_data]
+    assert set(train_filenames).intersection(test_filenames) == set([])
+
+    conn = pm.Connection(document_class=bson.SON)
+    db = conn[DB_NAME]
+    feature_coll = db['features.files']
     feature_fs = gridfs.GridFS(db,'features')
-    feature_col = db['features.files']
     
-    stats = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']    
-       
-    if isinstance(task,list):
-        task_list = task
+    print('train feature extraction ...')
+    train_features = sp.row_stack([load_features(f,feature_coll,feature_fs,m,task) for f in train_filenames])
+    print('test feature extraction ...')
+    test_features = sp.row_stack([load_features(f,feature_coll,feature_fs,m,task) for f in test_filenames])
+    train_labels = split['train_labels']
+    test_labels = split['test_labels']          
+    
+    print('classifier ...')
+    if len(uniqify(train_labels + test_labels)) > 2:
+        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     else:
-        task_list = [task]
+        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    print('Split test accuracy', res['test_accuracy'])
+    return res
     
-    model_configs = get_most_recent_files(model_col,{'__hash__':model_hash})
     
-    for m in model_configs:
-        print('Evaluating model',m) 
-        for task in task_list:
-            task['universe'] = task.get('universe',SON([]))
-            task['universe']['model'] = m['config']['model']
-            print('task', task)
-            classifier_kwargs = task.get('classifier_kwargs',{})    
-            split_results = []
-            splits = generate_splits(task,feature_hash,'features') 
-            for (ind,split) in enumerate(splits):
-                print ('split', ind)
-                train_data = split['train_data']
-                test_data = split['test_data']
-                
-                train_filenames = [t['filename'] for t in train_data]
-                test_filenames = [t['filename'] for t in test_data]
-                assert set(train_filenames).intersection(test_filenames) == set([])
-                
-                print('train feature extraction ...')
-                train_features = sp.row_stack([load_features(f['filename'],feature_fs,m,task) for f in train_data])
-                print('test feature extraction ...')
-                test_features = sp.row_stack([load_features(f['filename'],feature_fs,m,task) for f in test_data])
-                train_labels = split['train_labels']
-                test_labels = split['test_labels']
-    
-                print('classifier ...')
-                res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-                print('Split test accuracy', res['test_accuracy'])
-                split_results.append(res)
-        
-            model_results = SON([])
-            for stat in STATS:
-                if stat in split_results[0] and split_results[0][stat] != None:
-                    model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
-    
-            out_record = SON([('model',m['config']['model']),
-                              ('model_hash',model_hash), 
-                              ('model_filename',m['filename']), 
-                              ('images',son_escape(image_config_gen)),
-                              ('image_hash',image_hash),
-                              ('task',son_escape(task)),
-                         ])
-                                             
-            filename = get_filename(out_record)
-            out_record['filename'] = filename
-            out_record['config_path'] = cpath
-            out_record['__hash__'] = ext_hash
-            out_record.update(model_results)
-            print('dump out ...')
-            out_data = cPickle.dumps(SON([('split_results',split_results),('splits',splits)]))
-            
-            perf_fs.put(out_data,**out_record)
+def load_features(image_filename,coll,fs,m,task):
+    filename = coll.find_one({'model':m,'image_filename':image_filename},fields=["filename"])["filename"]
+    return transform_average(cPickle.loads(fs.get_version(filename).read()),task.get('transform_average'),m)
 
-    createCertificateDict(outfile,{'feature_file':feature_certificate})
-
-
-def load_features(filename,fs,m,task):
-    cached_val = get_from_cache((filename,task.get('transform_average')),FEATURE_CACHE)
-    if cached_val is not None:
-        return cached_val
-    else:
-        val = transform_average(cPickle.loads(fs.get_version(filename).read()),task.get('transform_average'),m)
-        put_in_cache((filename,task.get('transform_average')),val,FEATURE_CACHE)
-        return val
-    
-
+def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
+    return prepare_extract_and_evaluation(ext_hash,image_certificate_file,model_certificate_file,task)
 
 
 #########EXTRACT AND EVALUATE############# 
