@@ -528,7 +528,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
     
 STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
 
-def evaluate_protocol(evaluate_config_path,extraction_config_path,model_config_path,image_config_path,
+def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,
                       convolve_func_name='numpy', write=False,parallel=False):
                         
     model_config_gen = get_config(model_config_path)
@@ -698,11 +698,11 @@ def evaluate_core(split,m,convolve_func_name,task):
     
     
 def load_features(image_filename,coll,fs,m,task):
-    filename = coll.find_one({'model':m,'image_filename':image_filename},fields=["filename"])["filename"]
-    return transform_average(cPickle.loads(fs.get_version(filename).read()),task.get('transform_average'),m)
+    filename = coll.find_one({'model':m['config']['model'],'image_filename':image_filename},fields=["filename"])["filename"]
+    return cPickle.loads(fs.get_version(filename).read())
 
 def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
-    return prepare_extract_and_evaluation(ext_hash,image_certificate_file,model_certificate_file,task)
+    return prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
 
 
 #########EXTRACT AND EVALUATE############# 

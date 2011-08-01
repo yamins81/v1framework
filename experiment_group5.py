@@ -72,3 +72,15 @@ def evaluate_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
+
+
+@protocolize()
+def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_tasks4.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
