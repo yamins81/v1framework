@@ -250,7 +250,7 @@ def extraction_protocol(extraction_config_path,model_config_path,image_config_pa
     D = []
     DH = {}
     for task in extraction_config:
-        overall_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('extraction',task)])
+        overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('extraction',task)])
         ext_hash = get_config_string(overall_config_gen)    
         
         extraction_certificate = '../.extraction_certificates/' + ext_hash
@@ -548,7 +548,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
     D = []
     DH = {}
     for extraction in extraction_config:
-        extraction_config_gen = SON([('models',model_config_gen),('images',image_config_gen),('extraction',extraction)])
+        extraction_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('extraction',extraction)])
         extraction_hash = get_config_string(extraction_config_gen)
         extraction_certificate = '../.extraction_certificates/' + extraction_hash
         
@@ -578,7 +578,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate(outfile,extraction_certificate,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
