@@ -146,3 +146,30 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
+
+
+#######trying to simplify even further
+@Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
+def generate_reptiles_and_planes_images():
+
+    Apply()
+    
+@protocolize()
+def extract_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_plane_extraction.py',
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_subtasks.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)

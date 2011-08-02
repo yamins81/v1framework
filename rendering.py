@@ -96,6 +96,8 @@ def renderman_config_gen(args):
     if 'bg_psi' in args:
         funcs.append(('bg_psi',random_ranger(args['bg_psi'])))
         
+        
+        
     for param in params:
         p = param['image']
         if args.get('use_canonical'):
@@ -103,6 +105,8 @@ def renderman_config_gen(args):
         for (k,f) in funcs:
             if f:
                 p[k] = f()
+        if args.get('res'):
+            p['res'] = args['res']
     
     return params
     
@@ -132,14 +136,16 @@ def renderman_random_config_gen(args):
     
     params = []
     for i in range(num):
-        param = SON([])
+        p = SON([])
         if args.get('use_canonical'):
-            param['use_canonical'] = args['use_canonical']    
+            p['use_canonical'] = args['use_canonical']    
         for (k,f) in funcs + funcs1:
             if f:
-                param[k] = f()
+                p[k] = f()
+        if args.get('res'):
+            p['res'] = args['res']
 
-        params.append(SON([('image',param)]))
+        params.append(SON([('image',p)]))
         
     return params
 
@@ -163,6 +169,8 @@ def renderman_render(config,returnfh = False):
         param['bg_phi'] = config.pop('bg_psi')
     if 'kenv' in config:
         param['kenv'] = config.pop('kenv')
+    if 'res' in config:
+        param['res_x'] = param['res_y'] = config['res']
     use_canonical = config.pop('use_canonical',False)
     if use_canonical:
         v = get_canonical_view(config['model_id'])
