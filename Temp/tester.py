@@ -3,13 +3,19 @@ conn = pm.Connection()
 coll = conn['thor']['performance']
 import numpy as np
 import scipy.stats as stats
+import re
+
+def get_hashes(f):
+    s = open(f).read()
+    p = re.compile('def evaluation_([\w]+)')
+    return [x.groups()[0] for x in list(p.finditer(s))]
 
 def get_perfq(hash,q,p=75):
     q['__hash__'] = hash
     res = np.array([l['test_accuracy'] for l in coll.find(q,fields=['test_accuracy'])])
     return lof([res.max(),res.min(),res.mean(),stats.scoreatpercentile(res,p),res.std()])
 
-def get_perf(hash,level,key,att):
+def get_perf(hash,level,key,att,p=50):
     level = str(level)
     q = {'__hash__':hash}
     vals = coll.find(q).distinct('model.layers.' + level + '.' + key + '.' + att)
@@ -25,7 +31,7 @@ def get_perf(hash,level,key,att):
         maxs.append(res.max())
         means.append(res.mean())
         mins.append(res.min())
-        quartiles(stats.scoreatepercentile(res,.75))
+        quartiles.append(stats.scoreatpercentile(res,p))
         stds.append(res.std())
 
     print('level %s, %s, %s' % (level,key,att))

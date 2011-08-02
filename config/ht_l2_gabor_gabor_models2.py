@@ -46,7 +46,7 @@ base_model = SON([
                 ]),
             SON([('filter',SON([
                       ('model_name','random_gabor'),
-                      ('z_envelope_center',SON([('min',.25),('max',.75)]))
+                      ('z_envelope_center',SON([('min',.25),('max',.75)])),
                       ('frequency_multiplier',.5)
                     ])),
                 ('activ', SON([
