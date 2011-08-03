@@ -130,7 +130,7 @@ def evaluate_various_l1_gabors2_reptile_and_planes(depends_on=('../config/reptil
                                                   '../config/various_l1_gabor_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
-            
+    adding more rotations doesn't seem to help at all (compare to evaluate_various_l1_gabors_reptile_and_planes)
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
