@@ -1546,6 +1546,13 @@ def average_transform(input,config,M):
             V = [input.sum(1).sum(0)]
         if config.get('fourier',False):
             V = V + [np.abs(np.fft.fft(v)) for v in V]
+        if config.get('norm'):
+            if config['norm'] == 'max':
+                V = V + [v/v.max() for v in V]
+            elif config['norm'] == 'sum':
+                V = V + [v/v.sum() for v in V]
+            else:
+                raise ValueError,'norm not recognized'
         return sp.concatenate(V)
             
     elif config['transform_name'] == 'translation_and_orientation':
