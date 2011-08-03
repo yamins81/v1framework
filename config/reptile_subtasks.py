@@ -6,8 +6,8 @@ from model_categories import MODEL_CATEGORIES as CAT
 
 from config.helpers import uset, mixup
     
-NTRAIN = 60
-NTEST = 30
+NTRAIN = 30
+NTEST = 15
 NUM_SPLITS = 10
 OVERLAP = .75
 
