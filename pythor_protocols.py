@@ -602,7 +602,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,model_certificate_file,task,ext_hash):
+def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
      perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,

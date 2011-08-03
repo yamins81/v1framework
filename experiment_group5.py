@@ -151,7 +151,6 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
 #######trying to simplify even further
 @Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
 def generate_reptiles_and_planes_images():
-
     Apply()
     
 @protocolize()

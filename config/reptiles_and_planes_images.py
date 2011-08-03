@@ -7,7 +7,7 @@ from model_categories import MODEL_CATEGORIES
 
 MODELS = MODEL_CATEGORIES['reptiles'] + MODEL_CATEGORIES['planes']
 
-NUM_IMAGES = 500
+NUM_IMAGES = 2000
 USE_CANONICAL = True
 
 base_images = [
