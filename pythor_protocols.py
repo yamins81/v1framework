@@ -612,7 +612,7 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
 
     
     jobids = []
-    opstring = '-l qname=rendering.q -o /home/render -e /home/render'
+    opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
     
     for task in task_list:
         splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
@@ -620,12 +620,12 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
             print('Evaluating model',m)
             print('On task',task)              
             for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
-			jobid = qsub(evaluate_parallel_core,
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
+            jobid = qsub(evaluate_parallel_core,
 					 (image_config_gen,m,task,ext_hash),
 					 opstring=opstring)
-			print('Submitted job', jobid)
-			jobids.append(jobid)
+            print('Submitted job', jobid)
+            jobids.append(jobid)
                 
     print('Waiting for jobs', jobids) 
     statuses = wait_and_get_statuses(jobids)
@@ -709,7 +709,7 @@ def load_features(image_filename,coll,fs,m,task):
     if feat is None:
         filename = coll.find_one({'model':m['config']['model'],'image_filename':image_filename},fields=["filename"])["filename"]
         feat = cPickle.loads(fs.get_version(filename).read())
-        put_in_cache((im,m),feat,FEATURE_CACHE)
+        put_in_cache((image_filename,m),feat,FEATURE_CACHE)
     return feat
          
 
