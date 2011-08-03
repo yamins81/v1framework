@@ -528,8 +528,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
     
 STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
 
-def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,
-                      convolve_func_name='numpy', write=False,parallel=False):
+def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path, write=False,parallel=False):
                         
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -566,7 +565,6 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
                                                   extraction_certificate, 
                                                   image_certificate,
                                                   model_certificate,
-                                                  convolve_func_name,
                                                   evaluation,
                                                   ext_hash))                                                
             D.append(op)
@@ -578,7 +576,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -594,7 +592,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
-                res = evaluate_core(split,m,convolve_func_name,task)    
+                res = evaluate_core(split,m,task)    
                 put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
                 split_results.append(res)
             put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
@@ -604,7 +602,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,model_certificate_file,task,ext_hash):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
      perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -614,10 +612,7 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
 
     
     jobids = []
-    if convolve_func_name == 'numpy':
-        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
-    elif convolve_func_name == 'cufft':
-        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
+    opstring = '-l qname=rendering.q -o /home/render -e /home/render'
     
     for task in task_list:
         splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
@@ -627,7 +622,7 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(evaluate_parallel_core,
-                         (image_config_gen,m,task,ext_hash,ind,convolve_func_name),
+                         (image_config_gen,m,task,ext_hash,ind),
                          opstring=opstring)
                 print('Submitted job', jobid)
                 jobids.append(jobid)
@@ -647,7 +642,7 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
 
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
 
-def evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id,convolve_func_name):
+def evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -660,12 +655,12 @@ def evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id,convolve_fu
                                                  'task':son_escape(task),
                                                  'images':son_escape(image_config_gen['images'])})[0]
     split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
-    res = evaluate_core(split,m,convolve_func_name,task)
+    res = evaluate_core(split,m,task)
     splitperf_fs = gridfs.GridFS(db,'split_performance')
     put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
 
 
-def evaluate_core(split,m,convolve_func_name,task):
+def evaluate_core(split,m,task):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
     test_data = split['test_data']
