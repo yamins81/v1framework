@@ -172,3 +172,15 @@ def evaluate_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../conf
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
+    
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_subtasks2.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     geck & turtle more examples       
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
