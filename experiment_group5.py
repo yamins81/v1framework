@@ -217,3 +217,14 @@ def evaluate_various_l1_gabors_reptiles_and_planes_subtasks3(depends_on=('../con
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks4(depends_on=('../config/reptile_subtasks4.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     leatherback & monitor lizard (!) vs. specific planes more examples       
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
