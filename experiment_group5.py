@@ -251,4 +251,4 @@ def evaluate_various_l1_gabors_reptiles_and_planes_subtasks6(depends_on=('../con
      monitor lizard (!) vs all plans with more examples     
     """
     a,b,c,d = depends_on
-    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
