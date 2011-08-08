@@ -49,12 +49,12 @@ for cat0 in ['MB29694']:
 				
 			t1 = copy.deepcopy(base_task)
 			t1['universe'].update(trans_q)
-			t1['task_label'] = cat0 + '/' + cat1 '+' + cat2 + ' trans'
+			t1['task_label'] = cat0 + '/' + cat1 + '+' + cat2 + ' trans'
 			task_set.append(t1)
 		
 			t2 = copy.deepcopy(base_task)
 			t2['universe'].update(inrot_q)
-			t2['task_label'] = cat0 + '/' + cat1 '+' + cat2 + ' inrot'
+			t2['task_label'] = cat0 + '/' + cat1 + '+' + cat2 + ' inrot'
 			task_set.append(t2)
 		
 

@@ -47,12 +47,12 @@ base_task =  SON([('N',NUM_SPLITS),
 	
 t1 = copy.deepcopy(base_task)
 t1['universe'].update(trans_q)
-t1['task_label'] = cat0 + '/' + cat1 '+' + cat2 + ' trans'
+t1['task_label'] = 'MB29694/planes trans'
 task_set.append(t1)
 
 t2 = copy.deepcopy(base_task)
 t2['universe'].update(inrot_q)
-t2['task_label'] = cat0 + '/' + cat1 '+' + cat2 + ' inrot'
+t2['task_label'] = 'MB29694/planes inrot'
 task_set.append(t2)
 
 
