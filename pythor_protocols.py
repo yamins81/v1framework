@@ -528,8 +528,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
     
 STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
 
-def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,
-                      convolve_func_name='numpy', write=False,parallel=False):
+def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path, write=False,parallel=False):
                         
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -566,7 +565,6 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
                                                   extraction_certificate, 
                                                   image_certificate,
                                                   model_certificate,
-                                                  convolve_func_name,
                                                   evaluation,
                                                   ext_hash))                                                
             D.append(op)
@@ -578,7 +576,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -594,7 +592,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
-                res = evaluate_core(split,m,convolve_func_name,task)    
+                res = evaluate_core(split,m,task)    
                 put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
                 split_results.append(res)
             put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
@@ -604,7 +602,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,model_certificate_file,convolve_func_name,task,ext_hash):
+def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
      perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -614,10 +612,7 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
 
     
     jobids = []
-    if convolve_func_name == 'numpy':
-        opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
-    elif convolve_func_name == 'cufft':
-        opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
+    opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
     
     for task in task_list:
         splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
@@ -625,10 +620,10 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
             print('Evaluating model',m)
             print('On task',task)              
             for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
+                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
             jobid = qsub(evaluate_parallel_core,
-                         (image_config_gen,m,task,ext_hash,convolve_func_name),
-                         opstring=opstring)
+					 (image_config_gen,m,task,ext_hash),
+					 opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
                 
@@ -647,25 +642,36 @@ def evaluate_parallel(outfile,extraction_certificate,image_certificate_file,mode
 
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
 
-def evaluate_parallel_core(image_config_gen,m,task,ext_hash,split_id,convolve_func_name):
+
+
+    for splitconf in splitconfs:
+        split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
+        split_id = splitconf['split_id']
+        res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
+        splitperf_fs = gridfs.GridFS(db,'split_performance')
+        put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+
+
+def evaluate_parallel_core(image_config_gen,m,task,ext_hash):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    splitconf = get_most_recent_files(split_col,{'__hash__':ext_hash,
-                                                 'split_id':split_id,
+    splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,
                                                  'model':m['config']['model'],
                                                  'task':son_escape(task),
-                                                 'images':son_escape(image_config_gen['images'])})[0]
-    split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
-    res = evaluate_core(split,m,convolve_func_name,task)
-    splitperf_fs = gridfs.GridFS(db,'split_performance')
-    put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
-
-
-def evaluate_core(split,m,convolve_func_name,task):
+                                                 'images':son_escape(image_config_gen['images'])})
+  
+    for splitconf in splitconfs:
+        split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
+        split_id = splitconf['split_id']
+        res = evaluate_core(split,m,task)
+        splitperf_fs = gridfs.GridFS(db,'split_performance')
+        put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+        
+def evaluate_core(split,m,task):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
     test_data = split['test_data']
@@ -698,8 +704,14 @@ def evaluate_core(split,m,convolve_func_name,task):
     
     
 def load_features(image_filename,coll,fs,m,task):
-    filename = coll.find_one({'model':m['config']['model'],'image_filename':image_filename},fields=["filename"])["filename"]
-    return cPickle.loads(fs.get_version(filename).read())
+
+    feat = get_from_cache((image_filename,m),FEATURE_CACHE)
+    if feat is None:
+        filename = coll.find_one({'model':m['config']['model'],'image_filename':image_filename},fields=["filename"])["filename"]
+        feat = cPickle.loads(fs.get_version(filename).read())
+        put_in_cache((image_filename,m),feat,FEATURE_CACHE)
+    return feat
+         
 
 def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
     return prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
@@ -1534,6 +1546,13 @@ def average_transform(input,config,M):
             V = [input.sum(1).sum(0)]
         if config.get('fourier',False):
             V = V + [np.abs(np.fft.fft(v)) for v in V]
+        if config.get('norm'):
+            if config['norm'] == 'max':
+                V = V + [v/v.max() for v in V]
+            elif config['norm'] == 'sum':
+                V = V + [v/v.sum() for v in V]
+            else:
+                raise ValueError,'norm not recognized'
         return sp.concatenate(V)
             
     elif config['transform_name'] == 'translation_and_orientation':

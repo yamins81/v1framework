@@ -86,6 +86,17 @@ def extract_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile_
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
 
 @protocolize()
+def extract_various_l1_gabors_reptile_and_planes_normed(depends_on=('../config/reptile_plane_extraction_normed.py',
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+
+@protocolize()
 def make_various_l1_gabor_models2(depends_on='../config/various_l1_gabor_models2.py'):
     """
     """
@@ -123,6 +134,17 @@ def evaluate_various_l1_gabors_reptile_and_planes(depends_on=('../config/reptile
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptile_and_planes_normed(depends_on=('../config/reptile_tasks3.py',
+                                                  '../config/reptile_plane_extraction_normed.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel=False)
 
 @protocolize()
 def evaluate_various_l1_gabors2_reptile_and_planes(depends_on=('../config/reptile_tasks3.py',
@@ -130,7 +152,7 @@ def evaluate_various_l1_gabors2_reptile_and_planes(depends_on=('../config/reptil
                                                   '../config/various_l1_gabor_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
-            
+    adding more rotations doesn't seem to help at all (compare to evaluate_various_l1_gabors_reptile_and_planes)
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
@@ -146,3 +168,98 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
+
+
+#######trying to simplify even further
+@Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
+def generate_reptiles_and_planes_images():
+    Apply()
+    
+@protocolize()
+def extract_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_plane_extraction.py',
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_subtasks.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
+    
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks2(depends_on=('../config/reptile_subtasks2.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     geck & turtle more examples       
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks3(depends_on=('../config/reptile_subtasks3.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     geck & turtle vs. specific planes more examples       
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks4(depends_on=('../config/reptile_subtasks4.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     leatherback & monitor lizard (!) vs. specific planes more examples 
+     result:  basically the phenomenon is less obvious
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
+    
+
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks5(depends_on=('../config/reptile_subtasks5.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     monitor lizard vs pairs of planes ... to see if we can make the T-I phenomenon appear greater   
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks6(depends_on=('../config/reptile_subtasks6.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     monitor lizard (!) vs all plans with more examples     
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_subtasks7(depends_on=('../config/reptile_subtasks7.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     monitor lizard (!) vs all plans with more examples     
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)    
