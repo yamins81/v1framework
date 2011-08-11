@@ -263,13 +263,38 @@ def evaluate_various_l1_gabors_reptiles_and_planes_subtasks6(depends_on=('../con
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)
     
+    
 @protocolize()
 def evaluate_various_l1_gabors_reptiles_and_planes_subtasks7(depends_on=('../config/reptile_subtasks7.py',
                                                   '../config/reptile_plane_extraction.py', 
                                                   '../config/various_l1_gabor_models.py',
                                                   '../config/reptiles_and_planes_images.py')):
     """
-     monitor lizard (!) vs all plans with more examples     
+     reptiles vs planes with more examples     
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,write=True,parallel=False)    
+    
+    
+    
+@protocolize()
+def evaluate_various_l1_gabors_lizard_vs_plane_percentile(depends_on=('../config/reptile_subtasks4.py',
+                                                  '../config/reptile_plane_extraction_percentile.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     leatherback & monitor lizard (!) vs. specific planes with percentile
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
+    
+@protocolize()
+def evaluate_various_l1_gabors_reptiles_and_planes_percentile(depends_on=('../config/reptile_subtasks7.py',
+                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+     reptiles vs planes with percentile  
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
