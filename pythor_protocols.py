@@ -85,9 +85,6 @@ def image_protocol(config_path,write = False,parallel=False):
         actualize(D)
     return D,image_hash
 
-
-import pythor3.wildwest.notation.compute as notation
-
 @activate(lambda x : (), lambda x : x[0])    
 def generate_images(outfile,im_hash,config_gen):
 
