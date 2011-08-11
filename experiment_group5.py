@@ -185,6 +185,16 @@ def extract_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../confi
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
 
 @protocolize()
+def extract_various_l1_gabors_reptiles_and_planes_subtasks_percentile(depends_on=('../config/reptile_plane_extraction_percentile.py',
+                                                  '../config/various_l1_gabor_models.py',
+                                                  '../config/reptiles_and_planes_images.py')):
+    """
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+
+@protocolize()
 def evaluate_various_l1_gabors_reptiles_and_planes_subtasks(depends_on=('../config/reptile_subtasks.py',
                                                   '../config/reptile_plane_extraction.py', 
                                                   '../config/various_l1_gabor_models.py',

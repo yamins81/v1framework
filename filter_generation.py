@@ -164,10 +164,11 @@ def norm(input,conv_mode,params):
 def get_local_filter(shape,inds,pos,rads):
     X = np.zeros(shape)
 
+    s0,s1,s2 = shape
     assert len(pos) == len(rads) == len(inds)
     
     for (ind,p,r) in zip(inds,pos,rads):
-        px,py = p
+        px,py = p    
         lx = px - np.arange(s1)
         ly = py - np.arange(s2)
         d = np.outer(lx**2 , np.ones((s2,))) + np.outer(np.ones((s1,)),ly**2)

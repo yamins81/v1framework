@@ -86,6 +86,8 @@ def image_protocol(config_path,write = False,parallel=False):
     return D,image_hash
 
 
+import pythor3.wildwest.notation.compute as notation
+
 @activate(lambda x : (), lambda x : x[0])    
 def generate_images(outfile,im_hash,config_gen):
 
@@ -97,16 +99,20 @@ def generate_images(outfile,im_hash,config_gen):
     remove_existing(im_coll,im_fs,im_hash)
     
     X = rendering.config_gen(config_gen)
-    
+        
     for (i,x) in enumerate(X):
         if (i/100)*100 == i:
             print(i,x)       
-        image_string = rendering.render_image(x['image']) 
+        if x['generator'] != 'dataset_api':
+            image_string = rendering.render_image(x['image']) 
+        else:
+            image_string = open(x['image'].pop('img_fullpath')) 
         y = SON([('config',x)])
         filename = get_filename(x)
         y['filename'] = filename
         y['__hash__'] = im_hash
         im_fs.put(image_string,**y)
+                
         
     createCertificateDict(outfile,{'image_hash':im_hash,'args':config_gen})
 
@@ -622,8 +628,8 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
             jobid = qsub(evaluate_parallel_core,
-					 (image_config_gen,m,task,ext_hash),
-					 opstring=opstring)
+                     (image_config_gen,m,task,ext_hash),
+                     opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
                 
@@ -1540,6 +1546,9 @@ def average_transform(input,config,M):
     if config['transform_name'] == 'translation':
         if config.get('max',False):
             V = [input.max(1).max(0)]
+        elif config.get('percentile'):
+            pcts = config['percentile']
+            V = [percentile2d(input,pct) for pct in pcts]
         elif config.get('various_stats',False):
             V = [max2d(input),min2d(input),mean2d(input),argmax2d(input),argmin2d(input)]
         else:
@@ -1960,4 +1969,9 @@ def argmin2d(x):
     else:
         return np.array([x[:,:,i].argmin() for i in range(x.shape[2])])
 
+def percentile2d(x,pct):
+    if x.ndim <= 2:
+        return np.array([sp.scoreatpercentile(x,pct)])
+    else:
+        return np.array([sp.scoreatpercentile(x[:,:,i].ravel(),pct) for i in range(x.shape[2])])
 
