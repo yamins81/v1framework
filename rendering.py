@@ -7,7 +7,6 @@ import json
 
 import numpy as np
 import cairo
-import pythor3.wildwest.notation.compute
 
 import renderer
 
@@ -38,6 +37,7 @@ def config_gen(config):
         elif I['selection'] == 'random':
             newparams = random_config_gen(I)
         elif I['generator'] == 'dataset_api':
+            import pythor3.wildwest.notation.compute
             DatasetObject = pythor3.wildwest.notation.compute.compute_instance(I)
             meta = DataObject.columns['meta']
             files = DataObject.columns['img_fullpath']
