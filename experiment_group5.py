@@ -290,7 +290,7 @@ def evaluate_various_l1_gabors_lizard_vs_plane_percentile(depends_on=('../config
     
 @protocolize()
 def evaluate_various_l1_gabors_reptiles_and_planes_percentile(depends_on=('../config/reptile_subtasks7.py',
-                                                  '../config/reptile_plane_extraction.py', 
+                                                  '../config/reptile_plane_extraction_percentile.py', 
                                                   '../config/various_l1_gabor_models.py',
                                                   '../config/reptiles_and_planes_images.py')):
     """
