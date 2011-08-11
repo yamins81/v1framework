@@ -106,7 +106,7 @@ def generate_images(outfile,im_hash,config_gen):
         if x['generator'] != 'dataset_api':
             image_string = rendering.render_image(x['image']) 
         else:
-            image_string = open(x['image'].pop('img_fullpath')) 
+            image_string = open(x['image'].pop('img_fullpath')).read()
         y = SON([('config',x)])
         filename = get_filename(x)
         y['filename'] = filename

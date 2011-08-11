@@ -60,6 +60,21 @@ def fastsvd(M):
             
     return U, S, V
 
+def multigabor2d(glist,weights=None):
+
+    env = [np.fft.fft2(gabor2d(*z)) for z in glist]
+    
+    if weights is None:
+        weights = [np.abs(e).max()**2 for e in env]
+        
+    weights = np.array(weights)
+    env = [w*e for (w,e) in zip(weights,env)]
+
+    gabor = np.fft.fft2(reduce(lambda x,y: x + y, env))
+    gabor -= gabor.mean()
+    gabor /= fastnorm(gabor)
+    return np.abs(gabor)
+
 def gabor2d(gw, gh, gx0, gy0, wfreq, worient, wphase, shape):
     """ Generate a gabor 2d array
     
