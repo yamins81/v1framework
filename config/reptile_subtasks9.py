@@ -63,7 +63,7 @@ for t in task_set:
         real_task_set.append(t1)
     
 config = {
-'train_test' : [task_set]
+'train_test' : [real_task_set]
 }
 
 
