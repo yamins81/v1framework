@@ -59,6 +59,7 @@ for t in task_set:
     for c in [.01,1000]:
         t1 = copy.deepcopy(t)
         t1['classifier_kwargs'] = SON([('C',c)])
+        task_set.append(t1)
     
 config = {
 'train_test' : [task_set]
