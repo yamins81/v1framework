@@ -55,11 +55,12 @@ t2['universe'].update(inrot_q)
 t2['task_label'] = 'reptiles/planes inrot'
 task_set.append(t2)
 
+real_task_set = []
 for t in task_set:
-    for c in [.01,1000]:
+    for c in [.01,1,1000]:
         t1 = copy.deepcopy(t)
         t1['classifier_kwargs'] = SON([('C',c)])
-        task_set.append(t1)
+        real_task_set.append(t1)
     
 config = {
 'train_test' : [task_set]
