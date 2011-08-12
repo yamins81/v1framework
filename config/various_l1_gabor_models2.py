@@ -54,7 +54,7 @@ param_set = [(0,'lnorm',['inker_shape','outker_shape'], [[5,5]]),
              (1,'filter','ker_shape',[[9,9],[11,11],[13,13],[17,17],[21,21],[25,25],[31,31],[41,41]]),
              (1,'filter','norients',[16]),
              (1,'filter','divfreqs',[[2,4,7,9,11,15]]),
-             (1,'activ','min_out',[-.5,0,.5]),
+             (1,'activ','min_out',[-.5,-.2,0]),
              (1,'lpool','ker_shape',[[9,9]])]
 
 params = itertools.product(*[ps[3] for ps in param_set])

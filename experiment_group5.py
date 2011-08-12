@@ -170,6 +170,18 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
 
 
+
+@protocolize()
+def extract_various_l1_gabors_trans_and_inrot(depends_on=('../config/trans_inrot_extraction.py',
+                                                  '../config/various_l1_gabor_models2.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+
 #######trying to simplify even further
 @Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
 def generate_reptiles_and_planes_images():
@@ -316,7 +328,7 @@ def evaluate_various_l1_gabors_reptiles_and_planes_percentile_more(depends_on=('
                                                   '../config/various_l1_gabor_models.py',
                                                   '../config/reptiles_and_planes_images.py')):
     """
-     reptiles vs planes with percentile  
+     reptiles vs planes with percentile   and more exmaples etc .... 
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d,write=True,parallel=True)
