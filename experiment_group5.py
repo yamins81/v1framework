@@ -170,6 +170,11 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
     protocols.evaluate_protocol(a,b,c,d,convolve_func_name='numpy', write=True,parallel=False)
 
 
+@protocolize()
+def make_various_l1_gabor_models_again(depends_on='../config/various_l1_gabor_models2.py'):
+    """
+    """
+    protocols.model_protocol(depends_on,parallel=False,write=True) 
 
 @protocolize()
 def extract_various_l1_gabors_trans_and_inrot_percentile(depends_on=('../config/trans_inrot_extraction_percentile.py',
