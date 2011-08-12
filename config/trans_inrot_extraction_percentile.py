@@ -11,6 +11,7 @@ all_models = ListUnion(CAT.values())
 
 extraction =  SON([ ('transform_average',SON([('transform_name','translation'),('percentile',[73,90,99])])),
                     ('query',SON([('image.model_id',SON([('$in',all_models)])),
+                                  ('bg_id','gray.tdl'), 
                                   ('image.tx',SON([('$exists',False)])),
                                   ('image.s',SON([('$exists',False)])),
                                   ('image.rxy',SON([('$exists',False)])),
