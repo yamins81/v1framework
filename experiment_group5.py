@@ -172,7 +172,7 @@ def evaluate_LRL_various_l1_gabors_reptile_and_planes(depends_on=('../config/rep
 
 
 @protocolize()
-def extract_various_l1_gabors_trans_and_inrot(depends_on=('../config/trans_inrot_extraction.py',
+def extract_various_l1_gabors_trans_and_inrot_percentile(depends_on=('../config/trans_inrot_extraction_percentile.py',
                                                   '../config/various_l1_gabor_models2.py',
                                                   '../config/ten_categories_images.py')):
     """
