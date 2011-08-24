@@ -17,7 +17,7 @@ import bson
 import zmq
 
 from starflow.protocols import protocolize, actualize
-from starflow.utils import activate
+from starflow.utils import activate, PermInverse
 from starflow.sge_utils import wait_and_get_statuses
 
 import v1like_funcs as v1f
@@ -531,7 +531,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
     
 STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
 
-def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path, write=False,parallel=False):
+def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,write=False,parallel=False,use_db=False):
                         
     model_config_gen = get_config(model_config_path)
     model_hash = get_config_string(model_config_gen['models'])
@@ -549,6 +549,8 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
     D = []
     DH = {}
+    
+      
     for extraction in extraction_config:
         extraction_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('extraction',extraction)])
         extraction_hash = get_config_string(extraction_config_gen)
@@ -569,7 +571,9 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
                                                   image_certificate,
                                                   model_certificate,
                                                   evaluation,
-                                                  ext_hash))                                                
+                                                  ext_hash,
+                                                  extraction_hash,
+                                                  use_db))                                                
             D.append(op)
             DH[ext_hash] = [op]
              
@@ -579,7 +583,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
+def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash,extraction_hash,use_db):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -595,7 +599,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
-                res = evaluate_core(split,m,task)    
+                res = evaluate_core(split,m,task,extraction_hash,use_db)    
                 put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
                 split_results.append(res)
             put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
@@ -605,7 +609,8 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash):
+def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file,
+                      model_certificate_file,task,ext_hash,extraction_hash,use_db):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
      perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
@@ -625,7 +630,7 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
             jobid = qsub(evaluate_parallel_core,
-                     (image_config_gen,m,task,ext_hash),
+                     (image_config_gen,m,task,ext_hash,extraction_hash,use_db),
                      opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
@@ -655,7 +660,7 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
         put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
 
 
-def evaluate_parallel_core(image_config_gen,m,task,ext_hash):
+def evaluate_parallel_core(image_config_gen,m,task,ext_hash,extraction_hash,use_db):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -670,11 +675,11 @@ def evaluate_parallel_core(image_config_gen,m,task,ext_hash):
     for splitconf in splitconfs:
         split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
         split_id = splitconf['split_id']
-        res = evaluate_core(split,m,task)
+        res = evaluate_core(split,m,task,extraction_hash,use_db)
         splitperf_fs = gridfs.GridFS(db,'split_performance')
         put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
         
-def evaluate_core(split,m,task):
+def evaluate_core(split,m,task,extraction_hash,use_db):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
     test_data = split['test_data']
@@ -689,10 +694,10 @@ def evaluate_core(split,m,task):
     feature_coll = db['features.files']
     feature_fs = gridfs.GridFS(db,'features')
     
-    print('train feature extraction ...')
-    train_features = sp.row_stack([load_features(f,feature_coll,feature_fs,m,task) for f in train_filenames])
-    print('test feature extraction ...')
-    test_features = sp.row_stack([load_features(f,feature_coll,feature_fs,m,task) for f in test_filenames])
+    print('train feature loading ...')
+    train_features = load_features_batch(train_filenames,feature_coll,feature_fs,m,task,extraction_hash,use_db)
+    print('test feature loading ...')
+    test_features = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction_hash,use_db)
     train_labels = split['train_labels']
     test_labels = split['test_labels']          
     
@@ -706,6 +711,24 @@ def evaluate_core(split,m,task):
     return res
     
     
+def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
+    if use_db:
+        image_filenames = np.array(image_filenames)
+        image_filenames_argsort = image_filenames.argsort()
+        curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'image_filename':{'$in':image_filenames}},fields=["features","image_filename"]).sort('image_filename')
+        features = []; image_filenames_returned = []
+        for x in curs:
+            features.append(x['feature'])
+            image_filenames_returned.append(x['image_filename'])
+        features = sp.row_stack(features)
+        image_filenames_returned = np.array(image_filenames_returned)   
+        inverse_sort = PermInverse(image_filenames_argsort)
+        assert (image_filenames == image_filenames_returned[PermInverse]).all(), 'filenames dont match'
+        return features[inverse_sort]
+    else:
+        return sp.row_stack([load_features(f,coll,fs,m,task) for f in image_filenames])
+    
+
 def load_features(image_filename,coll,fs,m,task):
 
     feat = get_from_cache((image_filename,m),FEATURE_CACHE)
