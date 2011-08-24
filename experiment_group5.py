@@ -187,6 +187,19 @@ def extract_various_l1_gabors_trans_and_inrot_percentile(depends_on=('../config/
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
 
 
+@protocolize()
+def extract_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman_extraction_percentile.py',
+                                                  '../config/ht_l1_gabor_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+
+    """
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+
+
+
+
 #######trying to simplify even further
 @Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
 def generate_reptiles_and_planes_images():
