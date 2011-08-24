@@ -195,7 +195,7 @@ def extract_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman_
 
     """
     a,b,c = depends_on
-    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=200)
 
 
 
