@@ -14,6 +14,7 @@ NUM_SPLITS = 20
 tenway_task =  SON([('N',NUM_SPLITS), 
 		  ('ntrain',NTRAIN),
 		  ('ntest',NTEST),
+                  ('universe',SON([('image.bg_id','gray.tdl')])),                 
 		  ('query',[SON([('image.model_id',SON([('$in',CAT['cars'])]))]),
                     SON([('image.model_id',SON([('$in',CAT['planes'])]))]),
                     SON([('image.model_id',SON([('$in',CAT['boats'])]))]),

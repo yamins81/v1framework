@@ -595,7 +595,9 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
         for task in task_list:  
             print('task',task)
             split_results = []
-            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+            taskc = copy.deepcopy(task)
+            taskc['universe']['model'] = m['config']['model']
+            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False) 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
@@ -712,18 +714,20 @@ def evaluate_core(split,m,task,extraction_hash,use_db):
     
     
 def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
+    image_filenames = map(str,image_filenames)
+    print(len(image_filenames),task,extraction_hash)
     if use_db:
         image_filenames = np.array(image_filenames)
         image_filenames_argsort = image_filenames.argsort()
-        curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'image_filename':{'$in':image_filenames}},fields=["features","image_filename"]).sort('image_filename')
+        curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'filename':{'$in':image_filenames.tolist()}},fields=["feature","filename"]).sort('filename')
         features = []; image_filenames_returned = []
         for x in curs:
             features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m))
-            image_filenames_returned.append(x['image_filename'])
+            image_filenames_returned.append(x['filename'])
         features = sp.row_stack(features)
         image_filenames_returned = np.array(image_filenames_returned)   
         inverse_sort = PermInverse(image_filenames_argsort)
-        assert (image_filenames == image_filenames_returned[PermInverse]).all(), 'filenames dont match'
+        assert (image_filenames == image_filenames_returned[inverse_sort]).all(), 'filenames dont match'
         return features[inverse_sort]
     else:
         return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m) for f in image_filenames])
@@ -834,8 +838,8 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
-    
 
+    print('preparing splits and performance ...')
     perf_coll = db['performance']
     perf_coll.remove({'__hash__':ext_hash})
     split_coll = db['splits.files']
@@ -845,10 +849,12 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     splitperf_fs = gridfs.GridFS(db,'split_performance')
     remove_existing(splitperf_coll,splitperf_fs,ext_hash)
 
+    print('preparing models ...')
     model_certdict = cPickle.load(open(model_certificate_file))
     model_hash = model_certdict['model_hash']
     model_coll = db['models.files']
-    
+
+    print('preparing images ...')
     image_certdict = cPickle.load(open(image_certificate_file))
     image_hash = image_certdict['image_hash']
     image_config_gen = image_certdict['args']
@@ -1504,23 +1510,24 @@ def get_extraction_configs(image_hash,task,batch):
     else:
         return coll.find(q,fields=['filename','config.image'])
         
-def generate_splits(task_config,hash,colname,overlap=None):
+def generate_splits(task_config,hash,colname,overlap=None,reachin=True):
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
     N = task_config.get('N',10)
-    base_query.update(reach_in('config',task_config.get('universe',SON([]))))
-    
+    univ = task_config.get('universe',SON([]))
+    base_query.update(reach_in('config',univ) if reachin else univ)
+
     query = task_config['query'] 
     if isinstance(query,list):
-        cqueries = [reach_in('config',q) for q in query]
+        cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
         return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
                                                ntest,universe=base_query,
                                                overlap=overlap)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
-        cquery = reach_in('config',query)
+        cquery = reach_in('config',query) if reachin else copy.deepcopy(query)
         return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,
                                          ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
                                          universe=base_query,use_negate = True,

@@ -207,7 +207,7 @@ def evaluate_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman
             
     """
     a,b,c,d = depends_on
-    protocols.evaluate_protocol(a,b,c,d,c write=True,parallel = False, use_db = True)
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
 
 
 @protocolize()
