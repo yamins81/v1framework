@@ -14,16 +14,16 @@ NUM_SPLITS = 20
 tenway_task =  SON([('N',NUM_SPLITS), 
 		  ('ntrain',NTRAIN),
 		  ('ntest',NTEST),
-		  ('query',[SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cars'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['planes'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['boats'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['guns'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['faces'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['chair'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['table'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['reptiles'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['plants'])]))]),
-                    SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cats_and_dogs'])]))])
+		  ('query',[SON([('image.model_id',SON([('$in',CAT['cars'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['planes'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['boats'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['guns'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['faces'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['chair'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['table'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['reptiles'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['plants'])]))]),
+                    SON([('image.model_id',SON([('$in',CAT['cats_and_dogs'])]))])
                    ])
 		 ]) 
 			
