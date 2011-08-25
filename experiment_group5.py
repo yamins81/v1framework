@@ -198,6 +198,17 @@ def extract_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman_
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=200)
 
 
+@protocolize()
+def evaluate_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman_percentile_tasks.py',
+                                                  '../config/renderman_extraction_percentile.py', 
+                                                  '../config/ht_l1_gabor_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d,c write=True,parallel = False, use_db = True)
+
 
 @protocolize()
 def make_top5_manylevel_renderman_models(depends_on='../config/ht_manylevel_top5_renderman_models.py'):
