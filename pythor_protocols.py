@@ -718,7 +718,7 @@ def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
         curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'image_filename':{'$in':image_filenames}},fields=["features","image_filename"]).sort('image_filename')
         features = []; image_filenames_returned = []
         for x in curs:
-            features.append(x['feature'])
+            features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m))
             image_filenames_returned.append(x['image_filename'])
         features = sp.row_stack(features)
         image_filenames_returned = np.array(image_filenames_returned)   
@@ -726,7 +726,7 @@ def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
         assert (image_filenames == image_filenames_returned[PermInverse]).all(), 'filenames dont match'
         return features[inverse_sort]
     else:
-        return sp.row_stack([load_features(f,coll,fs,m,task) for f in image_filenames])
+        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m) for f in image_filenames])
     
 
 def load_features(image_filename,coll,fs,m,task):
@@ -1626,7 +1626,16 @@ def average_transform(input,config,M):
     else:
         raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
 
-
+def feature_postprocess(vec,config,m):
+    if config:
+        if config['transform_name'] == 'subrange':
+            mx = config['to']
+            mn = config['from']
+            return vec[mn:mx]
+        else:
+            raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
+    else:
+        return vec
 
 ############ANALYSIS#############
 ############ANALYSIS#############
