@@ -227,6 +227,17 @@ def extract_top5_manylevel_renderman_percentile(depends_on=('../config/renderman
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True,save_to_db=True,batch_size=100)
 
 
+@protocolize()
+def evaluate_top5_manylevel_renderman_percentile(depends_on=('../config/renderman_percentile_tasks.py',
+                                                  '../config/renderman_extraction_percentile.py', 
+                                                  '../config/ht_manylevel_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
+
 
 
 #######trying to simplify even further
