@@ -1991,7 +1991,7 @@ def argmin2d(x):
 
 def percentile2d(x,pct):
     if x.ndim <= 2:
-        return np.array([stats.scoreatpercentile(x,pct)])
+        return np.array([stats.scoreatpercentile(x.ravel(),pct)])
     else:
         return np.array([stats.scoreatpercentile(x[:,:,i].ravel(),pct) for i in range(x.shape[2])])
 
