@@ -24,7 +24,7 @@ tenway_task =  SON([('N',NUM_SPLITS),
                     SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['reptiles'])]))]),
                     SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['plants'])]))]),
                     SON([('image.model_id',SON([('$in',mc.MODEL_CATEGORIES['cats_and_dogs'])]))])
-                   ]
+                   ])
 		 ]) 
 			
 	
