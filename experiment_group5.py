@@ -239,6 +239,18 @@ def evaluate_top5_manylevel_renderman_percentile(depends_on=('../config/renderma
     protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
 
 
+@protocolize()
+def evaluate_top5_manylevel_renderman_percentile_subtasks(depends_on=('../config/renderman_percentile_subtasks.py',
+                                                  '../config/renderman_extraction_percentile.py', 
+                                                  '../config/ht_manylevel_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
+
+
 
 #######trying to simplify even further
 @Applies(deploy.images,args=('../config/reptiles_and_planes_images.py',True))
