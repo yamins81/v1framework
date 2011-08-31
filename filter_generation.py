@@ -176,7 +176,21 @@ def get_local_filter(shape,inds,pos,rads):
     	
     return X
     	
-        
+    	
+def get_filter_size(l):
+    if l.get('filter'):
+        if l['filter']['model_name'] == 'gridded_gabor':
+            return l['filter']['norients'] * len(l['filter']['divfreqs'])
+        elif l['filter']['model_name'] in ['random_gabor','really_random']:
+            return l['filter']['num_filters']        
+    else:
+        return 1
+    
+def get_filter_sizes(config):
+    return [get_filter_size(l) for l in config]
+    
+
+
 def get_hierarchical_filterbanks(config):
 
     filterbanks = [None]

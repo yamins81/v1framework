@@ -558,9 +558,9 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
         
         for evaluation in evaluation_config:
             overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('extraction',extraction),('train_test',evaluation)])
-            ext_hash = get_config_string(overall_config_gen)    
+            evaluation_hash = get_config_string(overall_config_gen)    
             
-            performance_certificate = '../.performance_certificates/' + ext_hash
+            performance_certificate = '../.performance_certificates/' + evaluation_hash
             if not parallel:
                 func = evaluate
             else:
@@ -571,7 +571,8 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
                                                   image_certificate,
                                                   model_certificate,
                                                   evaluation,
-                                                  ext_hash,
+                                                  evaluation_hash,
+                                                  extraction,
                                                   extraction_hash,
                                                   use_db))                                                
             D.append(op)
@@ -583,13 +584,14 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
 
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
-def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_certificate_file,task,ext_hash,extraction_hash,use_db):
+def evaluate(outfile,extraction_certificate_file,image_certificate_file,
+             model_certificate_file,evaluation,evaluation_hash,extraction,extraction_hash,use_db):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
-    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
+    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(evaluation_hash,
                                                 image_certificate_file,
                                                 model_certificate_file,
-                                                task)
+                                                evaluation)
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:  
@@ -599,12 +601,12 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
             taskc['universe']['model'] = m['config']['model']
             splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False) 
             for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
+                put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
-                res = evaluate_core(split,m,task,extraction_hash,use_db)    
-                put_in_split_result(res,image_config_gen,m,task,ext_hash,ind,splitperf_fs)
+                res = evaluate_core(split,m,task,extraction,extraction_hash,use_db)    
+                put_in_split_result(res,image_config_gen,m,task,evaluation_hash,ind,splitperf_fs)
                 split_results.append(res)
-            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash)
 
         
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
@@ -612,13 +614,13 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,model_ce
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
 def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file,
-                      model_certificate_file,task,ext_hash,extraction_hash,use_db):
+                      model_certificate_file,evaluation,evaluation_hash,extraction,extraction_hash,use_db):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
-     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(ext_hash,
-                                                                                                  image_certificate_file,
-                                                                                                  model_certificate_file,
-                                                                                                  task)
+     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(evaluation_hash,
+                                                                                      image_certificate_file,
+                                                                                      model_certificate_file,
+                                                                                      evaluation)
 
     
     jobids = []
@@ -630,9 +632,9 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
             print('Evaluating model',m)
             print('On task',task)              
             for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
+                put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
             jobid = qsub(evaluate_parallel_core,
-                     (image_config_gen,m,task,ext_hash,extraction_hash,use_db),
+                     (image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,use_db),
                      opstring=opstring)
             print('Submitted job', jobid)
             jobids.append(jobid)
@@ -647,8 +649,8 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:
-            split_results = get_most_recent_files(splitperf_coll,{'__hash__':ext_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
-            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,ext_hash)
+            split_results = get_most_recent_files(splitperf_coll,{'__hash__':evaluation_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
+            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash)
 
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
 
@@ -659,17 +661,17 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
         split_id = splitconf['split_id']
         res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
         splitperf_fs = gridfs.GridFS(db,'split_performance')
-        put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+        put_in_split_result(res,image_config_gen,m,task,evaluation_hash,split_id,splitperf_fs)
 
 
-def evaluate_parallel_core(image_config_gen,m,task,ext_hash,extraction_hash,use_db):
+def evaluate_parallel_core(image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,use_db):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
 
-    splitconfs = get_most_recent_files(split_col,{'__hash__':ext_hash,
+    splitconfs = get_most_recent_files(split_col,{'__hash__':evaluation_hash,
                                                  'model':m['config']['model'],
                                                  'task':son_escape(task),
                                                  'images':son_escape(image_config_gen['images'])})
@@ -677,11 +679,11 @@ def evaluate_parallel_core(image_config_gen,m,task,ext_hash,extraction_hash,use_
     for splitconf in splitconfs:
         split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
         split_id = splitconf['split_id']
-        res = evaluate_core(split,m,task,extraction_hash,use_db)
+        res = evaluate_core(split,m,task,extraction,extraction_hash,use_db)
         splitperf_fs = gridfs.GridFS(db,'split_performance')
-        put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitperf_fs)
+        put_in_split_result(res,image_config_gen,m,task,evaluation_hash,split_id,splitperf_fs)
         
-def evaluate_core(split,m,task,extraction_hash,use_db):
+def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
     test_data = split['test_data']
@@ -697,9 +699,9 @@ def evaluate_core(split,m,task,extraction_hash,use_db):
     feature_fs = gridfs.GridFS(db,'features')
     
     print('train feature loading ...')
-    train_features = load_features_batch(train_filenames,feature_coll,feature_fs,m,task,extraction_hash,use_db)
+    train_features = load_features_batch(train_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
     print('test feature loading ...')
-    test_features = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction_hash,use_db)
+    test_features = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
     train_labels = split['train_labels']
     test_labels = split['test_labels']          
     
@@ -713,16 +715,15 @@ def evaluate_core(split,m,task,extraction_hash,use_db):
     return res
     
     
-def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
+def load_features_batch(image_filenames,coll,fs,m,task,extraction,extraction_hash,use_db):
     image_filenames = map(str,image_filenames)
-    print(len(image_filenames),task,extraction_hash)
     if use_db:
         image_filenames = np.array(image_filenames)
         image_filenames_argsort = image_filenames.argsort()
         curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'filename':{'$in':image_filenames.tolist()}},fields=["feature","filename"]).sort('filename')
         features = []; image_filenames_returned = []
         for x in curs:
-            features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m))
+            features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m,extraction))
             image_filenames_returned.append(x['filename'])
         features = sp.row_stack(features)
         image_filenames_returned = np.array(image_filenames_returned)   
@@ -730,7 +731,7 @@ def load_features_batch(image_filenames,coll,fs,m,task,extraction_hash,use_db):
         assert (image_filenames == image_filenames_returned[inverse_sort]).all(), 'filenames dont match'
         return features[inverse_sort]
     else:
-        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m) for f in image_filenames])
+        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m,extraction) for f in image_filenames])
     
 
 def load_features(image_filename,coll,fs,m,task):
@@ -853,12 +854,18 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     model_certdict = cPickle.load(open(model_certificate_file))
     model_hash = model_certdict['model_hash']
     model_coll = db['models.files']
+    mquery = {'__hash__' : model_hash}
+    model_query = task.get('model_query')
+    if model_query: 
+        mquery.update(reach_in('config',model_query))
+    model_configs = get_most_recent_files(model_coll,mquery)
 
     print('preparing images ...')
     image_certdict = cPickle.load(open(image_certificate_file))
     image_hash = image_certdict['image_hash']
     image_config_gen = image_certdict['args']
-    model_configs = get_most_recent_files(model_coll,{'__hash__' : model_hash})
+    
+    
     
     if isinstance(task,list):
         task_list = task
@@ -1633,12 +1640,39 @@ def average_transform(input,config,M):
     else:
         raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
 
-def feature_postprocess(vec,config,m):
+def feature_postprocess(vec,config,m,extraction):
     if config:
-        if config['transform_name'] == 'subrange':
-            mx = config['to']
-            mn = config['from']
-            return vec[mn:mx]
+        if config['transform_name'] == 'subranges':
+            assert extraction['transform_average']['transform_name'] == 'translation'
+            filter_sizes = [1] + filter_generation.get_filter_sizes(m['config']['model']['layers'])
+            num_layers = 1 + len(m['config']['model']['layers'])
+            assert len(filter_sizes) == num_layers
+            num_percts = len(extraction['transform_average'].get('percentile',[100]))
+            layers = config['transform_name'].get('layers')
+            if layers is None: layers = range(num_layers+1)
+            percts = config['transform_name'].get('percts')
+            if percts is None: percts = range(num_percts)
+            
+            if m['config']['model']['feedup']:
+                assert len(vec) == sum([f*num_percts for f in filter_sizes])            
+            else:
+                assert len(vec) == filter_sizes[-1]*num_percts
+            
+            vec1 = vec[0:0]
+            for l in layers:
+                if m['config']['model']['feedup']:
+                    ind0 = sum([num_percts*f0 for f0 in filter_sizes[:l+1]])
+                else:
+                    ind0 = 0
+                f = filter_sizes[l+1]
+                for p in pcts:
+                    vec1 = np.append(vec1,vec[ind0+f*p:ind0+f*(p+1)])
+            
+            assert len(vec1) == sum([filter_sizes[l+1]*len(pcts) for l in layers])
+             
+            return vec1
+      
+
         else:
             raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
     else:
