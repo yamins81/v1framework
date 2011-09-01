@@ -41,25 +41,8 @@ reptile_plane_task =  SON([('N',NUM_SPLITS),
 		 ])
 		 
 base_tasks = [(tenway_task,'tenway'),(reptile_plane_task,'reptile/plane')]
-			
-trans_q = SON([('image.ty',SON([('$exists',True)])),
-               ('image.tz',SON([('$exists',True)])),
-               ('image.tx',SON([('$exists',False)])),
-               ('image.s',SON([('$exists',False)])),
-               ('image.rxy',SON([('$exists',False)])),
-               ('image.rxz',SON([('$exists',False)])),
-               ('image.ryz',SON([('$exists',False)])),
-              ])
-inrot_q = SON([('image.ty',SON([('$exists',False)])),
-               ('image.tz',SON([('$exists',False)])),
-               ('image.tx',SON([('$exists',False)])),
-               ('image.s',SON([('$exists',False)])),
-               ('image.rxy',SON([('$exists',False)])),
-               ('image.rxz',SON([('$exists',False)])),
-               ('image.ryz',SON([('$exists',True)])),
-              ])
-              
-invars = [(None,''),(trans_q,'trans'),(inrot_q,'inrot')]
+			              
+invars = [(None,'')]
 
 layers = [(None,''),([-1,0,1],'upto layer 1'),([-1,0,1,2],'upto layer 2')]
 pcts = [(None,''),([1],'pct 1'),([2],'pct 2'),([3],'pct 3'),([2,3],'pct 2 & 3')]

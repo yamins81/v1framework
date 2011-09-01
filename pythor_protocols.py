@@ -1655,7 +1655,7 @@ def feature_postprocess(vec,config,m,extraction):
             if feedup:
                 assert len(vec) == sum([f*num_percts for f in filter_sizes.values()])            
             else:
-                assert len(vec) == filter_sizes[num_layers]*num_percts
+                assert len(vec) == filter_sizes[num_layers-1]*num_percts
 
             vec1 = vec[0:0]
             for l in layers:
