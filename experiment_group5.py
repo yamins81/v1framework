@@ -209,6 +209,17 @@ def evaluate_top5_l1_gabor_renderman_percentile(depends_on=('../config/renderman
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
 
+@protocolize()
+def evaluate_top5_l1_gabor_renderman_percentile_subtasks_more_examples(depends_on=('../config/renderman_percentile_subtasks_more_examples_2.py',
+                                                  '../config/renderman_extraction_percentile.py', 
+                                                  '../config/ht_l1_gabor_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
+
 
 @protocolize()
 def make_top5_manylevel_renderman_models(depends_on='../config/ht_manylevel_top5_renderman_models.py'):
@@ -241,6 +252,17 @@ def evaluate_top5_manylevel_renderman_percentile(depends_on=('../config/renderma
 
 @protocolize()
 def evaluate_top5_manylevel_renderman_percentile_subtasks(depends_on=('../config/renderman_percentile_subtasks.py',
+                                                  '../config/renderman_extraction_percentile.py', 
+                                                  '../config/ht_manylevel_top5_renderman_models.py',
+                                                  '../config/ten_categories_images.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel = False, use_db = True)
+
+@protocolize()
+def evaluate_top5_manylevel_renderman_percentile_subtasks_more_examples(depends_on=('../config/renderman_percentile_subtasks_more_examples.py',
                                                   '../config/renderman_extraction_percentile.py', 
                                                   '../config/ht_manylevel_top5_renderman_models.py',
                                                   '../config/ten_categories_images.py')):
