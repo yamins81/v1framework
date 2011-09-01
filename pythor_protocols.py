@@ -566,7 +566,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
             else:
                 func = evaluate_parallel
                                                     
-            op = ('evaluation_' + ext_hash,func, (performance_certificate,
+            op = ('evaluation_' + evaluation_hash,func, (performance_certificate,
                                                   extraction_certificate, 
                                                   image_certificate,
                                                   model_certificate,
@@ -576,7 +576,7 @@ def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config
                                                   extraction_hash,
                                                   use_db))                                                
             D.append(op)
-            DH[ext_hash] = [op]
+            DH[evaluation_hash] = [op]
              
     if write:
         actualize(D)
@@ -855,9 +855,6 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     model_hash = model_certdict['model_hash']
     model_coll = db['models.files']
     mquery = {'__hash__' : model_hash}
-    model_query = task.get('model_query')
-    if model_query: 
-        mquery.update(reach_in('config',model_query))
     model_configs = get_most_recent_files(model_coll,mquery)
 
     print('preparing images ...')
@@ -1644,31 +1641,33 @@ def feature_postprocess(vec,config,m,extraction):
     if config:
         if config['transform_name'] == 'subranges':
             assert extraction['transform_average']['transform_name'] == 'translation'
-            filter_sizes = [1] + filter_generation.get_filter_sizes(m['config']['model']['layers'])
-            num_layers = 1 + len(m['config']['model']['layers'])
-            assert len(filter_sizes) == num_layers
+            num_layers = len(m['config']['model']['layers'])
+            filter_sizes = filter_generation.get_filter_sizes(m['config']['model']['layers'])
+            filter_sizes = dict(zip(range(num_layers),filter_sizes))
+            filter_sizes[-1] = 1
             num_percts = len(extraction['transform_average'].get('percentile',[100]))
-            layers = config['transform_name'].get('layers')
-            if layers is None: layers = range(num_layers+1)
-            percts = config['transform_name'].get('percts')
+            layers = config.get('layers')
+            if layers is None: layers = range(-1,num_layers)
+            percts = config.get('percts')
             if percts is None: percts = range(num_percts)
-            
-            if m['config']['model']['feedup']:
-                assert len(vec) == sum([f*num_percts for f in filter_sizes])            
+
+            feedup = m['config']['model'].get('feed_up',False)
+            if feedup:
+                assert len(vec) == sum([f*num_percts for f in filter_sizes.values()])            
             else:
-                assert len(vec) == filter_sizes[-1]*num_percts
-            
+                assert len(vec) == filter_sizes[num_layers]*num_percts
+
             vec1 = vec[0:0]
             for l in layers:
-                if m['config']['model']['feedup']:
-                    ind0 = sum([num_percts*f0 for f0 in filter_sizes[:l+1]])
+                if feedup:
+                    ind0 = sum([num_percts*filter_sizes[f0] for f0 in filter_sizes if f0 < l])
                 else:
                     ind0 = 0
-                f = filter_sizes[l+1]
-                for p in pcts:
+                f = filter_sizes[l]
+                for p in percts:
                     vec1 = np.append(vec1,vec[ind0+f*p:ind0+f*(p+1)])
             
-            assert len(vec1) == sum([filter_sizes[l+1]*len(pcts) for l in layers])
+            assert len(vec1) == sum([filter_sizes[l]*len(percts) for l in layers])
              
             return vec1
       

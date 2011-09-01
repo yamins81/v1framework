@@ -8,7 +8,7 @@ from config.helpers import uset, mixup
     
 NTRAIN = 30
 NTEST = 15
-NUM_SPLITS = 20               
+NUM_SPLITS = 30               
 
 import pymongo as pm
 import numpy as np
@@ -62,8 +62,8 @@ inrot_q = SON([('image.ty',SON([('$exists',False)])),
 invars = [(None,''),(trans_q,'trans'),(inrot_q,'inrot')]
 
 layers = [(None,''),([-1,0,1],'upto layer 1'),([-1,0,1,2],'upto layer 2')]
-pcts = [(None,''),([1],'pct 1'),([2],'pct 2'),([2,3],'pct 2 & 3')]
-subranges = [SON([('layers',l),('percts',p)]) for l in layers for p in pcts]
+pcts = [(None,''),([1],'pct 1'),([2],'pct 2'),([3],'pct 3'),([2,3],'pct 2 & 3')]
+subranges = [(SON([('layers',l[0]),('percts',p[0])]),(l[1] + ' ' + p[1]).strip()) for l in layers for p in pcts]
             
 prod = itertools.product(base_tasks,invars,subranges)
 	
@@ -81,7 +81,7 @@ for (t,inv,sr) in prod:
     task_set.append(task)
 
 config = {
-'train_test' : task_set
+'train_test' : [task_set]
 }
 
 
