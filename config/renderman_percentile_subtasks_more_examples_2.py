@@ -81,7 +81,7 @@ for (t,inv,sr) in prod:
     task_set.append(task)
 
 config = {
-'train_test' : task_set
+'train_test' : [task_set]
 }
 
 
