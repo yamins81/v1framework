@@ -1154,6 +1154,11 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
     return DH
     
 
+#################DETECT_AND_EVALUATE###########
+#################DETECT_AND_EVALUATE###########
+#################DETECT_AND_EVALUATE###########
+#################DETECT_AND_EVALUATE###########
+#################DETECT_AND_EVALUATE###########
 
 #################NATURAL STATISTICS###########
 #################NATURAL STATISTICS###########
