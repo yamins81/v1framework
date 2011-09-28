@@ -12,6 +12,8 @@ import renderer
 
 from bson import SON
 
+from darpa import darpa_random_config_gen,darpa_render
+
 BASE_URL = 'http://50.19.109.25'
 MODEL_URL = BASE_URL + ':9999/3dmodels?'
 BG_URL =  BASE_URL + ':9999/backgrounds?'
@@ -70,66 +72,13 @@ def random_config_gen(IC,config):
     elif config['generator'] == 'renderman':
         return renderman_random_config_gen(config)
     elif config['generator'] == 'darpa':
-        retun darpa_random_config_gen(IC,config)
+        return darpa_random_config_gen(IC,config)
         
 def gridded_config_gen(IC,config):
     if config['generator'] == 'cairo':
         return cairo_config_gen(config)   
     elif config['generator'] == 'renderman':
         return renderman_config_gen(config)
-
-def darpa_image_path(t):
-    return t['clip_num'] + '_' + str(t['Frame']) + '.jpg'
-
-def darpa_random_config_gen(IC,args):
-    IC.render_frame = None
-    IC.base_dir = args['base_dir']
-    mdp = os.path.join(IC.base_dir,'__metadata__.csv')
-    IC.metadata = X = tb.tabarray(SVfile = mdp)
-    IC.num_images = args['num_images']
-    IC.size = args['size']
-    T = np.unique(X[['clip_num','Frame']])
-    im_stuff = {}
-    params = []
-    for i in range(IC.num_images):
-        ind = np.random.randint(len(T))
-        t = T[ind]
-        clip_num = t['clip_num']
-        frame = t['Frame']
-        p = darpa_image_path(t)
-        if p not in im_sizes:
-            path = os.path.join(IC.base_dir,darpa_image_path(t))
-            Im = Image.open(path)
-            all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
-            im_stuff[p] = {'size':Im.size,'boxes':all_boxes}
-        box = choose_random_darpa_box(im_stuff[p]['size'],size)
-        intersects_with = get_darpa_intersection(box,im_stuff[p]['boxes'])
-        for iw in intersects_with:
-             b = iw.pop('box')
-             iw['bounding_box'] = SON([('xfields',b.xs),('yfields',b.ys)])
-        p = SON([('size',size),
-                 ('bounding_box',SON([('xfields',box.xs),('yfields',box.ys)])),
-                 ('intersects_with',intersects_with),
-                 ('clip_num',clip_num),
-                 ('frame',frame),
-                 ('base_dir',base_dir)])
-        p = SON([('image',p)])
-        params.append(p)
-    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['frame']) for p in params])
-    js_ag = js.argsort()
-    params = [params[ind] for ind in js_ag]
-    return params
-
-def darpa_render(IC,config):
-    path = os.path.join(IC.base_dir,darpa_image_path(config))
-    if IC.render_frame != path:
-        IC.render_frame = path
-        IC.render_image = Image.open(path)
-    xf = config['bounding_box']['xfields']
-    ys = config['bounding_box']['yfields']
-    box = (xs[0],ys[0],xs[1],ys[1])
-    im = Image.crop(IC.render_image,box)
-    return im.tostring()
 
 def renderman_config_gen(args):
     ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
