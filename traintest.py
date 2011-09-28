@@ -304,7 +304,8 @@ def generate_multi_split(dbname,collectionname,queries,ntrain,ntest,ntrain_pos =
 
  
 def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
-                          ntest, universe=None, labels=None, overlap=None):
+                          ntest, universe=None, labels=None, overlap=None,
+                          balance = None):
 
     nq = len(task_queries)
     if labels is None:
@@ -325,9 +326,18 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
         combine_things(task_query,universe)
     
     task_data = [list(data.find(task_query,fields=["filename"])) for task_query in task_queries]
+
+    floor = math.floor
     
-    ntrain_vec = [ntrain/nq]*(nq - 1) + [ntrain - (ntrain/nq)*(nq-1)]
-    ntest_vec = [ntest/nq]*(nq - 1) + [ntest - (ntest/nq)*(nq-1)]
+    if balance is None:
+        ntrain_vec = [ntrain/nq]*(nq - 1) + [ntrain - (ntrain/nq)*(nq-1)]
+        ntest_vec = [ntest/nq]*(nq - 1) + [ntest - (ntest/nq)*(nq-1)]
+    else:
+        assert len(balance) = nq - 1
+        ntrain_vec = [int(floor(ntrain*b)) for b in balance]
+        ntrain_vec = ntrain_vec + [ntrain - sum(ntrain_vec)]
+        ntest_vec = [int(floor(ntest*b)) for b in balance]
+        ntest_vec = ntest_vec + [ntest - sum(ntest_vec)]
     
     for (tq,td,ntr,nte) in zip(task_queries,task_data,ntrain_vec,ntest_vec):
         assert ntr + nte <= len(td), 'not enough examples to train/test for %s, %d needed, but only have %d' % (repr(tq),ntr+nte,len(td))

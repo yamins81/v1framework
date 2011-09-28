@@ -12,7 +12,7 @@ import renderer
 
 from bson import SON
 
-from darpa import darpa_random_config_gen,darpa_render
+import darpa
 
 BASE_URL = 'http://50.19.109.25'
 MODEL_URL = BASE_URL + ':9999/3dmodels?'
@@ -25,7 +25,7 @@ def render_image(IC,config,returnfh=False):
     elif generator == 'cairo':
         return cairo_render(config,returnfh=returnfh)
     elif generator == 'darpa':
-        return darpa_render(IC,config)
+        return darpa.darpa_render(IC,config)
     else:
         raise ValueError, 'image generator not recognized'
 
@@ -33,8 +33,8 @@ class ImageConfigs(object):
     def __init__(self,config_gen_spec):
         self.configs = config_gen(self,config_gen_spec)
     
-    def render_image(self,config,return_fh = False):
-        render_image(self,config,return_fh = return_fh)
+    def render_image(self,config,returnfh = False):
+        return render_image(self,config,returnfh = returnfh)
          
 def config_gen(IC,config):
     if not isinstance(config['images'],list):
@@ -60,7 +60,7 @@ def config_gen(IC,config):
         for np in newparams:
             np['image']['generator'] = I['generator']
         params.extend(newparams)
-    return ImageConfigs(params)
+    return params
         
 def specific_config_gen(IC,config):
     images = config['specs']
@@ -72,7 +72,7 @@ def random_config_gen(IC,config):
     elif config['generator'] == 'renderman':
         return renderman_random_config_gen(config)
     elif config['generator'] == 'darpa':
-        return darpa_random_config_gen(IC,config)
+        return darpa.darpa_random_config_gen(IC,config)
         
 def gridded_config_gen(IC,config):
     if config['generator'] == 'cairo':

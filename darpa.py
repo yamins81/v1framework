@@ -1,4 +1,5 @@
 import os
+import copy
 import numpy as np
 import scipy as sp
 import Image
@@ -6,16 +7,20 @@ import ImageOps
 import tabular as tb
 import pythor3.wildwest.bbox as bbox
 
+from bson import SON
+
 xfields = ['BoundingBox_X1', 'BoundingBox_X2',  'BoundingBox_X3','BoundingBox_X4']
 yfields = ['BoundingBox_Y1', 'BoundingBox_Y2',  'BoundingBox_Y3','BoundingBox_Y4']
 otherfields = ['ObjectType','Occlusion','Ambiguous','Confidence']
 
+def uniqify(X):
+    return [x for (i,x) in enumerate(X) if x not in X[:i]]
 
 def darpa_image_path(t):
     return t['clip_num'] + '_' + str(t['Frame']) + '.jpg'
 
 def darpa_random_config_gen(IC,args):
-    IC.render_frame = None
+    IC.current_frame_path = None
     IC.base_dir = args['base_dir']
     mdp = os.path.join(IC.base_dir,'__metadata__.csv')
     IC.metadata = X = tb.tabarray(SVfile = mdp)
@@ -25,44 +30,102 @@ def darpa_random_config_gen(IC,args):
     im_stuff = {}
     params = []
     for i in range(IC.num_images):
+        print('At image', i)
         ind = np.random.randint(len(T))
         t = T[ind]
         clip_num = t['clip_num']
         frame = t['Frame']
         p = darpa_image_path(t)
-        if p not in im_sizes:
-            path = os.path.join(IC.base_dir,darpa_image_path(t))
-            Im = Image.open(path)
-            all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
-            im_stuff[p] = {'size':Im.size,'boxes':all_boxes}
-        box = choose_random_darpa_box(im_stuff[p]['size'],size)
+        add_im_stuff(im_stuff,IC,p,t)
+        box = choose_random_darpa_box(im_stuff[p]['size'],IC.size)
         intersects_with = get_darpa_intersection(box,im_stuff[p]['boxes'])
-        for iw in intersects_with:
+        for (iwind,iw) in enumerate(intersects_with):
+             iw = copy.deepcopy(iw)
              b = iw.pop('box')
              iw['bounding_box'] = SON([('xfields',b.xs),('yfields',b.ys)])
-        p = SON([('size',size),
+             intersects_with[iwind] = iw
+        label = uniqify([iw['ObjectType'] for iw in intersects_with])
+        label.sort()
+        p = SON([('size',IC.size),         
                  ('bounding_box',SON([('xfields',box.xs),('yfields',box.ys)])),
                  ('intersects_with',intersects_with),
+                 ('ObjectType',label),
                  ('clip_num',clip_num),
-                 ('frame',frame),
-                 ('base_dir',base_dir)])
+                 ('Frame',frame),
+                 ('base_dir',IC.base_dir)])
         p = SON([('image',p)])
         params.append(p)
-    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['frame']) for p in params])
+
+    if args.get('enrich_positives',False):
+        for x in X:
+            p = darpa_image_path(x)
+            print(p)
+            add_im_stuff(im_stuff,IC,p,x,get_boxes=False)
+            box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
+                                   ys = [x[yf] for yf in yfields])
+            xc,yc = box.center
+            center = correct_center((xc,yc),IC.size,im_stuff[p]['size'])
+            box = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
+            label = x['ObjectType']
+            p = SON([('size',IC.size),
+                     ('bounding_box',SON([('xfields',box.xs),('yfields',box.ys)])),
+                     ('ObjectType',label),
+                     ('clip_num',x['clip_num']),
+                     ('Frame',x['Frame']),
+                     ('base_dir',IC.base_dir),
+                     ('enriched',True)])
+            params.append(SON([('image',p)]))
+            
+    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['Frame']) for p in params])
     js_ag = js.argsort()
     params = [params[ind] for ind in js_ag]
     return params
 
+def correct_center(center,shp,size):
+    (xc,yc) = center
+    xc,yc = (int(round(xc)),int(round(yc)))
+    (w,h) = shp
+    width,height = size
+    w0 = w/2 ; w1 = w - w0
+    h0 = h/2 ; h1 = h - h0
+
+    dx = max(0,w0-xc) + min(width - xc-w1,0)
+    dy = max(0,h0-yc) + min(height - yc-h1,0)
+
+    xc = xc + dx
+    yc = yc + dy
+
+    return xc,yc
+    
+
+def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
+    clip_num = t['clip_num']
+    frame = t['Frame']
+    if p not in im_stuff:
+        path = os.path.join(IC.base_dir,darpa_image_path(t))
+        Im = Image.open(path)
+        if get_boxes:
+            all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
+            im_stuff[p] = {'size':Im.size,'boxes':all_boxes}
+        else:
+            im_stuff[p] = {'size':Im.size}
+
+import StringIO
+
 def darpa_render(IC,config):
     path = os.path.join(IC.base_dir,darpa_image_path(config))
-    if IC.render_frame != path:
-        IC.render_frame = path
-        IC.render_image = Image.open(path)
-    xf = config['bounding_box']['xfields']
+    if IC.current_frame_path != path:
+        IC.current_frame_path = path
+        IC.current_frame = Image.open(path)
+    xs = config['bounding_box']['xfields']
     ys = config['bounding_box']['yfields']
-    box = (xs[0],ys[0],xs[1],ys[1])
-    im = Image.crop(IC.render_image,box)
-    return im.tostring()
+    box = (xs[0],ys[0],xs[2],ys[1])
+    im = IC.current_frame.crop(box)
+
+    f = StringIO.StringIO()
+    im.save(f, "JPEG")
+    data = f.getvalue()
+    return data
 
 def choose_random_darpa_box(im_size,size):
     assert im_size[0] >= size[0]
@@ -71,6 +134,7 @@ def choose_random_darpa_box(im_size,size):
     sy = np.random.randint(im_size[1]-size[1])
     box = bbox.BoundingBox(xs = (sx,sx+size[0],sx+size[0],sx),
                            ys = (sy,sy,sy+size[1],sy+size[1]))
+
     return box
 
 def get_all_darpa_boxes(X,cn,fr):
@@ -78,8 +142,7 @@ def get_all_darpa_boxes(X,cn,fr):
     boxes = []
     for x in X:
         box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
-                         ys = [y[yf] for yf in yrields])
-        otype = x['ObjectType']
+                               ys = [x[yf] for yf in yfields])
         obj = SON([('box',box)] + [(of,x[of]) for of in otherfields])
         boxes.append(obj)
     return boxes
@@ -87,15 +150,13 @@ def get_all_darpa_boxes(X,cn,fr):
 def get_darpa_intersection(box,boxes):
     intersects_with = []
     for box2 in boxes:
-        box2 = box2['box']
-        a = box2 & box2
-        ai = box1 & box2
+        box2r = box2['box']
+        a = box2r & box2r
+        ai = box & box2r
         if ai >= .2*a:
             intersects_with.append(box2)
     return intersects_with
         
-        
-
 
 def get_random_empty_bbox(metadata,sizes,imagedir):
     try_num = 0

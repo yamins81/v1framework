@@ -599,7 +599,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,
             split_results = []
             taskc = copy.deepcopy(task)
             taskc['universe']['model'] = m['config']['model']
-            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False) 
+            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
@@ -627,7 +627,7 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
     opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
     
     for task in task_list:
-        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
         for m in model_configs: 
             print('Evaluating model',m)
             print('On task',task)              
@@ -946,7 +946,7 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
         for task in task_list:  
             print('task',task)
             split_results = []
-            splits = generate_splits(task,image_hash,'images') 
+            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
@@ -1001,7 +1001,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
         print('Evaluating model',m)
         for task in task_list:
             print('task',task)
-            splits = generate_splits(task,image_hash,'images') 
+            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
@@ -1065,7 +1065,7 @@ def extract_and_evaluate_semi_parallel(outfile,image_certificate_file,model_cert
         opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
     
     for task in task_list:
-        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap')) 
+        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
         for m in model_configs: 
             print('Evaluating model',m)
             print('On task',task)              
@@ -1519,7 +1519,7 @@ def get_extraction_configs(image_hash,task,batch):
     else:
         return coll.find(q,fields=['filename','config.image'])
         
-def generate_splits(task_config,hash,colname,overlap=None,reachin=True):
+def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=None):
     base_query = SON([('__hash__',hash)])
     ntrain = task_config['ntrain']
     ntest = task_config['ntest']
@@ -1532,7 +1532,7 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True):
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
         return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
                                                ntest,universe=base_query,
-                                               overlap=overlap)
+                                               overlap=overlap, balance=balance)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
