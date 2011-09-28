@@ -95,13 +95,13 @@ def generate_images(outfile,im_hash,config_gen):
     
     remove_existing(im_coll,im_fs,im_hash)
     
-    X = rendering.config_gen(config_gen)
+    IC = rendering.ImageConfigs(config_gen)
         
-    for (i,x) in enumerate(X):
+    for (i,x) in enumerate(X.configs):
         if (i/100)*100 == i:
             print(i,x)       
         if x['generator'] != 'dataset_api':
-            image_string = rendering.render_image(x['image']) 
+            image_string = IC.render_image(x['image']) 
         else:
             image_string = open(x['image'].pop('img_fullpath')).read()
         y = SON([('config',x)])
