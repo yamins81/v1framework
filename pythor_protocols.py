@@ -1806,25 +1806,66 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
         
         array_dict = {}
         for (ind,(filter,layer)) in enumerate(zip(filters,layers)):
-            if feed_up:
-                array_dict[ind-1] = array
-        
-            if filter is not None:
-                array = fbcorr(array, filter, layer , convolve_func)
+ 
+	        if feed_up:
+		        array_dict[ind-1] = array       
+		        
+            if isinstance(layer,list):
+                arrays = [compute_layer(array,filter,l,convolve_func,conv_mode) for l in layer]
+                array = harmonize_arrays(arrays,model_config)
+            else:
+                array = compute_layer(array,filter,layer,convolve_func,conv_mode)
             
-            if layer.get('lpool'):
-                array = lpool(array,conv_mode,layer['lpool'])
-
-            if layer.get('lnorm'):
-                if layer['lnorm'].get('use_old',False):
-                    array = old_norm(array,conv_mode,layer['lnorm'])
-                else:
-                    array = lnorm(array,conv_mode,layer['lnorm'])
-
         array_dict[len(layers)-1] = array
             
         return array_dict
 
+def compute_layer(array,filter,layer,convolve_func,conv_mode):	
+
+    if layer.get('scales'):
+        arrays = [compute_inner_layer(resample(array,scale,layer),filter,layer,convolve_func,conv_mode) for scale in scales]
+        array = harmonize_arrays(arrays,l)
+    else:
+        return compute_inner_layer(array,filter,layer,convolve_func,conv_mode)
+
+def compute_inner_layer(array,filter,layer,convolve_func,conv_mode):
+	if filter is not None:
+		array = fbcorr(array, filter, layer , convolve_func)
+	
+	if layer.get('lpool'):
+		array = lpool(array,conv_mode,layer['lpool'])
+
+	if layer.get('lnorm'):
+		if layer['lnorm'].get('use_old',False):
+			array = old_norm(array,conv_mode,layer['lnorm'])
+		else:
+			array = lnorm(array,conv_mode,layer['lnorm'])
+			
+	return array
+	
+import numpy as np
+
+def fix_1ds(array):
+    if array.ndim > 2:
+        return array
+    else:
+        return array.reshape(array.shape + (1,))
+    
+def resample(array,scale,config):
+    sh = array.shape
+    new_sh = (int(round(sh[0])),int(round(sh[1]))) + sh[2:]
+    return np.resize(array,new_sh)
+    
+def harmonize_arrays(arrays,config):
+    arrays = [fix_1d(array) for array in arrays]
+    sizes = [array.shape for array in in arrays]
+    max0 = max([s[0] for s in sizes])
+    max1 = max([s[1] for s in sizes])
+    new_sh = (max0,max1)
+    arrays = [np.resize(array,new_sh) if new_sh != array.shape else array for array in arrays]
+    return np.concatenate(arrays,axis=2)
+
+    
 def multiply(x,s1,s2,all=False,max=False,ravel=False):
     
     if ravel:
