@@ -1944,11 +1944,12 @@ def old_norm(input,conv_mode,params):
 def lpool(input,conv_mode,config):
     pooled = {}
     for cidx in input.keys():
-        pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)
+        if hasattr(config.get('order'),'__iter__')
+            pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='numpy_naive',**config) 
+        else:           
+            pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)
     return pooled
 
-        
- 
 def lnorm(input,conv_mode,config):
     normed = {}
     if 'inker_shape' in config: 
@@ -1956,7 +1957,10 @@ def lnorm(input,conv_mode,config):
     if 'outker_shape' in config:
         config['outker_shape'] = tuple(config['outker_shape'])
     for cidx in input.keys():
-        normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='cthor',**config)
+        if hasattr(config.get('threshold'),'__iter__') or hasattr(config.get('stretch'),'__iter__'):
+            normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='numpy_naive',**config)    
+        else:
+            normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='cthor',**config)
     return normed
 
 def c_numpy_mixed(arr_in, arr_fb, arr_out=None,
