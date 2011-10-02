@@ -262,6 +262,100 @@ def get_mb(l):
         
     return m,b
             
-
+            
+def get_num_filters(rule,layer_num,num_filters_l1):
+    if rule == 'shallow':
+        stride = 1
+    elif rule == 'medium':
+        stride = layer_num % 2
+    else:
+        stride = 2
+        
+    if layer_num == 1:
+        num_filters = num_filters_l1
+    elif rule == 'shallow':
+        num_filters = num_filters_l1
+    elif rule == 'medium':
+        num_filters = num_filters_l1*(2**((layer_num-1)/2))
+    elif rule == 'deep':
+        num_filters =  num_filters_l1*(2**(layer_num-1))
     
+    return num_filters,stride
+
+def generate_random_model(config):
+    model = SON([
+        ('color_space','gray'),
+        ('conv_mode','same'),
+        ('feed_up',True),
+        ('preproc', SON([
+            ('max_edge' , None),
+            ('lsum_ksize' , None),
+            ('resize_method',None),
+            ('whiten', False)
+        ])),  
+        ])
+
+    norm_shape = one_of([[3,3],[5,5],[7,7],[9,9]])
+    level_0 = SON([('lnorm', SON([
+                    ('inker_shape' , norm_shape),
+                    ('outker_shape', norm_shape),
+                    ('threshold' , 1.0),
+                    ('stretch',1)
+                    ]))])
+                    
+    num_filters_l1 = one_of([32,64,96])         
+    filter_shape = one_of(range(5,18,2))
+    filter_shape = [filter_shape,filter_shape]
+    pool_shape = one_of(range(5,10,2))
+    pool_shape = (pool_shape,pool_shape)                                    
+    num_layers = one_of([1,2,3,4,5,6])
+    layer_scale_rule = one_of(['deep','medium','shallow'])
+    min_out_mean = one_of([-.3,-.2,-.1,0,.1,.2])
+    min_out_range = one_of([0,.05,.1,.2])
+    min_out_min = min_out_mean - min_out_range
+    min_out_max = min_out_mean + min_out_range
+    max_out_mean = one_of([.8,1,1.2])
+    max_out_range = one_of([0,.05,.1,.2])
+    max_out_min = max_out_mean - max_out_range
+    max_out_max = max_out_mean + max_out_range
+    pool_orders = one_of([[1],[2],[10],[1,2,10]])
+    
+    layers = [level_0]
+    for layer_num in range(1,num_layers+1):
+        layer = SON([])
+        
+        num_filters,pool_stride = get_num_filters(layer_scale_rule,layer_num,num_filters_l1)
+        
+        filter_config = SON([('num_filters',num_filters),
+                             ('ker_shape',filter_shape),
+                             ('model_name','really_random')])
+        layer['filter'] = filter_config
+        
+        activ_config = SON([('min_out_gen','random'),
+                       ('min_out_min',min_out_min),
+                       ('min_out_max',min_out_max),
+                       ('max_out_gen','random'),
+                       ('max_out_min',max_out_min),
+                       ('max_out_max',max_out_max)])
+        layer['activ'] = activ_config
+            
+        lpool = SON([('stride',stride),
+                    ('order_gen','random'),
+                    ('order_choices',pool_orders),
+                    ('ker_shape',pool_shape)])
+        layer['lpool'] = lpool
+
+        layers.append(layer)
+        
+    
+    layers[1]['filter']['model_name'] = 'random_gabor'
+    layers[1]['filter']['min_wavelength'] = 2
+    layers[1]['filter']['max_wavelength'] = filter_shape[0]
+    
+    model['layers'] = layers
+
+    model['scales'] = one_of([None,[1,.5],[1,.25],[1,.5,.25]])
+    
+    return model
+
                 

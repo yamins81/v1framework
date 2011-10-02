@@ -24,7 +24,7 @@ import v1like_funcs as v1f
 import traintest
 import svm
 import rendering
-import filter_generation
+import model_generation
 import starflow.de as de
 from starflow.utils import ListUnion, uniqify
 from processing import image2array, preprocess, postprocess
@@ -156,17 +156,13 @@ def generate_images_parallel(outfile,im_hash,config_gen):
 #################MODELS#############
 #################MODELS#############
 #################MODELS#############
-
+    
 def model_protocol_hash(config_path):
     config = get_config(config_path)
     model_hash = get_config_string(config['models'])
     return model_hash
  
-   
-def model_config_generator(config): 
-    models = config['models']
-    return [SON([('model',m)]) for m in models]   
-    
+ 
 def model_protocol(config_path,write = False,parallel=False):
 
     config = get_config(config_path)
@@ -179,24 +175,6 @@ def model_protocol(config_path,write = False,parallel=False):
         actualize(D)
     return D,model_hash
 
-def get_model(m):
-    filterbanks = filter_generation.get_hierarchical_filterbanks(m['layers']) 
-    for (layer,filterbank) in zip(m['layers'],filterbanks):
-        if layer.get('activ'):
-            if layer['activ'].get('min_out_gen') == 'random':
-                minmax = layer['activ']['min_out_max']
-                minmin = layer['activ']['min_out_min']
-                layer['activ']['min_out'] = list((minmax-minmin)*np.random.random(size=filterbank.shape[0]) + minmin)
-            if layer['activ'].get('max_out_gen') == 'random':
-                maxmax = layer['activ']['max_out_max']
-                maxmin = layer['activ']['max_out_min']
-                layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
-            if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
-                layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
-            if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
-                layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
-                        
-    return filterbanks
 
 @activate(lambda x : (), lambda x : x[0])    
 def generate_models(outfile,m_hash,config_gen):
@@ -208,13 +186,13 @@ def generate_models(outfile,m_hash,config_gen):
     
     remove_existing(m_coll,m_fs,m_hash)
     
-    M = model_config_generator(config_gen)       
+    M = model_generation.model_config_generator(config_gen)       
     
     for (i,m) in enumerate(M):
         if isinstance(m['model'],list):
-            filterbanks = [get_model(model) for model in m['model']]
+            filterbanks = [model_generation.get_model(model) for model in m['model']]
         else:
-            filterbanks = get_model(m['model'])
+            filterbanks = model_generation.get_model(m['model'])
             
         filterbank_string = cPickle.dumps(filterbanks)
         if (i/5)*5 == i:
@@ -1647,7 +1625,7 @@ def feature_postprocess(vec,config,m,extraction):
         if config['transform_name'] == 'subranges':
             assert extraction['transform_average']['transform_name'] == 'translation'
             num_layers = len(m['config']['model']['layers'])
-            filter_sizes = filter_generation.get_filter_sizes(m['config']['model']['layers'])
+            filter_sizes = model_generation.get_filter_sizes(m['config']['model']['layers'])
             filter_sizes = dict(zip(range(num_layers),filter_sizes))
             filter_sizes[-1] = 1
             num_percts = len(extraction['transform_average'].get('percentile',[100]))
