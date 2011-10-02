@@ -151,9 +151,9 @@ def get_darpa_intersection(box,boxes):
     intersects_with = []
     for box2 in boxes:
         box2r = box2['box']
-        a = box2r & box2r
+        au = box | box2r
         ai = box & box2r
-        if ai >= .2*a:
+        if ai / au >= .2:
             intersects_with.append(box2)
     return intersects_with
         
