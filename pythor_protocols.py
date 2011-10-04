@@ -1794,13 +1794,14 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
 
             if filter is not None:
                 filter = fix_filter(array[0],filter)
-                
+
+            print('LAYERSTUFF',ind,array[0].shape)
             if isinstance(layer,list):
                 arrays = [compute_layer(array,filter,l,convolve_func,conv_mode) for l in layer]
                 array = harmonize_arrays(arrays,model_config)
             else:
                 array = compute_layer(array,filter,layer,convolve_func,conv_mode)
-            
+
         array_dict[len(layers)-1] = array
             
         return array_dict
@@ -1818,10 +1819,11 @@ def fix_filter(array,filter):
     return filter
 
 def compute_layer(array,filter,layer,convolve_func,conv_mode):	
-
     if layer.get('scales') is not None:
         scales = layer['scales']
-        arrays = [compute_inner_layer(resample(array,scale,layer),filter,layer,convolve_func,conv_mode) for scale in scales]
+        sh = array[0].shape[:2]
+        get_sh = lambda x : (int(round(sh[0]*x)),int(round(sh[1]*x)))
+        arrays = [compute_inner_layer(resample(array,get_sh(scale),layer),filter,layer,convolve_func,conv_mode) for scale in scales]
         return harmonize_arrays(arrays,layer)
     else:
         return compute_inner_layer(array,filter,layer,convolve_func,conv_mode)
@@ -1859,7 +1861,7 @@ def resample(array,scale,config):
     adict = {}
     for k in array:
         sh = array[k].shape
-        new_sh = (int(round(sh[0])),int(round(sh[1]))) + sh[2:]
+        new_sh = scale + sh[2:]
         adict[k] = np.resize(array[k],new_sh)
     return adict
     

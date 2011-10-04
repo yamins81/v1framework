@@ -282,9 +282,6 @@ def get_num_filters(rule,layer_num,num_filters_l1):
     return num_filters,stride
 
 def allowable_scale_rules(size,num_layers,scales,pool_shape,norm0_shape):
-    if scales is not None:
-        size = size*min(scales)
-
     srs = []
     
     size1 = size
@@ -333,13 +330,11 @@ def generate_random_model(config):
 
     scales = one_of([None,[1,.5],[1,.25],[1,.5,.25]])                
     num_filters_l1 = one_of([24])
-    if scales is not None:
-        num_filters_l1 = num_filters_l1 / len(scales)
     filter_shape = one_of([5,7,9,11,17])
     filter_shape = [filter_shape,filter_shape]
     pool_shape = one_of(range(5,10,2))
     pool_shape = (pool_shape,pool_shape)                                    
-    num_layers = one_of([1,2,3,4,5])
+    num_layers = one_of([1,2,3,4])
     asrs = allowable_scale_rules(200,num_layers,scales,pool_shape[0],norm_shape[0])
     layer_scale_rule = one_of(asrs)
     min_out_mean = one_of([-.3,-.2,-.1,0,.1,.2])
@@ -388,6 +383,7 @@ def generate_random_model(config):
     layers[1]['filter']['max_wavelength'] = filter_shape[0]
     if scales is not None:
         layers[1]['scales'] = scales
+        layers[1]['filter']['num_filters'] = layers[1]['filter']['num_filters']/len(scales)
         
     model['layers'] = layers
     
