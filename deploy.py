@@ -14,8 +14,8 @@ def get_code_dir(hash):
 
 
 @activate(lambda x : x[0], lambda x: get_code_dir(protocols.image_protocol_hash(x[0])))
-def images(config_path,parallel=False):
-    D,hash = protocols.image_protocol(config_path,write = False,parallel=parallel)
+def images(config_path,parallel=False,reads=None):
+    D,hash = protocols.image_protocol(config_path,write = False,parallel=parallel,reads=reads)
     actualize(D,outfiledir=get_code_dir(hash))
     return hash
 

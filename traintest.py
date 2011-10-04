@@ -333,7 +333,7 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
         ntrain_vec = [ntrain/nq]*(nq - 1) + [ntrain - (ntrain/nq)*(nq-1)]
         ntest_vec = [ntest/nq]*(nq - 1) + [ntest - (ntest/nq)*(nq-1)]
     else:
-        assert len(balance) = nq - 1
+        assert len(balance) == nq - 1
         ntrain_vec = [int(floor(ntrain*b)) for b in balance]
         ntrain_vec = ntrain_vec + [ntrain - sum(ntrain_vec)]
         ntest_vec = [int(floor(ntest*b)) for b in balance]

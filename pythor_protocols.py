@@ -36,10 +36,11 @@ from pythor_networking import NETWORK_CACHE_PORT, NETWORK_CACHE_TIMEOUT
 DB_NAME = 'thor'
 
 import pythor3.operation.lnorm_.plugins.cthor
+import pythor3.operation.lnorm_.plugins.numpy_naive
 import pythor3.operation.lpool_.plugins.cthor
+import pythor3.operation.lpool_.plugins.numpy_naive
 import pythor3.operation.fbcorr_.plugins.cthor
 import pythor3.operation.fbcorr_.plugins.numpyFFT
-
 
 from pythor3.operation.fbcorr_ import (
     DEFAULT_STRIDE,
@@ -71,13 +72,15 @@ def image_protocol_hash(config_path):
     image_hash = get_config_string(config['images'])
     return image_hash
 
-def image_protocol(config_path,write = False,parallel=False):
+def image_protocol(config_path,write = False,parallel=False,reads=None):
     config = get_config(config_path) 
     image_hash = image_protocol_hash(config_path)
     image_certificate = '../.image_certificates/' + image_hash
-
+    if reads is None:
+        reads = ()
+        
     if  not parallel:
-        D = [('generate_images',generate_images,(image_certificate,image_hash,config))]
+        D = [('generate_images',generate_images,(image_certificate,image_hash,config,reads))]
     else:
         D = [('generate_images',generate_images_parallel,(image_certificate,image_hash,config))]
     
@@ -85,8 +88,8 @@ def image_protocol(config_path,write = False,parallel=False):
         actualize(D)
     return D,image_hash
 
-@activate(lambda x : (), lambda x : x[0])    
-def generate_images(outfile,im_hash,config_gen):
+@activate(lambda x : x[3], lambda x : x[0])    
+def generate_images(outfile,im_hash,config_gen,reads):
 
     conn = pm.Connection(document_class = SON)
     db = conn[DB_NAME]
@@ -97,10 +100,10 @@ def generate_images(outfile,im_hash,config_gen):
     
     IC = rendering.ImageConfigs(config_gen)
         
-    for (i,x) in enumerate(X.configs):
+    for (i,x) in enumerate(IC.configs):
         if (i/100)*100 == i:
             print(i,x)       
-        if x['generator'] != 'dataset_api':
+        if x['image']['generator'] != 'dataset_api':
             image_string = IC.render_image(x['image']) 
         else:
             image_string = open(x['image'].pop('img_fullpath')).read()
@@ -120,7 +123,7 @@ def generate_and_insert_single_image(x,im_hash):
     im_coll = db['images.files']
     im_fs = gridfs.GridFS(db,'images')
     
-    image_string = rendering.render_image(x['image']) 
+    image_string = rendering.render_image(None,x['image']) 
     y = SON([('config',x)])
     filename = get_filename(x)
     y['filename'] = filename
@@ -138,10 +141,10 @@ def generate_images_parallel(outfile,im_hash,config_gen):
     
     remove_existing(im_coll,im_fs,im_hash)
     
-    X = rendering.config_gen(config_gen)
+    IC = rendering.ImageConfigs(config_gen)
        
     jobids = []
-    for (i,x) in enumerate(X):
+    for (i,x) in enumerate(IC.configs):
         jobid = qsub(generate_and_insert_single_image,(x,im_hash),opstring='-pe orte 2 -l qname=rendering.q -o /home/render/image_jobs -e /home/render/image_jobs')  
         jobids.append(jobid)
         
@@ -359,6 +362,7 @@ def extract_core(image_hash,m,model_hash,task,ext_hash,convolve_func_name,save_t
         raise ValueError, 'convolve func name not recognized'
 
     print('num_batches',num_inner_batches)
+
     if num_inner_batches > 0:
         inner_batches = get_data_batches(new_filenames,num_inner_batches)
         results = []
@@ -367,7 +371,7 @@ def extract_core(image_hash,m,model_hash,task,ext_hash,convolve_func_name,save_t
         results = [r.get() for r in results]
         new_features = ListUnion(results)
     else:
-        new_features = extract_inner_core(new_filenames,m,convolve_func_name,0,task,cache_port,save_to_db)
+        new_features = extract_inner_core(new_filenames,m,convolve_func_name,0,task,cache_port)
 
     features = filter(lambda x : x is not None,existing_features) + new_features
     
@@ -1785,9 +1789,12 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
         array_dict = {}
         for (ind,(filter,layer)) in enumerate(zip(filters,layers)):
  
-	        if feed_up:
-		        array_dict[ind-1] = array       
-		        
+            if feed_up:
+                array_dict[ind-1] = array       
+
+            if filter is not None:
+                filter = fix_filter(array[0],filter)
+                
             if isinstance(layer,list):
                 arrays = [compute_layer(array,filter,l,convolve_func,conv_mode) for l in layer]
                 array = harmonize_arrays(arrays,model_config)
@@ -1798,21 +1805,37 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
             
         return array_dict
 
+
+def fix_filter(array,filter):
+    if array.ndim == 3:
+        if filter.ndim == 3:
+            filter = filter.reshape(filter.shape + (1,))
+        if filter.shape[3] < array.shape[2]:
+            assert array.shape[2] % filter.shape[3] == 0
+            reps = array.shape[2]/filter.shape[3]
+            filter = np.repeat(filter,reps,axis=3)
+
+    return filter
+
 def compute_layer(array,filter,layer,convolve_func,conv_mode):	
 
-    if layer.get('scales'):
+    if layer.get('scales') is not None:
+        scales = layer['scales']
         arrays = [compute_inner_layer(resample(array,scale,layer),filter,layer,convolve_func,conv_mode) for scale in scales]
-        array = harmonize_arrays(arrays,l)
+        return harmonize_arrays(arrays,layer)
     else:
         return compute_inner_layer(array,filter,layer,convolve_func,conv_mode)
 
 def compute_inner_layer(array,filter,layer,convolve_func,conv_mode):
+        print('filter',array[0].shape)
 	if filter is not None:
 		array = fbcorr(array, filter, layer , convolve_func)
-	
+
+	print('lpool',array[0].shape)
 	if layer.get('lpool'):
 		array = lpool(array,conv_mode,layer['lpool'])
 
+        print('lnorm',array[0].shape)
 	if layer.get('lnorm'):
 		if layer['lnorm'].get('use_old',False):
 			array = old_norm(array,conv_mode,layer['lnorm'])
@@ -1824,25 +1847,38 @@ def compute_inner_layer(array,filter,layer,convolve_func,conv_mode):
 import numpy as np
 
 def fix_1ds(array):
-    if array.ndim > 2:
-        return array
-    else:
-        return array.reshape(array.shape + (1,))
+    adict = {}
+    for k in array:
+        if array[k].ndim > 2:
+            return array
+        else:
+            adict[k] = array[k].reshape(array[k].shape + (1,))
+    return adict
     
 def resample(array,scale,config):
-    sh = array.shape
-    new_sh = (int(round(sh[0])),int(round(sh[1]))) + sh[2:]
-    return np.resize(array,new_sh)
+    adict = {}
+    for k in array:
+        sh = array[k].shape
+        new_sh = (int(round(sh[0])),int(round(sh[1]))) + sh[2:]
+        adict[k] = np.resize(array[k],new_sh)
+    return adict
     
 def harmonize_arrays(arrays,config):
-    arrays = [fix_1d(array) for array in arrays]
-    sizes = [array.shape for array in in arrays]
+    arrays = [fix_1ds(array) for array in arrays]
+    sizes = [array[0].shape for array in arrays]
     max0 = max([s[0] for s in sizes])
     max1 = max([s[1] for s in sizes])
     new_sh = (max0,max1)
-    arrays = [np.resize(array,new_sh) if new_sh != array.shape else array for array in arrays]
-    return np.concatenate(arrays,axis=2)
+    keylist = [array.keys() for array in arrays]
+    assert all([keylist[0] == kk for kk in keylist])
+    arrays = [resample(array,new_sh,config) for array in arrays]
+    return dict_concatenate(arrays)
 
+def dict_concatenate(arrays):
+    adict = {}
+    for k in arrays[0]:
+        adict[k] = np.concatenate([array[k] for array in arrays],axis=2)
+    return adict
     
 def multiply(x,s1,s2,all=False,max=False,ravel=False):
     
@@ -1922,7 +1958,7 @@ def old_norm(input,conv_mode,params):
 def lpool(input,conv_mode,config):
     pooled = {}
     for cidx in input.keys():
-        if hasattr(config.get('order'),'__iter__')
+        if hasattr(config.get('order'),'__iter__'):
             pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='numpy_naive',**config) 
         else:           
             pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)

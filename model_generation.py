@@ -11,7 +11,6 @@ import rendering
 import processing
 
 
-
 def generate_random_subsamples(M,V,N,p):
     u,s,v = np.linalg.svd(V)
     A= np.dot(u, np.diag(np.sqrt(s)))
@@ -407,6 +406,7 @@ def get_hierarchical_filterbanks(config):
         
 
 def get_random_filterbank(s,normalization=True):
+    print('SHAPE',s)
     filterbank = np.random.random(s)
     if normalization:
         for i in range(filterbank.shape[0]):
@@ -449,7 +449,8 @@ def get_filterbank(config):
                                freq,orient,phase,
                                (fw,fh))   
         
-        return SON([('filterbank',filterbank),('orients',orients),('phases',phases),('freqs',freqs)])
+        #return SON([('filterbank',filterbank),('orients',orients),('phases',phases),('freqs',freqs)])
+        return filterbank
                                
     elif model_name == 'gridded_gabor':
         norients = config['norients']
@@ -518,23 +519,24 @@ def model_config_generator(config):
     models = config['models']
     for M in models:        
         selection = M.get('selection','specific')
-		if selection == 'specific':
-			p = SON([('model',M)])
-			params.append(p)
-		elif selection == 'random':
-		    num_models = M['num_models']
-			func_name = M['generation_function_path']
-			dotpath = func_name.split('.')
-			mod_name = '.'.join(dotpath[:-1])
-			fname = dotpath[-1]
-			Module = __import__(mod_name)
-			gen_func = Module.getattr(fname)
-		    for ind in range(num_models):
-		        p = gen_func(M)
-		        p = SON([('model',p)])
-		        params.append(p)
-		else:
-		    raise ValueError, 'model config selection criterion not recognized'
+        if selection == 'specific':
+            p = SON([('model',M)])
+            params.append(p)
+        elif selection == 'random':
+            num_models = M['num_models']
+            func_name = M['generation_function_path']
+            dotpath = func_name.split('.')
+            mod_name = '.'.join(dotpath[:-1])
+            fname = dotpath[-1]
+            Module = __import__(mod_name)
+            gen_func = getattr(Module,fname)
+            for ind in range(num_models):
+                p = gen_func(M)
+                print('At random model',ind)
+                p = SON([('model',p)])
+                params.append(p)
+        else:
+            raise ValueError, 'model config selection criterion not recognized'
     
     return params
 
@@ -559,9 +561,13 @@ def get_model(m):
             layer['lpool'].pop('order_gen')
             if len(choices) > 1:
                 size = filterbank.shape[0]        
-                order_vec = [one_of(layer['lpool']['order_choices']) for ind in range(size)]
+                order_vec = [one_of(choices) for ind in range(size)]
                 layer['lpool']['order'] = order_vec
             else:
                 layer['lpool']['order'] = choices[0]
         
     return filterbanks
+
+
+def one_of(x):
+    return x[np.random.randint(len(x))]

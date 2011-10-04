@@ -13,6 +13,9 @@ xfields = ['BoundingBox_X1', 'BoundingBox_X2',  'BoundingBox_X3','BoundingBox_X4
 yfields = ['BoundingBox_Y1', 'BoundingBox_Y2',  'BoundingBox_Y3','BoundingBox_Y4']
 otherfields = ['ObjectType','Occlusion','Ambiguous','Confidence']
 
+def one_of(x):
+    return x[np.random.randint(len(x))]
+
 def uniqify(X):
     return [x for (i,x) in enumerate(X) if x not in X[:i]]
 
@@ -42,22 +45,24 @@ def darpa_random_config_gen(IC,args):
         for (iwind,iw) in enumerate(intersects_with):
              iw = copy.deepcopy(iw)
              b = iw.pop('box')
-             iw['bounding_box'] = SON([('xfields',b.xs),('yfields',b.ys)])
+             iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
              intersects_with[iwind] = iw
         label = uniqify([iw['ObjectType'] for iw in intersects_with])
         label.sort()
         p = SON([('size',IC.size),         
-                 ('bounding_box',SON([('xfields',box.xs),('yfields',box.ys)])),
+                 ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
                  ('intersects_with',intersects_with),
                  ('ObjectType',label),
                  ('clip_num',clip_num),
-                 ('Frame',frame),
+                 ('Frame',int(frame)),
                  ('base_dir',IC.base_dir)])
         p = SON([('image',p)])
         params.append(p)
 
     if args.get('enrich_positives',False):
-        for x in X:
+        perm = np.random.permutation(len(X))
+        X1 = X[perm[:IC.num_images]]
+        for x in X1:
             p = darpa_image_path(x)
             print(p)
             add_im_stuff(im_stuff,IC,p,x,get_boxes=False)
@@ -68,10 +73,10 @@ def darpa_random_config_gen(IC,args):
             box = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
             label = x['ObjectType']
             p = SON([('size',IC.size),
-                     ('bounding_box',SON([('xfields',box.xs),('yfields',box.ys)])),
+                     ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
                      ('ObjectType',label),
                      ('clip_num',x['clip_num']),
-                     ('Frame',x['Frame']),
+                     ('Frame',int(x['Frame'])),
                      ('base_dir',IC.base_dir),
                      ('enriched',True)])
             params.append(SON([('image',p)]))
@@ -266,21 +271,44 @@ def get_mb(l):
 def get_num_filters(rule,layer_num,num_filters_l1):
     if rule == 'shallow':
         stride = 1
+        num_filters = num_filters_l1
     elif rule == 'medium':
-        stride = layer_num % 2
+        stride = (layer_num-1) % 2  + 1
+        num_filters = num_filters_l1*(2**((layer_num-1)/2))
     else:
         stride = 2
-        
-    if layer_num == 1:
-        num_filters = num_filters_l1
-    elif rule == 'shallow':
-        num_filters = num_filters_l1
-    elif rule == 'medium':
-        num_filters = num_filters_l1*(2**((layer_num-1)/2))
-    elif rule == 'deep':
         num_filters =  num_filters_l1*(2**(layer_num-1))
-    
+        
     return num_filters,stride
+
+def allowable_scale_rules(size,num_layers,scales,pool_shape,norm0_shape):
+    if scales is not None:
+        size = size*min(scales)
+
+    srs = []
+    
+    size1 = size
+    size1  = size1 - norm0_shape + 1
+    for ind in range(1,num_layers+1):
+        size1 = size1 - pool_shape + 1
+        size1 = size1/2
+    if size1 > 0:
+        srs.append('deep')
+
+    size1 = size
+    size1 = size1 - norm0_shape
+    for ind in range(1,num_layers+1):
+        size1 = size1 - pool_shape + 1
+        if ind % 2 == 0:
+            size1 = size1/2
+    if size1 > 0:
+        srs.append('medium')
+
+    srs.append('shallow')
+
+    return srs
+
+    
 
 def generate_random_model(config):
     model = SON([
@@ -302,14 +330,18 @@ def generate_random_model(config):
                     ('threshold' , 1.0),
                     ('stretch',1)
                     ]))])
-                    
-    num_filters_l1 = one_of([32,64,96])         
-    filter_shape = one_of(range(5,18,2))
+
+    scales = one_of([None,[1,.5],[1,.25],[1,.5,.25]])                
+    num_filters_l1 = one_of([24])
+    if scales is not None:
+        num_filters_l1 = num_filters_l1 / len(scales)
+    filter_shape = one_of([5,7,9,11,17])
     filter_shape = [filter_shape,filter_shape]
     pool_shape = one_of(range(5,10,2))
     pool_shape = (pool_shape,pool_shape)                                    
-    num_layers = one_of([1,2,3,4,5,6])
-    layer_scale_rule = one_of(['deep','medium','shallow'])
+    num_layers = one_of([1,2,3,4,5])
+    asrs = allowable_scale_rules(200,num_layers,scales,pool_shape[0],norm_shape[0])
+    layer_scale_rule = one_of(asrs)
     min_out_mean = one_of([-.3,-.2,-.1,0,.1,.2])
     min_out_range = one_of([0,.05,.1,.2])
     min_out_min = min_out_mean - min_out_range
@@ -319,15 +351,19 @@ def generate_random_model(config):
     max_out_min = max_out_mean - max_out_range
     max_out_max = max_out_mean + max_out_range
     pool_orders = one_of([[1],[2],[10],[1,2,10]])
-    
+
+    model['layer_scaling_rule'] = layer_scale_rule
+
     layers = [level_0]
     for layer_num in range(1,num_layers+1):
+        #layer = SON([('scales',scales)])
         layer = SON([])
         
         num_filters,pool_stride = get_num_filters(layer_scale_rule,layer_num,num_filters_l1)
         
         filter_config = SON([('num_filters',num_filters),
                              ('ker_shape',filter_shape),
+                             ('mode','same'),
                              ('model_name','really_random')])
         layer['filter'] = filter_config
         
@@ -339,7 +375,7 @@ def generate_random_model(config):
                        ('max_out_max',max_out_max)])
         layer['activ'] = activ_config
             
-        lpool = SON([('stride',stride),
+        lpool = SON([('stride',pool_stride),
                     ('order_gen','random'),
                     ('order_choices',pool_orders),
                     ('ker_shape',pool_shape)])
@@ -347,14 +383,13 @@ def generate_random_model(config):
 
         layers.append(layer)
         
-    
     layers[1]['filter']['model_name'] = 'random_gabor'
     layers[1]['filter']['min_wavelength'] = 2
     layers[1]['filter']['max_wavelength'] = filter_shape[0]
-    
+    if scales is not None:
+        layers[1]['scales'] = scales
+        
     model['layers'] = layers
-
-    model['scales'] = one_of([None,[1,.5],[1,.25],[1,.5,.25]])
     
     return model
 

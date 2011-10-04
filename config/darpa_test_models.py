@@ -14,7 +14,7 @@ from bson import SON
 
 model = SON([('selection','random'),
              ('generation_function_path','darpa.generate_random_model'),
-             ('num_models',2500)])
+             ('num_models',100)])
 
 config = {
      'models': [model]
