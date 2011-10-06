@@ -22,6 +22,49 @@ def uniqify(X):
 def darpa_image_path(t):
     return t['clip_num'] + '_' + str(t['Frame']) + '.jpg'
 
+def darpa_gridded_config_gen(IC,args):
+    IC.current_frame_path = None
+    IC.base_dir = args['base_dir']
+    mdp = os.path.join(IC.base_dir,'__metadata__.csv')
+    IC.metadata = X = tb.tabarray(SVfile = mdp)
+    IC.num_images = args['num_images']
+    IC.sizes = args['sizes']
+    IC.offsets = args.get('offsets',[(0,0)])
+    T = np.unique(X[['clip_num','Frame']])
+    im_stuff = {}
+    params = []
+    for t in T:
+        t = T[ind]
+        clip_num = t['clip_num']
+        frame = t['Frame']
+        p = darpa_image_path(t)
+        add_im_stuff(im_stuff,IC,p,t)
+        boxes = get_gridded_darpa_boxes(im_stuff[p]['size'],IC.sizes,IC.offsets)
+        for box in boxes:
+            intersects_with = get_darpa_intersection(box,im_stuff[p]['boxes'])
+            for (iwind,iw) in enumerate(intersects_with):
+                 iw = copy.deepcopy(iw)
+                 b = iw.pop('box')
+                 iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
+                 intersects_with[iwind] = iw
+            label = uniqify([iw['ObjectType'] for iw in intersects_with])
+            label.sort()
+            p = SON([('size',IC.size),         
+                     ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
+                     ('intersects_with',intersects_with),
+                     ('ObjectType',label),
+                     ('clip_num',clip_num),
+                     ('Frame',int(frame)),
+                     ('base_dir',IC.base_dir)])
+            p = SON([('image',p)])
+            params.append(p)            
+            
+    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['Frame']) for p in params])
+    js_ag = js.argsort()
+    params = [params[ind] for ind in js_ag]
+    return params            
+            
+
 def darpa_random_config_gen(IC,args):
     IC.current_frame_path = None
     IC.base_dir = args['base_dir']
@@ -141,6 +184,23 @@ def choose_random_darpa_box(im_size,size):
                            ys = (sy,sy,sy+size[1],sy+size[1]))
 
     return box
+    
+def get_gridded_darpa_boxes(im_size,sizes,offsets):
+    boxes = []
+    
+    for size in sizes:
+        for offset in offsets:
+            assert im_size[0] >= size[0]
+            assert im_size[1] >= size[1]
+            sxs = [size[0]*j + offset[0] for j in range(im_size[0]/size[0])]
+            sxs[-1] = min(sxs[-1],im_size[0] - size[0])
+            sys = [size[1]*j + offset[1] for j in range(im_size[1]/size[1])]
+            sys[-1] = min(sys[-1],im_size[1] - size[1])
+            new_boxes = [bbox.BoundingBox(xs =  (sx,sx+size[0],sx+size[0],sx),
+                                          ys = (sy,sy,sy+size[1],sy+size[1])) for sx in sxs for sy in sys]
+            boxes.extend(new_boxes)
+
+    return boxes
 
 def get_all_darpa_boxes(X,cn,fr):
     X = X[(X['clip_num'] == cn) & (X['Frame'] == fr)]
