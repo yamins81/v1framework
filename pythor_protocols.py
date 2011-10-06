@@ -609,7 +609,10 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
     opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
     
     for task in task_list:
-        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
+		taskc = copy.deepcopy(task)
+		taskc['universe']['model'] = m['config']['model']
+		splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
+
         for m in model_configs: 
             print('Evaluating model',m)
             print('On task',task)              
