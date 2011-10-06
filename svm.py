@@ -188,12 +188,20 @@ def multi_classify(train_features,
     weights = classifier.coef_.T
     bias = classifier.intercept_
         
-    test_prediction_ids = classifier.predict(test_features)
-    test_prediction = labels[test_prediction_ids]
+    test_prediction = labels[classifier.predict(test_features)]
     test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
- 
     train_prediction = labels[classifier.predict(train_features)]
     train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
+    
+#    margin_fn = lambda v : (sp.dot(v,weights) + bias)
+#    test_margins = margin_fn(test_features)
+#    test_margin_prediction = labels[test_margins.argmax(1)]
+#    train_margins = margin_fn(train_features)
+#    train_margin_prediction = labels[train_margins.argmax(1)]
+#    assert (test_prediction == test_margin_prediction).all(), 'test margin prediction not correct'
+#    assert (train_prediction == train_margin_prediction).all(), 'train margin prediction not correct'    
+    
+    mean_ap,mean_auc = multiclass_stats(test_labels,test_prediction,labels)
 
     cls_data = {'coef' : weights, 
      'intercept' : bias, 
@@ -201,18 +209,67 @@ def multi_classify(train_features,
      'test_labels' : test_labels,
      'train_prediction': train_prediction, 
      'test_prediction' : test_prediction,
-     'labels' : labels
+     'labels' : labels,
+#     'test_margins' : test_margins,
+#     'train_margins' : train_margins
      }
 
 
     return {'cls_data' : cls_data,
      'train_accuracy' : train_accuracy,
      'test_accuracy' : test_accuracy,
-     'mean_ap' : None,
-     'mean_auc' : None
+     'mean_ap' : mean_ap,
+     'mean_auc' : mean_auc
      }
  
-          
+
+def multiclass_stats(actual,predicted,labels):
+    aps = []
+    aucs = []
+    
+    for label in labels:
+        prec,rec = precision_and_recall(actual,predicted,label)
+        ap = ap_from_prec_and_rec(prec,rec)
+        aps.append(ap)
+        auc = auc_from_prec_and_rec(prec,rec)
+        aucs.append(auc)
+    
+    mean_ap = np.array(aps).mean()
+    mean_auc = np.array(aucs).mean()
+    
+    return mean_ap,mean_auc
+
+
+def precision_and_recall(actual,predicted,cls):
+    c = (actual == cls)
+    si = sp.argsort(-c)
+    tp = sp.cumsum(sp.single(predicted[si] == cls))
+    fp = sp.cumsum(sp.single(predicted[si] != cls))
+    rec = tp /sp.sum(predicted == cls)
+    prec = tp / (fp + tp)
+    return prec,rec
+
+    
+def ap_from_prec_and_rec(prec,rec):
+    ap = 0
+    rng = sp.arange(0, 1.1, .1)
+    for th in rng:
+        parray = prec[rec>=th]
+        if len(parray) == 0:
+            p = 0
+        else:
+            p = parray.max()
+        ap += p / rng.size
+    return ap
+
+
+def auc_from_prec_and_rec(prec,rec):
+    #area under curve
+    h = sp.diff(rec)
+    auc = sp.sum(h * (prec[1:] + prec[:-1])) / 2.0
+    return auc        
+    
+    
 def classifier_train(train_features,
                      train_labels,
                      test_features,

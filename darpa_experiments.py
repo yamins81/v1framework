@@ -40,3 +40,15 @@ def extract_darpa_models(depends_on=('../config/darpa_extraction.py',
     a,b,c = depends_on
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,
                                   parallel=True, save_to_db=True, batch_size=100)
+
+
+@protocolize()
+def screen_darpa_models(depends_on=('../config/darpa_screen_evaluation.py',
+                                    '../config/darpa_extraction.py', 
+                                    '../config/darpa_models.py',
+                                    '../config/darpa_heli_200_2500_enriched.py')):
+    """
+            
+    """
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel=True,use_db = True)

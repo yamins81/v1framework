@@ -570,25 +570,27 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,
              model_certificate_file,evaluation,evaluation_hash,extraction,extraction_hash,use_db):
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
-    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(evaluation_hash,
+    perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs, extraction_list) = prepare_evaluate(evaluation_hash,
                                                 image_certificate_file,
                                                 model_certificate_file,
-                                                evaluation)
+                                                evaluation, extraction)
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:  
             print('task',task)
-            split_results = []
-            taskc = copy.deepcopy(task)
-            taskc['universe']['model'] = m['config']['model']
-            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
-            for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
-                print('evaluating split %d' % ind)
-                res = evaluate_core(split,m,task,extraction,extraction_hash,use_db)    
-                put_in_split_result(res,image_config_gen,m,task,evaluation_hash,ind,splitperf_fs)
-                split_results.append(res)
-            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash)
+            for extraction in extraction_list:
+                split_results = []
+                taskc = copy.deepcopy(task)
+                taskc['universe']['model'] = m['config']['model']
+                taskc['universe']['extraction'] = son_escape(extraction)
+                splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
+                for (ind,split) in enumerate(splits):
+                    put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs,extraction = extraction)
+                    print('evaluating split %d' % ind)
+                    res = evaluate_core(split,m,task,extraction,extraction_hash,use_db)    
+                    put_in_split_result(res,image_config_gen,m,task,evaluation_hash,ind,splitperf_fs,extraction = extraction)
+                    split_results.append(res)
+                put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash,extraction = extraction,extraction_hash = extraction_hash)
 
         
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
@@ -599,30 +601,31 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
                       model_certificate_file,evaluation,evaluation_hash,extraction,extraction_hash,use_db):
         
     (model_configs, image_config_gen, model_hash, image_hash, task_list,
-     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs) = prepare_evaluate(evaluation_hash,
+     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs, extraction_list) = prepare_evaluate(evaluation_hash,
                                                                                       image_certificate_file,
                                                                                       model_certificate_file,
                                                                                       evaluation)
 
     
     jobids = []
-    opstring = '-l qname=extraction_cpu.q -o /home/render -e /home/render'
+    opstring = '-l qname=evaluation.q -o /home/render -e /home/render'
     
     for task in task_list:
-		taskc = copy.deepcopy(task)
-		taskc['universe']['model'] = m['config']['model']
-		splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
-
-        for m in model_configs: 
-            print('Evaluating model',m)
-            print('On task',task)              
-            for (ind,split) in enumerate(splits):
-                put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
-            jobid = qsub(evaluate_parallel_core,
-                     (image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,use_db),
-                     opstring=opstring)
-            print('Submitted job', jobid)
-            jobids.append(jobid)
+        for extraction in extraction_list:
+            taskc = copy.deepcopy(task)
+            taskc['universe']['model'] = m['config']['model']
+            taskc['universe']['extraction'] = son_escape(extraction)
+            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
+            for m in model_configs: 
+                print('Evaluating model',m)
+                print('On task',task)              
+                for (ind,split) in enumerate(splits):
+                    put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
+                jobid = qsub(evaluate_parallel_core,
+                         (image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,model_hash,image_hash,use_db),
+                         opstring=opstring)
+                print('Submitted job', jobid)
+                jobids.append(jobid)
                 
     print('Waiting for jobs', jobids) 
     statuses = wait_and_get_statuses(jobids)
@@ -631,25 +634,10 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
         bad_jobs = [jobid for (jobid,status) in zip(jobids,statuses) if not status == 0]
         raise ValueError, 'There was a error in job(s): ' + repr(bad_jobs)    
     
-    for m in model_configs: 
-        print('Evaluating model',m)
-        for task in task_list:
-            split_results = get_most_recent_files(splitperf_coll,{'__hash__':evaluation_hash,'task':son_escape(task),'model':m['config']['model'],'images':son_escape(image_config_gen['images'])})
-            put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash)
-
     createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file,'extraction_file':extraction_certificate_file})
 
 
-
-    for splitconf in splitconfs:
-        split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
-        split_id = splitconf['split_id']
-        res = extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port)
-        splitperf_fs = gridfs.GridFS(db,'split_performance')
-        put_in_split_result(res,image_config_gen,m,task,evaluation_hash,split_id,splitperf_fs)
-
-
-def evaluate_parallel_core(image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,use_db):
+def evaluate_parallel_core(image_config_gen,m,task,evaluation_hash,extraction,extraction_hash,model_hash,image_hash,use_db):
 
     conn = pm.Connection(document_class=bson.SON)
     db = conn[DB_NAME]
@@ -661,12 +649,18 @@ def evaluate_parallel_core(image_config_gen,m,task,evaluation_hash,extraction,ex
                                                  'task':son_escape(task),
                                                  'images':son_escape(image_config_gen['images'])})
   
+    splitperf_fs = gridfs.GridFS(db,'split_performance')    
+    split_results = []
     for splitconf in splitconfs:
         split = cPickle.loads(split_fs.get_version(splitconf['filename']).read())['split']
         split_id = splitconf['split_id']
         res = evaluate_core(split,m,task,extraction,extraction_hash,use_db)
-        splitperf_fs = gridfs.GridFS(db,'split_performance')
+        split_results.append(res)
         put_in_split_result(res,image_config_gen,m,task,evaluation_hash,split_id,splitperf_fs)
+        
+    perf_col = db['performance']
+    put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_col,task,evaluation_hash)
+        
         
 def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     classifier_kwargs = task.get('classifier_kwargs',{})  
@@ -700,38 +694,44 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     return res
     
     
-def load_features_batch(image_filenames,coll,fs,m,task,extraction,extraction_hash,use_db):
-    image_filenames = map(str,image_filenames)
+def load_features_batch(feature_filenames,coll,fs,m,task,extraction,extraction_hash,use_db):
+    feature_filenames = map(str,feature_filenames)
     if use_db:
-        image_filenames = np.array(image_filenames)
-        image_filenames_argsort = image_filenames.argsort()
-        curs = coll.find({'__hash__':extraction_hash,'model':m['config']['model'],'filename':{'$in':image_filenames.tolist()}},fields=["feature","filename"]).sort('filename')
-        features = []; image_filenames_returned = []
+        feature_filenames = np.array(feature_filenames)
+        feature_filenames_argsort = feature_filenames.argsort()
+        curs = coll.find({'__hash__':extraction_hash,'filename':{'$in':feature_filenames.tolist()}},fields=["feature","filename"]).sort('filename')
+        features = []; feature_filenames_returned = []
         for x in curs:
             features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m,extraction))
-            image_filenames_returned.append(x['filename'])
+            feature_filenames_returned.append(x['filename'])
         features = sp.row_stack(features)
-        image_filenames_returned = np.array(image_filenames_returned)   
-        inverse_sort = PermInverse(image_filenames_argsort)
-        assert (image_filenames == image_filenames_returned[inverse_sort]).all(), 'filenames dont match'
+        feature_filenames_returned = np.array(feature_filenames_returned)   
+        inverse_sort = PermInverse(feature_filenames_argsort)
+        assert (feature_filenames == feature_filenames_returned[inverse_sort]).all(), 'filenames dont match'
         return features[inverse_sort]
     else:
-        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m,extraction) for f in image_filenames])
+        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m,extraction) for f in feature_filenames])
     
 
-def load_features(image_filename,coll,fs,m,task):
+def load_features(filename,coll,fs,m,task):
 
-    feat = get_from_cache((image_filename,m),FEATURE_CACHE)
+    feat = get_from_cache((filename,m),FEATURE_CACHE)
     if feat is None:
-        filename = coll.find_one({'model':m['config']['model'],'image_filename':image_filename},fields=["filename"])["filename"]
+        #filename = coll.find_one({'model':m['config']['model'],'filename':image_filename},fields=["filename"])["filename"]
         feat = cPickle.loads(fs.get_version(filename).read())
-        put_in_cache((image_filename,m),feat,FEATURE_CACHE)
+        put_in_cache((filename,m),feat,FEATURE_CACHE)
     return feat
          
 
-def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
-    return prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
+def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task,extraction):
+    res = prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
+        
+    if isinstance(ev,list):
+        extraction_list = extraction
+    else:
+        extraction_list = [extraction]
 
+    return res + (extraction_list,)
 
 #########EXTRACT AND EVALUATE############# 
 #########EXTRACT AND EVALUATE############# 
@@ -857,7 +857,7 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     return model_configs,image_config_gen,model_hash,image_hash, task_list, perf_coll, split_coll, split_fs, splitperf_coll, splitperf_fs
     
 
-def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash):
+def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash,extraction=None,extraction_hash=None):
     
     model_results = SON([])
     for stat in STATS:
@@ -873,18 +873,24 @@ def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,pe
                       ('__hash__',ext_hash)
                  ])
                  
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
+        out_record['extraction_hash'] = extraction_hash
+                                  
     out_record.update(model_results)
 
     print('inserting result ...')
     perf_coll.insert(out_record)
 
 
-def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs):
+def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs,extraction=None):
     out_record = SON([('model',m['config']['model']),
                       ('images',son_escape(image_config_gen['images'])),
                       ('task',son_escape(task)),
                       ('split_id',split_id),
                  ])   
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
 
     
     filename = get_filename(out_record)
@@ -895,13 +901,17 @@ def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs):
     print('dump out split ...')
     split_fs.put(out_data,**out_record)
 
-import bson           
-def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs):
+     
+def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs,extraction=None):
     out_record = SON([('model',m['config']['model']),
                       ('images',son_escape(image_config_gen['images'])),
                       ('task',son_escape(task)),
                       ('split_id',split_id),
                  ])   
+                 
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
+                 
                  
     split_result = SON([])
     for stat in STATS:
@@ -1666,6 +1676,8 @@ def feature_postprocess(vec,config,m,extraction):
             raise ValueError, 'Transform ' + str(config['transform_name']) + ' not recognized.'
     else:
         return vec
+
+
 
 ############ANALYSIS#############
 ############ANALYSIS#############
