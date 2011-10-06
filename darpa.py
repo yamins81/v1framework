@@ -27,21 +27,20 @@ def darpa_gridded_config_gen(IC,args):
     IC.base_dir = args['base_dir']
     mdp = os.path.join(IC.base_dir,'__metadata__.csv')
     IC.metadata = X = tb.tabarray(SVfile = mdp)
-    IC.num_images = args['num_images']
     IC.sizes = args['sizes']
     IC.offsets = args.get('offsets',[(0,0)])
     T = np.unique(X[['clip_num','Frame']])
     im_stuff = {}
     params = []
     for t in T:
-        t = T[ind]
+        print(t)
         clip_num = t['clip_num']
         frame = t['Frame']
-        p = darpa_image_path(t)
-        add_im_stuff(im_stuff,IC,p,t)
-        boxes = get_gridded_darpa_boxes(im_stuff[p]['size'],IC.sizes,IC.offsets)
+        path = darpa_image_path(t)
+        add_im_stuff(im_stuff,IC,path,t)
+        boxes = get_gridded_darpa_boxes(im_stuff[path]['size'],IC.sizes,IC.offsets)
         for box in boxes:
-            intersects_with = get_darpa_intersection(box,im_stuff[p]['boxes'])
+            intersects_with = get_darpa_intersection(box,im_stuff[path]['boxes'])
             for (iwind,iw) in enumerate(intersects_with):
                  iw = copy.deepcopy(iw)
                  b = iw.pop('box')
@@ -49,7 +48,7 @@ def darpa_gridded_config_gen(IC,args):
                  intersects_with[iwind] = iw
             label = uniqify([iw['ObjectType'] for iw in intersects_with])
             label.sort()
-            p = SON([('size',IC.size),         
+            p = SON([('size',(box.width,box.height)),         
                      ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
                      ('intersects_with',intersects_with),
                      ('ObjectType',label),

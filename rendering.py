@@ -80,7 +80,7 @@ def gridded_config_gen(IC,config):
     elif config['generator'] == 'renderman':
         return renderman_config_gen(config)
     elif config['generator'] == 'darpa':
-        return darpa.darpa_gridded_config_gen(config)
+        return darpa.darpa_gridded_config_gen(IC,config)
 
 def renderman_config_gen(args):
     ranger = lambda v : np.arange(args[v]['$gt'],args[v]['$lt'],args['delta']).tolist() if isinstance(v,dict) else [args.get(v)]
