@@ -4,22 +4,26 @@ from bson import SON
 
 import model_categories as mc
       
-NTRAIN = 
-NTEST = 
-
-TYPES =  [u'Car',u'Container', u'Plane', u'']
+TYPES =  [u'Car',u'Container', u'Plane', []]
 
 task = SON([
       ('N',10), 
-      ('ntrain', NTRAIN),
-      ('ntest', NTEST),
+      ('ntrain', 500),
+      ('balance',[.3,.25]),
+      ('ntest', 150),
       ('universe',SON([('image.ObjectType',SON([('$ne','DCR')]))])),
-      ('query',[SON([('image.ObjectType',t)]) for t in TYPES])
+      ('query',[SON([('image.ObjectType',t)]) for t in [u'Car',u'Plane', []]])
       ])
+
+task_b = SON([
+          ('N',10),
+          ('ntrain', 1000),
+          ('ntest', 150),
+          ('balance',[.02,.005,.01]),
+          ('universe',SON([('image.ObjectType',SON([('$ne','DCR')]))])),
+          ('query',[SON([('image.ObjectType',t)]) for t in [u'Car',u'Container',u'Plane', []]])
+          ])
         
-task_b = copy.deepcopy(task)
-task_b['balance'] = [.02,.005,.01]
- 
 config = {
 
 'train_test' : [task,task_b]

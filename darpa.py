@@ -19,12 +19,14 @@ def one_of(x):
 def uniqify(X):
     return [x for (i,x) in enumerate(X) if x not in X[:i]]
 
-def darpa_image_path(t):
-    return t['clip_num'] + '_' + str(t['Frame']) + '.jpg'
+def darpa_image_path(t,prefix = '.jpg'):
+    return t['clip_num'] + '_' + str(t['Frame']) + prefix
 
 def darpa_gridded_config_gen(IC,args):
     IC.current_frame_path = None
     IC.base_dir = args['base_dir']
+    IC.prefix = args.get('image_extension','.jpg')
+    prefix = IC.prefix
     mdp = os.path.join(IC.base_dir,'__metadata__.csv')
     IC.metadata = X = tb.tabarray(SVfile = mdp)
     IC.sizes = args['sizes']
@@ -36,7 +38,7 @@ def darpa_gridded_config_gen(IC,args):
         print(t)
         clip_num = t['clip_num']
         frame = t['Frame']
-        path = darpa_image_path(t)
+        path = darpa_image_path(t,prefix=prefix)
         add_im_stuff(im_stuff,IC,path,t)
         boxes = get_gridded_darpa_boxes(im_stuff[path]['size'],IC.sizes,IC.offsets)
         for box in boxes:
@@ -48,7 +50,7 @@ def darpa_gridded_config_gen(IC,args):
                  intersects_with[iwind] = iw
             label = uniqify([iw['ObjectType'] for iw in intersects_with])
             label.sort()
-            p = SON([('size',(box.width,box.height)),         
+            p = SON([('size',(box.height,box.width)),         
                      ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
                      ('intersects_with',intersects_with),
                      ('ObjectType',label),
@@ -71,6 +73,7 @@ def darpa_random_config_gen(IC,args):
     IC.metadata = X = tb.tabarray(SVfile = mdp)
     IC.num_images = args['num_images']
     IC.size = args['size']
+    IC.prefix = prefix = args.get('image_extension','.jpg')
     T = np.unique(X[['clip_num','Frame']])
     im_stuff = {}
     params = []
@@ -80,7 +83,7 @@ def darpa_random_config_gen(IC,args):
         t = T[ind]
         clip_num = t['clip_num']
         frame = t['Frame']
-        p = darpa_image_path(t)
+        p = darpa_image_path(t,prefix=prefix)
         add_im_stuff(im_stuff,IC,p,t)
         box = choose_random_darpa_box(im_stuff[p]['size'],IC.size)
         intersects_with = get_darpa_intersection(box,im_stuff[p]['boxes'])
@@ -105,7 +108,7 @@ def darpa_random_config_gen(IC,args):
         perm = np.random.permutation(len(X))
         X1 = X[perm[:IC.num_images]]
         for x in X1:
-            p = darpa_image_path(x)
+            p = darpa_image_path(x,prefix=prefix)
             print(p)
             add_im_stuff(im_stuff,IC,p,x,get_boxes=False)
             box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
@@ -149,18 +152,17 @@ def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
     clip_num = t['clip_num']
     frame = t['Frame']
     if p not in im_stuff:
-        path = os.path.join(IC.base_dir,darpa_image_path(t))
+        path = os.path.join(IC.base_dir,darpa_image_path(t,prefix=IC.prefix))
         Im = Image.open(path)
+        im_stuff[p] = {'size':Im.size}
         if get_boxes:
             all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
-            im_stuff[p] = {'size':Im.size,'boxes':all_boxes}
-        else:
-            im_stuff[p] = {'size':Im.size}
+            im_stuff[p]['boxes'] =all_boxes
 
 import StringIO
 
 def darpa_render(IC,config):
-    path = os.path.join(IC.base_dir,darpa_image_path(config))
+    path = os.path.join(IC.base_dir,darpa_image_path(config,prefix=IC.prefix))
     if IC.current_frame_path != path:
         IC.current_frame_path = path
         IC.current_frame = Image.open(path)
@@ -175,12 +177,12 @@ def darpa_render(IC,config):
     return data
 
 def choose_random_darpa_box(im_size,size):
-    assert im_size[0] >= size[0]
-    assert im_size[1] >= size[1]
-    sx = np.random.randint(im_size[0]-size[0])
-    sy = np.random.randint(im_size[1]-size[1])
-    box = bbox.BoundingBox(xs = (sx,sx+size[0],sx+size[0],sx),
-                           ys = (sy,sy,sy+size[1],sy+size[1]))
+    assert im_size[0] >= size[1]
+    assert im_size[1] >= size[0]
+    sx = np.random.randint(im_size[0]-size[1])
+    sy = np.random.randint(im_size[1]-size[0])
+    box = bbox.BoundingBox(xs = (sx,sx+size[1],sx+size[1],sx),
+                           ys = (sy,sy,sy+size[0],sy+size[0]))
 
     return box
     
@@ -189,26 +191,28 @@ def get_gridded_darpa_boxes(im_size,sizes,offsets):
     
     for size in sizes:
         for offset in offsets:
-            assert im_size[0] >= size[0]
-            assert im_size[1] >= size[1]
-            sxs = [size[0]*j + offset[0] for j in range(im_size[0]/size[0])]
-            sxs[-1] = min(sxs[-1],im_size[0] - size[0])
-            sys = [size[1]*j + offset[1] for j in range(im_size[1]/size[1])]
-            sys[-1] = min(sys[-1],im_size[1] - size[1])
-            new_boxes = [bbox.BoundingBox(xs =  (sx,sx+size[0],sx+size[0],sx),
-                                          ys = (sy,sy,sy+size[1],sy+size[1])) for sx in sxs for sy in sys]
+            assert im_size[0] >= size[1]
+            assert im_size[1] >= size[0]
+            sys = [size[0]*j + offset[0] for j in range(im_size[1]/size[0])]
+            sys[-1] = min(sys[-1],im_size[1] - size[0])
+            sxs = [size[1]*j + offset[1] for j in range(im_size[0]/size[1])]
+            sxs[-1] = min(sxs[-1],im_size[0] - size[1])
+            new_boxes = [bbox.BoundingBox(xs =  (sx,sx+size[1],sx+size[1],sx),
+                                          ys = (sy,sy,sy+size[0],sy+size[0])) for sx in sxs for sy in sys]
             boxes.extend(new_boxes)
 
     return boxes
 
 def get_all_darpa_boxes(X,cn,fr):
-    X = X[(X['clip_num'] == cn) & (X['Frame'] == fr)]
     boxes = []
-    for x in X:
-        box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
-                               ys = [x[yf] for yf in yfields])
-        obj = SON([('box',box)] + [(of,x[of]) for of in otherfields])
-        boxes.append(obj)
+    if all([xf in X.dtype.names for xf in xfields]) and all([yf in X.dtype.names for yf in yfields]): 
+        X = X[(X['clip_num'] == cn) & (X['Frame'] == fr)]
+        boxes = []
+        for x in X:
+            box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
+                                   ys = [x[yf] for yf in yfields])
+            obj = SON([('box',box)] + [(of,x[of]) for of in otherfields])
+            boxes.append(obj)
     return boxes
 
 def get_darpa_intersection(box,boxes):

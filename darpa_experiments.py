@@ -52,3 +52,50 @@ def screen_darpa_models(depends_on=('../config/darpa_screen_evaluation.py',
     """
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d, write=True,parallel=True,use_db = True)
+
+
+
+
+@Applies(deploy.images,args=('../config/darpa_heli_optimalbbox_100000_enriched.py',False,('../../darpa/helidata/',)))
+def generate_darpa_optimalbbox_images():
+    Apply()
+
+@protocolize()
+def make_optimal_darpa_models(depends_on='../config/darpa_optimal_models.py'):
+    protocols.model_protocol(depends_on,parallel=False,write=True)
+
+@protocolize()
+def extract_optimal_darpa_models(depends_on=('../config/darpa_extraction.py',
+                                            '../config/darpa_optimal_models.py',
+                                            '../config/darpa_heli_optimalbbox_100000_enriched.py')):
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True, save_to_db=True, batch_size=100)
+
+
+@protocolize()
+def train_optimal_darpa_models(depends_on=('../config/darpa_optimal_training.py',
+                                          '../config/darpa_extraction.py',
+                                          '../config/darpa_optimal_models.py',
+                                          '../config/darpa_heli_optimalbbox_100000_enriched.py')):
+    a,b,c,d = depends_on
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel=False,use_db = True)
+
+
+
+@Applies(deploy.images,args=('../config/darpa_heli_test_optimalbbox_gridded.py',False,('../../darpa/helidata_test/',)))
+def generate_darpa_test_optimalbbox_images():
+    Apply()
+
+
+@Applies(deploy.images,args=('../config/darpa_heli_optimalbbox_gridded.py',False,('../../darpa/helidata/',)))
+def generate_darpa_train_gridded_optimalbbox_images():
+    Apply()
+    
+
+@protocolize()
+def extract_optimal_darpa_models_ontest(depends_on=('../config/darpa_extraction.py',
+                                                    '../config/darpa_optimal_models.py',
+                                                    '../config/darpa_heli_test_optimalbbox_gridded.py')):
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True, save_to_db=True, batch_size=100)
+            

@@ -571,9 +571,10 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,
 
     (model_configs, image_config_gen, model_hash, image_hash, task_list, 
     perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs, extraction_list) = prepare_evaluate(evaluation_hash,
-                                                image_certificate_file,
-                                                model_certificate_file,
-                                                evaluation, extraction)
+                                                                                                      image_certificate_file,
+                                                                                                      model_certificate_file,
+                                                                                                      evaluation,
+                                                                                                      extraction)
     for m in model_configs: 
         print('Evaluating model',m)
         for task in task_list:  
@@ -604,7 +605,8 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
      perf_col, split_coll, split_fs, splitperf_coll, splitperf_fs, extraction_list) = prepare_evaluate(evaluation_hash,
                                                                                       image_certificate_file,
                                                                                       model_certificate_file,
-                                                                                      evaluation)
+                                                                                      evaluation,
+                                                                                      extraction)
 
     
     jobids = []
@@ -612,12 +614,12 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
     
     for task in task_list:
         for extraction in extraction_list:
-            taskc = copy.deepcopy(task)
-            taskc['universe']['model'] = m['config']['model']
-            taskc['universe']['extraction'] = son_escape(extraction)
-            splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
             for m in model_configs: 
                 print('Evaluating model',m)
+                taskc = copy.deepcopy(task)
+                taskc['universe']['model_filename'] = m['filename']
+                taskc['universe']['extraction'] = son_escape(extraction)
+                splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance'))
                 print('On task',task)              
                 for (ind,split) in enumerate(splits):
                     put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
@@ -726,7 +728,7 @@ def load_features(filename,coll,fs,m,task):
 def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task,extraction):
     res = prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
         
-    if isinstance(ev,list):
+    if isinstance(extraction,list):
         extraction_list = extraction
     else:
         extraction_list = [extraction]
