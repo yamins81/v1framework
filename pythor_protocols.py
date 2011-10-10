@@ -809,11 +809,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
           
     
     print('classifier ...')
-    if len(uniqify(train_labels + test_labels)) > 2:
-        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    else:
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
     return res
 
