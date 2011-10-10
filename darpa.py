@@ -452,4 +452,64 @@ def generate_random_model(config):
     
     return model
 
-                
+import pymongo as pm
+import gridfs
+from bson import SON
+import tabular as tb
+import cPickle
+
+labels = ['Boat',
+          'Car',
+          'Container',
+          'Cyclist',
+          'Helicopter',
+          'Person',
+          'Plane',
+          'Tractor-Trailer',
+          'Truck',
+          'Empty']
+
+def get_results(mean,std):
+    conn = pm.Connection(document_class = SON)
+    db = conn['thor']
+    fcol = db['features.files']
+    ext_hash = 'b83caac21ef205e0f3622cd6209434f160c750ca'
+    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
+    split_fs = gridfs.GridFS(db,'split_performance')
+    fh = split_fs.get_version(splitfilename)
+    r = cPickle.loads(fh.read())
+    r = r['split_result']['cls_data']
+    weights = r['coef']
+    bias = r['intercept']
+    L = fcol.find({'__hash__':ext_hash},fields=['image.clip_num','image.Frame','feature','image.bounding_box'])
+    recs = []
+    for l in L:
+        cn = str(l['image']['clip_num'])
+        fr = l['image']['Frame']
+        print(l['_id'],cn,fr)
+        bx = l['image']['bounding_box']['xfields']
+        by = l['image']['bounding_box']['yfields']
+        feat = l['feature']
+        feat = (feat - mean)/std
+        m = sp.dot(feat,weights) + bias
+        rec = (cn,fr,) + tuple(bx) + tuple(by) + tuple(m)
+        recs.append(rec)
+
+    names = ['clip_num','frame','x1','x2','x3','x4','y1','y2','y3','y4'] + labels
+    X = tb.tabarray(records = recs,names = names)
+    X.saveSV('darpa_results.csv',metadata=True)
+
+def get_stats():
+    conn = pm.Connection(document_class = SON)
+    db = conn['thor']
+
+    split_col = db['splits.files']
+    split_fs = gridfs.GridFS(db,'splits')
+    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
+    r = cPickle.loads(split_fs.get_version(db,splitfilename).read())
+    filenames = [tr['filename'] for tr in r['train_data']]
+    f_col = db['features.files']
+    feats = f_col.find({'filename':{'$in':filenames}})
+    L = list([y['feature'] for y in feats])
+    F = np.array(L)
+    return F.mean(0),F.std(0)
