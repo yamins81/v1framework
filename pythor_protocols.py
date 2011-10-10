@@ -511,7 +511,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
 #################EVALUATION#############
 #################EVALUATION#############    
     
-STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
+STATS = ['train_accuracy','test_accuracy','train_ap','test_ap','train_auc','test_auc']  
 
 def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,write=False,parallel=False,use_db=False):
                         
@@ -687,11 +687,7 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     test_labels = split['test_labels']          
     
     print('classifier ...')
-    if len(uniqify(train_labels + test_labels)) > 2:
-        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    else:
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
     return res
     

@@ -7,168 +7,6 @@ from scikits.learn.linear_model.logistic import LogisticRegression
 SVM classifier module
 '''
     
-
-def classify(train_features,
-             train_labels,
-             test_features,
-             test_labels, 
-             classifier_kwargs
-            ):
-
-    '''Classify data and return
-        accuracy
-        area under curve
-        average precision
-        and svm raw data in a dictianary'''
-
-    #mapping labels to 0,1
-    labels = sp.unique(sp.concatenate((train_labels, test_labels)))
-    assert labels.size == 2
-    label_to_id = dict([(k,v) for v, k in enumerate(labels)])
-
-    train_ys = sp.array([label_to_id[i] for i in train_labels])
-    test_ys = sp.array([label_to_id[i] for i in test_labels])
-
-    #train
-    model,fmean,fstd = classifier_train(train_features, train_ys, test_features,**classifier_kwargs)
-
-    #test
-    if classifier_kwargs.get('classifier_type') == 'MCC':
-        weights = model.coef_
-        bias = model.intercept_
-    else:
-        weights = model.coef_.ravel()
-        bias = model.intercept_.ravel()
-    
-    test_predictor = sp.dot(test_features, weights) + bias    
-    test_prediction = model.predict(test_features)
-    train_prediction = model.predict(train_features)
-
-    #raw data to be saved for future use
-    cls_data = {'test_prediction' : test_prediction,  
-                'test_labels' : test_labels, 
-                'coef' : model.coef_, 
-                'intercept' : model.intercept_,
-                'train_mean' : fmean,
-                'train_std': fstd
-               }
-
-    #accuracy
-    test_accuracy = 100*(test_prediction == test_ys).sum()/float(len(test_ys))
-    train_accuracy = 100*(train_prediction == train_ys).sum()/float(len(train_ys))
-    
-    #precison and recall
-    c = test_predictor
-    si = sp.argsort(-c)
-    tp = sp.cumsum(sp.single(test_ys[si] == 1))
-    fp = sp.cumsum(sp.single(test_ys[si] == 0))
-    rec = tp /sp.sum(test_ys > 0)
-    prec = tp / (fp + tp)
-    
-    ap = 0
-    rng = sp.arange(0, 1.1, .1)
-    for th in rng:
-        parray = prec[rec>=th]
-        if len(parray) == 0:
-            p = 0
-        else:
-            p = parray.max()
-        ap += p / rng.size
-
-    #area under curve
-    h = sp.diff(rec)
-    auc = sp.sum(h * (prec[1:] + prec[:-1])) / 2.0
-
-
-    return {'auc':auc,
-            'ap':ap, 
-            'train_accuracy': train_accuracy,
-            'test_accuracy' : test_accuracy,
-            'cls_data':cls_data
-           }
-
-
-        
-def ova_classify(train_features,
-                     train_labels,
-                     test_features,
-                     test_labels,
-                     classifier_kwargs):
-                     
-    """
-    Classifier using one-vs-all on top of liblinear binary classification.  
-    Computes mean average precision (mAP) and mean area-under-the-curve (mAUC)
-    by averaging these measure of the binary results. 
-    """
-                     
-    train_features, test_features,fmean,fstd = __sphere(train_features, test_features)
-
-    classifier_kwargs['sphere'] = False
-    
-    labels = sp.unique(sp.concatenate((train_labels, test_labels)))
-    label_to_id = dict([(k,v) for v, k in enumerate(labels)])
-
-    train_ids = sp.array([label_to_id[i] for i in train_labels])
-    test_ids = sp.array([label_to_id[i] for i in test_labels])
-    all_ids = sp.array(range(len(labels)))
-
-    classifiers = []
-    aps = []
-    aucs = []
-    cls_datas = []
-    test_accuracies = []
-    train_accuracies = []
-
-    signs = []
-    for id in all_ids: 
-        binary_train_ids = sp.array([2*int(l == id) - 1 for l in train_ids])
-        binary_test_ids = sp.array([2*int(l == id) - 1 for l in test_ids])
-        signs.append(binary_train_ids[0])   
-        
-        res = classify(train_features, binary_train_ids, test_features, binary_test_ids,classifier_kwargs)
-        
-        
-        aps.append(res['ap'])
-        aucs.append(res['auc'])
-        test_accuracies.append(res['test_accuracy'])
-        train_accuracies.append(res['train_accuracy'])
-        cls_datas.append(res['cls_data'])
-    
-    mean_ap = sp.array(aps).mean()
-    mean_auc = sp.array(aucs).mean()
-    
-    signs = sp.array(signs)
-    weights = signs * (sp.row_stack([cls_data['coef'] for cls_data in cls_datas]).T)
-    bias = signs * (sp.row_stack([cls_data['intercept'] for cls_data in cls_datas]).T)
-    
-    predictor = max_predictor(weights,bias,labels)
-  
-    test_prediction = predictor(test_features)
-    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
-
-    train_prediction = predictor(train_features)
-    train_accuracy = float(100*(train_prediction == train_labels).sum() / float(len(train_prediction)))
-
-    cls_data = {'coef' : weights, 
-     'intercept' : bias, 
-     'train_labels': train_labels,
-     'test_labels' : test_labels,
-     'train_prediction': train_prediction, 
-     'test_prediction' : test_prediction,
-     'labels' : labels
-     }
-
-
-    return {'cls_data' : cls_data,
-     'train_accuracy' : train_accuracy,
-     'test_accuracy' : test_accuracy,
-     'mean_ap' : mean_ap,
-     'mean_auc' : mean_auc,
-     'test_accuracies' : test_accuracies,
-     'train_accuracies' : train_accuracies
-     }
-     
-
 def multi_classify(train_features,
                      train_labels,
                      test_features,
@@ -179,30 +17,16 @@ def multi_classify(train_features,
     """
 
     labels = sp.unique(sp.concatenate((train_labels, test_labels)))
-    label_to_id = dict([(k,v) for v, k in enumerate(labels)])
- 
+    label_to_id = dict([(k,v) for v, k in enumerate(labels)]) 
     train_ids = sp.array([label_to_id[i] for i in train_labels])
-    test_ids = sp.array([label_to_id[i] for i in test_labels])
     
-    classifier = classifier_train(train_features, train_ids, test_features, multi_class = multi_class)[0]
+    classifier,train_mean, train_std, was_sphered = classifier_train(train_features, train_ids, test_features, multi_class = multi_class)
+    
     weights = classifier.coef_.T
     bias = classifier.intercept_
-        
     test_prediction = labels[classifier.predict(test_features)]
-    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
     train_prediction = labels[classifier.predict(train_features)]
-    train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
     
-#    margin_fn = lambda v : (sp.dot(v,weights) + bias)
-#    test_margins = margin_fn(test_features)
-#    test_margin_prediction = labels[test_margins.argmax(1)]
-#    train_margins = margin_fn(train_features)
-#    train_margin_prediction = labels[train_margins.argmax(1)]
-#    assert (test_prediction == test_margin_prediction).all(), 'test margin prediction not correct'
-#    assert (train_prediction == train_margin_prediction).all(), 'train margin prediction not correct'    
-    
-    mean_ap,mean_auc = multiclass_stats(test_labels,test_prediction,labels)
-
     cls_data = {'coef' : weights, 
      'intercept' : bias, 
      'train_labels': train_labels,
@@ -210,35 +34,49 @@ def multi_classify(train_features,
      'train_prediction': train_prediction, 
      'test_prediction' : test_prediction,
      'labels' : labels,
-#     'test_margins' : test_margins,
-#     'train_margins' : train_margins
+     'train_mean' : train_mean,
+     'train_std' : train_std,
+     'sphere' : was_sphered
+     
      }
+     
+    stats = multiclass_stats(test_labels,test_prediction,train_labels,train_prediction,labels)     
 
-
-    return {'cls_data' : cls_data,
-     'train_accuracy' : train_accuracy,
-     'test_accuracy' : test_accuracy,
-     'mean_ap' : mean_ap,
-     'mean_auc' : mean_auc
-     }
- 
-
-def multiclass_stats(actual,predicted,labels):
-    aps = []
-    aucs = []
+    result = {'cls_data':cls_data}
+    result.update(stats)
+    return result
     
+
+def multiclass_stats(test_actual,test_predicted,train_actual,train_predicted,labels):
+    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
+    train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
+    train_aps = []
+    test_aps = []
+    train_aucs = []
+    test_aucs = []
+    if len(labels) == 2:
+        labels = labels[1:]
     for label in labels:
-        prec,rec = precision_and_recall(actual,predicted,label)
-        ap = ap_from_prec_and_rec(prec,rec)
-        aps.append(ap)
-        auc = auc_from_prec_and_rec(prec,rec)
-        aucs.append(auc)
-    
-    mean_ap = np.array(aps).mean()
-    mean_auc = np.array(aucs).mean()
-    
-    return mean_ap,mean_auc
-
+        train_prec,train_rec = precision_and_recall(train_actual,train_predicted,label)
+        test_prec,test_rec = precision_and_recall(test_actual,test_predicted,label)
+        train_ap = ap_from_prec_and_rec(train_prec,train_rec)
+        test_ap = ap_from_prec_and_rec(test_prec,test_rec)
+        train_aps.append(train_ap)
+        test_aps.append(test_ap)
+        train_auc = auc_from_prec_and_rec(train_prec,train_rec)
+        test_auc = auc_from_prec_and_rec(test_prec,test_rec)
+        train_aucs.append(train_auc)
+        test_aucs.append(test_auc)
+    train_ap = np.array(train_aps).mean()
+    test_ap = np.array(test_aps).mean()
+    train_auc = np.array(train_aucs).mean()
+    test_auc = np.array(test_aucs).mean()
+    return {'train_accuracy' : train_accuracy,
+            'test_accuracy' : test_accuracy,
+            'train_ap' : train_ap,
+            'test_ap' : test_ap,
+            'train_auc' : train_auc,
+            'test_auc' : test_auc}
 
 def precision_and_recall(actual,predicted,cls):
     c = (actual == cls)
@@ -304,7 +142,7 @@ def classifier_train(train_features,
 
     clf.fit(train_features, train_labels)
     
-    return clf,fmean, fstd
+    return clf,fmean, fstd, sphere
 
 #sphere data
 def __sphere(train_data, test_data):
