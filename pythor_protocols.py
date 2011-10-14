@@ -1519,14 +1519,14 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=N
     query = task_config['query'] 
     if isinstance(query,list):
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
-        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
+        return traintest.generate_multi_splits(DB_NAME,colname,cqueries,N,ntrain,
                                                ntest,universe=base_query,
                                                overlap=overlap, balance=balance)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
         cquery = reach_in('config',query) if reachin else copy.deepcopy(query)
-        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,
+        return traintest.generate_splits(DB_NAME,colname,cquery,N,ntrain,ntest,
                                          ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
                                          universe=base_query,use_negate = True,
                                          overlap=overlap)
@@ -1804,7 +1804,6 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
             if filter is not None:
                 filter = fix_filter(array[0],filter)
 
-            print('LAYERSTUFF',ind,array[0].shape)
             if isinstance(layer,list):
                 arrays = [compute_layer(array,filter,l,convolve_func,conv_mode) for l in layer]
                 array = harmonize_arrays(arrays,model_config)
@@ -1871,9 +1870,15 @@ def resample(array,scale,config):
     for k in array:
         sh = array[k].shape
         new_sh = scale + sh[2:]
-        adict[k] = np.resize(array[k],new_sh)
+        adict[k] = imresize(array[k],new_sh,mode='nearest')
     return adict
-    
+  
+from scipy.ndimage.interpolation import affine_transform
+def imresize(x,sh,**kwargs):
+    m = np.array(x.shape)/np.array(sh).astype(float)
+    print(m)
+    return affine_transform(x,m,output_shape = sh,**kwargs)
+        
 def harmonize_arrays(arrays,config):
     arrays = [fix_1ds(array) for array in arrays]
     sizes = [array[0].shape for array in arrays]
