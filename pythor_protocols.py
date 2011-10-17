@@ -688,13 +688,80 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     test_features,test_feature_info = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
     train_labels = split['train_labels']
     test_labels = split['test_labels']          
-    
-    print('classifier ...')
-    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    print('Split test accuracy', res['test_accuracy'])
+
+    res = train_test(task,train_filenames,test_filenames,train_labels,test_labels,train_features,test_features,classifier_kwargs)
     res['feature_info'] = get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info)
+
     return res
     
+def train_test(task,train_filenames,test_filenames,train_labels,test_labels,train_features,test_features,classifier_kwargs):
+
+    if task.get('target_map'):
+        image_col = db['images.files']
+        image_fs = gridfs.GridFS(db,'images')
+        train_target_maps = get_target_maps(task,train_filenames,image_fs,image_col)
+        test_target_maps = get_target_maps(task,test_filenames,image_fs,image_col)
+        train_features, train_labels, train_alignment = align_features_and_labels_with_maps(train_target_maps,train_features,train_labels)
+        test_features, test_labels, test_alignment = align_features_and_labels_with_maps(test_target_maps,test_features,test_labels)
+        
+    print('classifier ...')
+    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs,relabel = task.get('relabel',True))
+    print('Split test accuracy', res['test_accuracy'])
+
+    if task.get('target_map'):
+        res['cls_data']['train_labels'] = realign_labels(res['cls_data']['train_labels'], train_alignment)
+        res['cls_data']['test_labels'] = realign_labels(res['cls_data']['test_labels'], test_alignment)
+        res['cls_data']['train_prediction'] = realign_labels(res['cls_data']['train_prediction'], train_alignment)
+        res['cls_data']['test_prediction'] = realign_labels(res['cls_data']['test_prediction'], test_alignment)
+        if task['target_map'].get('statfunc'):
+            
+
+    return res
+    
+def get_target_maps(task,filenames,image_fs,image_col):
+    target_map_config = task['target_map']
+    fn_path = target_map_config['mapping_function']
+    fn_name = fn_path.split('.')[-1]
+    mod_path = '.'.join(fn_path.split('.')[:-1])
+    modl = __import__(mod_path,globals(),locals(),[fn_path])
+    fn = getattr(modl,fn_name)
+    return [fn(image_fs.get_version(filename),image_col.find_one({'filename':filename})) for filename in filenames]
+    
+def align_features_and_labels_with_maps(maps,features,labels):
+    new_feature_list = []
+    new_label_list = []
+    alignment = []
+    count = 0
+    for (map,feature,label) in zip(maps,features,labels):
+        if feature.ndim == 1:
+            feature = np.tile(feature,map.shape[:2] + (1,))
+        else:
+            feature = np.resize(feature,map.shape[:2] + feature.shape[2:])
+        
+        ms = map.shape[0]*map.shape[1]
+        
+        new_features = feature.reshape((ms,) + feature.shape[2:])
+        new_feature_list.append(new_features)
+        
+        label_array = np.column_stack([map.reshape((ms,) + map.shape[2:]) , ms*[label]])
+        new_label_list.append(label_array)
+                
+        aln = ((map.shape[0],map.shape[1]),count,count+ms)
+        count += ms
+        alignment.append(aln)
+    
+    new_labels = np.row_stack(new_label_list)
+    new_features = np.row_stack(new_feature_list)
+    
+    return new_features,new_labels,alignment
+    
+def realign_labels(labels,alignment):
+    new_labels = []
+    for ((s0,s1),i0,i1) in alignment:
+        l = alignment[i0:i1]
+        l = l.reshape((s0,s1) + l.shape[1:])
+        new_labels.append(l)
+    return new_labels
     
 def load_features_batch(feature_filenames,coll,fs,m,task,extraction,extraction_hash,use_db):
     feature_filenames = map(str,feature_filenames)
@@ -903,13 +970,9 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     for(im,f) in zip(new_test_filenames,new_test_features):
         put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
           
-    print('classifier ...')
-    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    print('Split test accuracy', res['test_accuracy'])
-    
+    res = train_test(task,train_filenames,test_filenames,train_labels,test_labels,train_features,test_features,classifier_kwargs)
     res['feature_info'] = get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info)
-    return res
-
+    return res   
      
 def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
 
@@ -1543,20 +1606,29 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=N
     univ = task_config.get('universe',SON([]))
     base_query.update(reach_in('config',univ) if reachin else univ)
 
-    query = task_config['query'] 
+    query = copy.deepcopy(task_config['query'])
     if isinstance(query,list):
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
-        return traintest.generate_multi_splits(DB_NAME,colname,cqueries,N,ntrain,
-                                               ntest,universe=base_query,
-                                               overlap=overlap, balance=balance)
+        splits = traintest.generate_multi_splits(DB_NAME,colname,cqueries,N,ntrain,
+                                                 ntest,universe=base_query,
+                                                 overlap=overlap, balance=balance)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
         cquery = reach_in('config',query) if reachin else copy.deepcopy(query)
-        return traintest.generate_splits(DB_NAME,colname,cquery,N,ntrain,ntest,
-                                         ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
-                                         universe=base_query,use_negate = True,
-                                         overlap=overlap)
+        splits = traintest.generate_splits(DB_NAME,colname,cquery,N,ntrain,ntest,
+                                           ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
+                                           universe=base_query,use_negate = True,
+                                           overlap=overlap)
+                                         
+    if task.get('query_labels'):
+        L = task['query_labels']
+        if isinstace(L,str):
+            L = ['NOT ' + L, L]
+        splits['train_labels'] = [L[t] for t in splits['train_labels']]
+        splits['test_labels'] = [L[t] for t in splits['test_labels']]
+
+    return splits
 
 
 ############TRANFORM AVERAGE#############

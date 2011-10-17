@@ -1,6 +1,7 @@
 import scipy as sp
 import numpy as np
-from scikits.learn import svm
+from scikits.learn import svm as sklearn_svm
+from scikits.learn import linear_model as sklearn_linear_model
 from scikits.learn.linear_model.logistic import LogisticRegression
 
 '''
@@ -11,21 +12,30 @@ def multi_classify(train_features,
                      train_labels,
                      test_features,
                      test_labels,
-                     multi_class = False):
+                     classifier_kwargs,
+                     relabel = True):
     """
     Classifier using the built-in multi-class classification capabilities of liblinear
     """
 
-    labels = sp.unique(sp.concatenate((train_labels, test_labels)))
-    label_to_id = dict([(k,v) for v, k in enumerate(labels)]) 
-    train_ids = sp.array([label_to_id[i] for i in train_labels])
+    if relabel:
+        labels = sp.unique(sp.concatenate((train_labels, test_labels)))
+        label_to_id = dict([(k,v) for v, k in enumerate(labels)]) 
+        train_ids = sp.array([label_to_id[i] for i in train_labels])
+    else:
+        train_ids = train_labels
+        labels = None
     
-    classifier,train_mean, train_std, was_sphered = classifier_train(train_features, train_ids, test_features, multi_class = multi_class)
+    classifier,train_mean, train_std, was_sphered = classifier_train(train_features, train_ids, test_features, **classifier_kwargs)
     
     weights = classifier.coef_.T
     bias = classifier.intercept_
-    test_prediction = labels[classifier.predict(test_features)]
-    train_prediction = labels[classifier.predict(train_features)]
+
+	test_prediction = classifier.predict(test_features)
+	train_prediction = classifier.predict(train_features)
+	if labels:
+        test_prediction = labels[test_prediction]
+        train_prediction = labels[train_prediction]
     
     cls_data = {'coef' : weights, 
      'intercept' : bias, 
@@ -132,14 +142,20 @@ def classifier_train(train_features,
         fstd = None
 
     if classifier_type == 'liblinear':
-        clf = svm.LinearSVC(**kwargs)
+        clf = sklearn_svm.LinearSVC(**kwargs)
     if classifier_type == 'libSVM':
-        clf = svm.SVC(**kwargs)
+        clf = sklearn_svm.SVC(**kwargs)
     elif classifier_type == 'LRL':
         clf = LogisticRegression(**kwargs)
     elif classifier_type == 'MCC':
         clf = CorrelationClassifier(**kwargs)
-
+    elif classifier_type.startswith('svm.'):
+        ct = classifier_type.split('.')[-1]
+        clf = getattr(sklearn_svm,ct)(**kwargs)
+    elif classifier_type.startswith('linear_model.'):
+        ct = classifier_type.split('.')[-1]
+        clf = getattr(sklearn_linear_model,ct)(**kwargs)
+    
     clf.fit(train_features, train_labels)
     
     return clf,fmean, fstd, sphere
