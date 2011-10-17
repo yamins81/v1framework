@@ -461,17 +461,20 @@ def put_in_extraction(features,image_configs,m,model_hash,image_hash,task,ext_ha
     feature_fs = gridfs.GridFS(db,'features')
     
     for (feat,config) in zip(features,image_configs):
+        feat,info = feat
+        
         out_record = copy.deepcopy(out_record)
         out_record['image'] = config['config']['image']
         out_record['image_filename'] = config['filename']
         
         out_record['filename'] = get_filename(out_record)
         out_record['__hash__'] = ext_hash
+        out_record['info'] = info
+        out_record['feature_length'] = len(feat)
         if save_to_db:
             out_record['feature'] = feat.tolist()
-            out_record['feature_length'] = len(feat)
         print('pickling split result...')
-        out_data = cPickle.dumps(feat)
+        out_data = cPickle.dumps((feat,info))
         print('dumping out split result ...')
         feature_fs.put(out_data,**out_record)          
                       
@@ -680,15 +683,16 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     feature_fs = gridfs.GridFS(db,'features')
     
     print('train feature loading ...')
-    train_features = load_features_batch(train_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
+    train_features,train_feature_info = load_features_batch(train_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
     print('test feature loading ...')
-    test_features = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
+    test_features,test_feature_info = load_features_batch(test_filenames,feature_coll,feature_fs,m,task,extraction,extraction_hash,use_db)
     train_labels = split['train_labels']
     test_labels = split['test_labels']          
     
     print('classifier ...')
     res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
+    res['feature_info'] = get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info)
     return res
     
     
@@ -697,29 +701,39 @@ def load_features_batch(feature_filenames,coll,fs,m,task,extraction,extraction_h
     if use_db:
         feature_filenames = np.array(feature_filenames)
         feature_filenames_argsort = feature_filenames.argsort()
-        curs = coll.find({'__hash__':extraction_hash,'filename':{'$in':feature_filenames.tolist()}},fields=["feature","filename"]).sort('filename')
-        features = []; feature_filenames_returned = []
+        curs = coll.find({'__hash__':extraction_hash,'filename':{'$in':feature_filenames.tolist()}},fields=["feature","filename","info"]).sort('filename')
+        features = []; feature_filenames_returned = []; info = []
         for x in curs:
             features.append(feature_postprocess(x['feature'],task.get('feature_postprocess'),m,extraction))
             feature_filenames_returned.append(x['filename'])
+            info.append(x['info'])
         features = sp.row_stack(features)
         feature_filenames_returned = np.array(feature_filenames_returned)   
         inverse_sort = PermInverse(feature_filenames_argsort)
         assert (feature_filenames == feature_filenames_returned[inverse_sort]).all(), 'filenames dont match'
-        return features[inverse_sort]
+        return features[inverse_sort],[info[ind] for ind in inverse_sort]
     else:
-        return sp.row_stack([feature_postprocess(load_features(f,coll,fs,m,task),task.get('feature_postprocess'),m,extraction) for f in feature_filenames])
+        features = [load_features(f,coll,fs,m,task) for f in feature_filenames]
+        features,feature_info = zip(*features)
+        return sp.row_stack([feature_postprocess(feat,task.get('feature_postprocess'),m,extraction) for feat in features]),feature_info
     
 
-def load_features(filename,coll,fs,m,task):
-
+def load_features(filename,coll,fs,m,task):    
     feat = get_from_cache((filename,m),FEATURE_CACHE)
     if feat is None:
-        #filename = coll.find_one({'model':m['config']['model'],'filename':image_filename},fields=["filename"])["filename"]
         feat = cPickle.loads(fs.get_version(filename).read())
         put_in_cache((filename,m),feat,FEATURE_CACHE)
     return feat
          
+         
+def get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info):
+    return SON([('feature_length',len(train_features[0])),
+                ('num_channels',train_feature_info[0]['c']),
+                ('shape',train_feature_info[0]['s'])])
+    
+def summarize_feature_info_over_splits(infos):
+    return infos[0]
+    
 
 def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task,extraction):
     res = prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task)
@@ -730,6 +744,83 @@ def prepare_evaluate(ext_hash,image_certificate_file,model_certificate_file,task
         extraction_list = [extraction]
 
     return res + (extraction_list,)
+    
+
+def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash,extraction=None,extraction_hash=None):
+    
+    model_results = SON([])
+    for stat in STATS:
+        if stat in split_results[0] and split_results[0][stat] != None:
+            model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()        
+            
+    feature_info = summarize_feature_info_over_splits([split_result['feature_info'] for split_result in split_results])
+
+    out_record = SON([('model',m['config']['model']),
+                      ('model_hash',model_hash), 
+                      ('model_filename',m['filename']), 
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('image_hash',image_hash),
+                      ('task',son_escape(task)),
+                      ('feature_info',feature_info),
+                      ('__hash__',ext_hash)
+                 ])
+                 
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
+        out_record['extraction_hash'] = extraction_hash
+                                  
+    out_record.update(model_results)
+
+    print('inserting result ...')
+    perf_coll.insert(out_record)
+
+
+def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs,extraction=None):
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task)),
+                      ('split_id',split_id),
+                 ])   
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
+
+    
+    filename = get_filename(out_record)
+    out_record['filename'] = filename
+    out_record['__hash__'] = ext_hash
+    print('pickling split ...')
+    out_data = cPickle.dumps(SON([('split',split)]))
+    print('dump out split ...')
+    split_fs.put(out_data,**out_record)
+
+     
+def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs,extraction=None):
+    
+    out_record = SON([('model',m['config']['model']),
+                      ('images',son_escape(image_config_gen['images'])),
+                      ('task',son_escape(task)),
+                      ('split_id',split_id),
+                 ])   
+                 
+    if extraction:
+        out_record['extraction'] = son_escape(extraction)
+            
+    filename = get_filename(out_record)
+                 
+    split_result = SON([])
+    for stat in STATS:
+        if stat in res and res[stat] != None:
+            split_result[stat] = res[stat] 
+
+    out_record['filename'] = filename
+    out_record['feature_info'] = res['feature_info']
+    out_record['__hash__'] = ext_hash
+    out_record.update(split_result)
+    print('pickling split result...')
+    out_data = cPickle.dumps(SON([('split_result',res)]))
+    print('dumping out split result ...')
+    splitres_fs.put(out_data,**out_record)          
+
 
 #########EXTRACT AND EVALUATE############# 
 #########EXTRACT AND EVALUATE############# 
@@ -796,9 +887,14 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
         print('test feature extraction ...')
         new_test_features = extract_inner_core(new_test_filenames,m,convolve_func_name,0,task,cache_port)
 
+
     #TODO get the order consistent with original ordering
-    train_features = sp.row_stack(filter(lambda x : x is not None,existing_train_features) + new_train_features)
-    test_features = sp.row_stack(filter(lambda x : x is not None, existing_test_features) + new_test_features)
+    train_features = filter(lambda x : x is not None,existing_train_features) + new_train_features
+    train_features,train_feature_info = zip(*train_features)
+    train_features = sp.row_stack(train_features)
+    test_features = filter(lambda x : x is not None, existing_test_features) + new_test_features
+    test_features,test_feature_info = zip(*test_feature)
+    test_features = sp.row_stack(test_features)
     train_labels = existing_train_labels + new_train_labels
     test_labels = existing_test_labels + new_test_labels
     
@@ -807,10 +903,11 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     for(im,f) in zip(new_test_filenames,new_test_features):
         put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
           
-    
     print('classifier ...')
     res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
+    
+    res['feature_info'] = get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info)
     return res
 
      
@@ -850,76 +947,6 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     
     return model_configs,image_config_gen,model_hash,image_hash, task_list, perf_coll, split_coll, split_fs, splitperf_coll, splitperf_fs
     
-
-def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,perf_coll,task,ext_hash,extraction=None,extraction_hash=None):
-    
-    model_results = SON([])
-    for stat in STATS:
-        if stat in split_results[0] and split_results[0][stat] != None:
-            model_results[stat] = sp.array([split_result[stat] for split_result in split_results]).mean()           
-
-    out_record = SON([('model',m['config']['model']),
-                      ('model_hash',model_hash), 
-                      ('model_filename',m['filename']), 
-                      ('images',son_escape(image_config_gen['images'])),
-                      ('image_hash',image_hash),
-                      ('task',son_escape(task)),
-                      ('__hash__',ext_hash)
-                 ])
-                 
-    if extraction:
-        out_record['extraction'] = son_escape(extraction)
-        out_record['extraction_hash'] = extraction_hash
-                                  
-    out_record.update(model_results)
-
-    print('inserting result ...')
-    perf_coll.insert(out_record)
-
-
-def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs,extraction=None):
-    out_record = SON([('model',m['config']['model']),
-                      ('images',son_escape(image_config_gen['images'])),
-                      ('task',son_escape(task)),
-                      ('split_id',split_id),
-                 ])   
-    if extraction:
-        out_record['extraction'] = son_escape(extraction)
-
-    
-    filename = get_filename(out_record)
-    out_record['filename'] = filename
-    out_record['__hash__'] = ext_hash
-    print('pickling split ...')
-    out_data = cPickle.dumps(SON([('split',split)]))
-    print('dump out split ...')
-    split_fs.put(out_data,**out_record)
-
-     
-def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_fs,extraction=None):
-    out_record = SON([('model',m['config']['model']),
-                      ('images',son_escape(image_config_gen['images'])),
-                      ('task',son_escape(task)),
-                      ('split_id',split_id),
-                 ])   
-                 
-    if extraction:
-        out_record['extraction'] = son_escape(extraction)
-                 
-                 
-    split_result = SON([])
-    for stat in STATS:
-        if stat in res and res[stat] != None:
-            split_result[stat] = res[stat] 
-
-    filename = get_filename(out_record)
-    out_record['filename'] = filename
-    out_record['__hash__'] = ext_hash
-    out_record.update(split_result)
-    print('pickling split result...')
-    out_data = cPickle.dumps(SON([('split_result',res)]))
-    print('dumping out split result ...')
-    splitres_fs.put(out_data,**out_record)          
  
 
 @activate(lambda x : (x[1],x[2],x[3]),lambda x : x[0])
@@ -1345,7 +1372,7 @@ def get_corr_inner_core(images,m,convolve_func_name,device_id,task,cache_port):
     task = copy.deepcopy(task)
     task['transform_average'] = {'transform_name':'central_slice','ker_shape':task['ker_shape']}
     for (n,im) in enumerate(images):
-        f = get_features(im, image_fs, filters, m, convolve_func,task,poller)
+        f,info = get_features(im, image_fs, filters, m, convolve_func,task,poller)
         V,M = combine_corr([(V,M),(0,f)],np.array([1 - (1/(n+1)),1/(n+1)]))
     
     if convolve_func_name == 'cufft':
@@ -1538,6 +1565,12 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=N
 ############TRANFORM AVERAGE#############
 ############TRANFORM AVERAGE#############
 
+
+def get_info(l):
+    num_channels = len(l.keys())
+    sh = l[0].shape
+    return SON([('c',num_channels),('s',sh)])
+
 def transform_average(input,config,model_config):
     if isinstance(input,list):
         M = model_config['config']['model']
@@ -1547,13 +1580,17 @@ def transform_average(input,config,model_config):
         else:
             config = [copy.deepcopy(config) for ind in range(len(M))]
         args = zip(input,config,[{'config':{'model':m}} for m in M])
-        vec = sp.concatenate([transform_average(inp,conf,m) for (inp,conf,m) in args])
+        results = [transform_average(inp,conf,m) for (inp,conf,m) in args]
+        vec = sp.concatenate([res[0] for res in results])
+        info = [res[1] for res in results]
     else:
         vecs = []
+        info = []
         for level_input in input.values():
             K = level_input.keys()
             K.sort()
             vec = []
+            info.append(get_info(level_input))
             if config:
                 for cidx in K:
                     vec.append(average_transform(level_input[cidx],config,model_config))
@@ -1565,7 +1602,7 @@ def transform_average(input,config,model_config):
             vecs.append(vec)
         vec = sp.concatenate(vecs)
     
-    return vec
+    return vec,info
 
 def average_transform(input,config,M):
     if config['transform_name'] == 'translation':
@@ -1772,8 +1809,8 @@ def compute_features(image_filename, image_fs, filter, model_config, convolve_fu
     image_fh = image_fs.get_version(image_filename)
     print('extracting', image_filename, model_config)
     return compute_features_core(image_fh,filter,model_config,convolve_func)    
-    
-    
+
+
 def compute_features_core(image_fh,filters,model_config,convolve_func):
  
     m_config = model_config['config']['model']
@@ -1837,7 +1874,7 @@ def compute_layer(array,filter,layer,convolve_func,conv_mode):
         return compute_inner_layer(array,filter,layer,convolve_func,conv_mode)
 
 def compute_inner_layer(array,filter,layer,convolve_func,conv_mode):
-        print('filter',array[0].shape)
+    print('filter',array[0].shape)
 	if filter is not None:
 		array = fbcorr(array, filter, layer , convolve_func)
 
@@ -1934,6 +1971,10 @@ def fbcorr(input,filter,layer_config,convolve_func):
         else:
             min_out = layer_config['activ'].get('min_out')
             max_out=layer_config['activ'].get('max_out')
+            if hasattr(min_out,'__iter__') and not hasattr(max_out,'__iter__'):
+                max_out = [max_out]*len(min_out)
+            elif hasattr(max_out,'__iter__') and not hasattr(min_out,'__iter__'):
+                min_out = [min_out]*len(max_out)
             if hasattr(min_out,'__iter__'):
                 output[cidx] = convolve_func(input[cidx],
                                              filter,
@@ -1972,25 +2013,38 @@ def old_norm(input,conv_mode,params):
 
 
 def lpool(input,conv_mode,config):
-    pooled = {}
-    for cidx in input.keys():
-        if hasattr(config.get('order'),'__iter__'):
-            pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='numpy_naive',**config) 
-        else:           
-            pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin='cthor',**config)
+    if isinstance(config,list):
+        pooled_list = [lpool(input,conv_mode,c) for c on config]
+        pooled = harmonize_arrays(pooled_list)
+    else:
+        pooled = {}
+		if hasattr(config.get('order'),'__iter__') or config.get('percentile') or config.get('rescale')
+			plugin = 'numpy_naive'
+		else:
+			plugin = 'cthor'
+			
+		for cidx in input.keys():
+			pooled[cidx] = pythor3.operation.lpool(input[cidx],plugin=plugin,**config) 
+
     return pooled
 
 def lnorm(input,conv_mode,config):
-    normed = {}
-    if 'inker_shape' in config: 
-        config['inker_shape'] = tuple(config['inker_shape'])
-    if 'outker_shape' in config:
-        config['outker_shape'] = tuple(config['outker_shape'])
-    for cidx in input.keys():
-        if hasattr(config.get('threshold'),'__iter__') or hasattr(config.get('stretch'),'__iter__'):
-            normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='numpy_naive',**config)    
-        else:
-            normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin='cthor',**config)
+    if isinstance(config,list):
+        normed_list = [lnorm(input,conv_mode,c) for c on config]
+        normed = harmonize_arrays(normed_list)
+    else:
+		normed = {}
+		if 'inker_shape' in config: 
+			config['inker_shape'] = tuple(config['inker_shape'])
+		if 'outker_shape' in config:
+			config['outker_shape'] = tuple(config['outker_shape'])
+		if hasattr('threshold'),'__iter__') or hasattr(config.get('stretch'),'__iter__'):
+			plugin = 'numpy_naive'
+		else:
+			plugin = 'cthor'    
+		for cidx in input.keys():
+			normed[cidx] = pythor3.operation.lnorm(input[cidx],plugin=plugin,**config)    
+	
     return normed
 
 def c_numpy_mixed(arr_in, arr_fb, arr_out=None,

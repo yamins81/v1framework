@@ -187,8 +187,19 @@ def get_filter_size(l):
     
 def get_filter_sizes(config):
     return [get_filter_size(l) for l in config]
-    
 
+    
+#sum up over top list in config
+#only retain stuff in last layer if feed_up is false
+
+def get_num_filters(config):
+    pass
+
+def get_num_taps(config):
+    pass
+    
+def get_num_dimensions(config):
+    pass
 
 def get_hierarchical_filterbanks(config):
 
@@ -552,10 +563,6 @@ def get_model(m):
                 maxmax = layer['activ']['max_out_max']
                 maxmin = layer['activ']['max_out_min']
                 layer['activ']['max_out'] = list((maxmax-maxmin)*np.random.random(size=filterbank.shape[0]) + maxmin)
-            if hasattr(layer['activ'].get('min_out'),'__iter__') and not hasattr(layer['activ'].get('max_out'),'__iter__'):
-                layer['activ']['max_out'] = [layer['activ'].get('max_out')]*len(layer['activ']['min_out'])
-            if hasattr(layer['activ'].get('max_out'),'__iter__') and not hasattr(layer['activ'].get('min_out'),'__iter__'):
-                layer['activ']['min_out'] = [layer['activ'].get('min_out')]*len(layer['activ']['max_out'])
         if layer.get('lpool') and layer['lpool'].get('order_gen') == 'random':
             choices = layer['lpool'].pop('order_choices')
             layer['lpool'].pop('order_gen')
