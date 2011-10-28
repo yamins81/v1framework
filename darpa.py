@@ -22,49 +22,66 @@ def uniqify(X):
 def darpa_image_path(t,prefix = '.jpg'):
     return t['clip_num'] + '_' + str(t['Frame']) + prefix
 
-def darpa_gridded_config_gen(IC,args):
-    IC.current_frame_path = None
-    IC.base_dir = args['base_dir']
-    IC.prefix = args.get('image_extension','.jpg')
-    prefix = IC.prefix
-    mdp = os.path.join(IC.base_dir,'__metadata__.csv')
-    IC.metadata = X = tb.tabarray(SVfile = mdp)
-    IC.sizes = args['sizes']
-    IC.offsets = args.get('offsets',[(0,0)])
-    T = np.unique(X[['clip_num','Frame']])
-    im_stuff = {}
-    params = []
-    for t in T:
-        print(t)
-        clip_num = t['clip_num']
-        frame = t['Frame']
-        path = darpa_image_path(t,prefix=prefix)
-        add_im_stuff(im_stuff,IC,path,t)
-        boxes = get_gridded_darpa_boxes(im_stuff[path]['size'],IC.sizes,IC.offsets)
-        for box in boxes:
-            intersects_with = get_darpa_intersection(box,im_stuff[path]['boxes'])
-            for (iwind,iw) in enumerate(intersects_with):
-                 iw = copy.deepcopy(iw)
-                 b = iw.pop('box')
-                 iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
-                 intersects_with[iwind] = iw
-            label = uniqify([iw['ObjectType'] for iw in intersects_with])
-            label.sort()
-            p = SON([('size',(box.height,box.width)),         
-                     ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
-                     ('intersects_with',intersects_with),
-                     ('ObjectType',label),
-                     ('clip_num',clip_num),
-                     ('Frame',int(frame)),
-                     ('base_dir',IC.base_dir)])
-            p = SON([('image',p)])
-            params.append(p)            
-            
-    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['Frame']) for p in params])
-    js_ag = js.argsort()
-    params = [params[ind] for ind in js_ag]
-    return params            
-            
+class darpa_gridded_config_gen(object):
+    def __init__(self,IC,args):
+        self.IC = IC
+        self.args = args
+        self.IC.current_frame_path = None
+        self.IC.base_dir = args['base_dir']
+        self.IC.prefix = args.get('image_extension','.jpg')
+        self.prefix = IC.prefix
+        self.mdp = os.path.join(IC.base_dir,'__metadata__.csv')
+        self.IC.metadata = X = tb.tabarray(SVfile = self.mdp)
+        self.IC.sizes = self.args['sizes']
+        self.IC.offsets = self.args.get('offsets',[(0,0)])
+        X.sort(order=['clip_num','Frame'])
+        self.T = np.unique(X[['clip_num','Frame']])
+        self._ind = 0
+        self.im_stuff = {}
+        self._store = []
+
+    
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        try:
+            t = self.T[self._ind]
+        except IndexError:
+            raise StopIteration()
+        else:
+            if self._store == []:
+                self._ind += 1
+                print(t)
+                IC = self.IC
+                prefix = IC.prefix
+                mdp = self.mdp
+                clip_num = t['clip_num']
+                frame = t['Frame']
+                path = darpa_image_path(t,prefix=prefix)
+                add_im_stuff(self.im_stuff,self.IC,path,t, remove=True)
+                boxes = get_gridded_darpa_boxes(self.im_stuff[path]['size'],IC.sizes,IC.offsets)
+                for box in boxes:
+                    intersects_with = get_darpa_intersection(box,self.im_stuff[path]['boxes'])
+                    for (iwind,iw) in enumerate(intersects_with):
+                         iw = copy.deepcopy(iw)
+                         b = iw.pop('box')
+                         iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
+                         intersects_with[iwind] = iw
+                    label = uniqify([iw['ObjectType'] for iw in intersects_with])
+                    label.sort()
+                    p = SON([('size',(box.height,box.width)),         
+                             ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
+                             ('intersects_with',intersects_with),
+                             ('ObjectType',label),
+                             ('clip_num',clip_num),
+                             ('Frame',int(frame)),
+                             ('base_dir',IC.base_dir)])
+                    p = SON([('image',p)])
+                    self._store.append(p)
+            return self._store.pop(0)
+        
+
 
 def darpa_random_config_gen(IC,args):
     IC.current_frame_path = None
@@ -148,7 +165,7 @@ def correct_center(center,shp,size):
     return xc,yc
     
 
-def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
+def add_im_stuff(im_stuff,IC,p,t,get_boxes = True, remove = False):
     clip_num = t['clip_num']
     frame = t['Frame']
     if p not in im_stuff:
@@ -157,7 +174,11 @@ def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
         im_stuff[p] = {'size':Im.size}
         if get_boxes:
             all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
-            im_stuff[p]['boxes'] =all_boxes
+            im_stuff[p]['boxes'] = all_boxes
+    if remove:
+        to_remove = [k for k in im_stuff if k != p]
+        for tr in to_remove:
+            im_stuff.pop(tr)
 
 import StringIO
 

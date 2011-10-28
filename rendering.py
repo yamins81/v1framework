@@ -36,31 +36,49 @@ class ImageConfigs(object):
     def render_image(self,config,returnfh = False):
         return render_image(self,config,returnfh = returnfh)
          
-def config_gen(IC,config):
-    if not isinstance(config['images'],list):
-        config['images'] = [config['images']]
-    params = []
-    for I in config['images']:    
-        if I['selection'] == 'specific':
-            newparams = specific_config_gen(IC,I)
-        elif I['selection'] == 'gridded':
-            newparams = gridded_config_gen(IC,I)
-        elif I['selection'] == 'random':
-            newparams = random_config_gen(IC,I)
-        elif I['generator'] == 'dataset_api':
-            import dataset.compute
-            DatasetObject = dataset.compute.compute_instance(I)
-            meta = DataObject.columns['meta']
-            files = DataObject.columns['img_fullpath']
-            newparams = []
-            for n,fp in zip(meta,files):
-                n['img_fullpath'] = fp
-                n['dataset_name'] = I['dataset_name']
-                newparams.append(SON([('image',n)]))
-        for np in newparams:
-            np['image']['generator'] = I['generator']
-        params.extend(newparams)
-    return params
+
+def chain(iterables):
+    for (ind,it) in enumerate(iterables):
+        for element in it:
+            yield ind,element
+
+class config_gen(object):
+    def __init__(self,IC,config):
+        if not isinstance(config['images'],list):
+            config['images'] = [config['images']]
+        self.im_configs = config['images']
+        param_list = []
+        for I in config['images']:    
+            if I['selection'] == 'specific':
+                newparams = specific_config_gen(IC,I)
+            elif I['selection'] == 'gridded':
+                newparams = gridded_config_gen(IC,I)
+            elif I['selection'] == 'random':
+                newparams = random_config_gen(IC,I)
+            elif I['generator'] == 'dataset_api':
+                import dataset.compute
+                DatasetObject = dataset.compute.compute_instance(I)
+                meta = DataObject.columns['meta']
+                files = DataObject.columns['img_fullpath']
+                newparams = []
+                for n,fp in zip(meta,files):
+                    n['img_fullpath'] = fp
+                    n['dataset_name'] = I['dataset_name']
+                    newparams.append(SON([('image',n)]))
+            
+            param_list.append(newparams)
+            
+        self.param_list = chain(param_list)
+
+            
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        ind,x = self.param_list.next()
+        x['image']['generator'] = self.im_configs[ind]['generator']
+        return x
+            
         
 def specific_config_gen(IC,config):
     images = config['specs']

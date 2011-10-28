@@ -80,6 +80,14 @@ def train_optimal_darpa_models(depends_on=('../config/darpa_optimal_training.py'
     a,b,c,d = depends_on
     protocols.evaluate_protocol(a,b,c,d, write=True,parallel=False,use_db = True)
 
+@protocolize()
+def train_optimal_darpa_models_more_enriched(depends_on=('../config/darpa_optimal_training_more_enriched.py',
+                                          '../config/darpa_extraction.py',
+                                          '../config/darpa_optimal_models.py',
+                                          '../config/darpa_heli_optimalbbox_100000_enriched.py')):
+    a,b,c,d = depends_on
+
+    protocols.evaluate_protocol(a,b,c,d, write=True,parallel=False,use_db = True)
 
 
 @Applies(deploy.images,args=('../config/darpa_heli_test_optimalbbox_gridded.py',False,('../../darpa/helidata_test/',)))
@@ -99,3 +107,15 @@ def extract_optimal_darpa_models_ontest(depends_on=('../config/darpa_extraction.
     a,b,c = depends_on
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True, save_to_db=True, batch_size=100)
             
+
+@Applies(deploy.images,args=('../config/darpa_heli_test_all_optimalbbox_gridded.py',False,('../../darpa/helidata_test_all/',)))
+def generate_darpa_test_all_optimalbbox_images():
+    Apply()
+
+
+@protocolize()
+def extract_optimal_darpa_models_ontest_all(depends_on=('../config/darpa_extraction.py',
+                                                    '../config/darpa_optimal_models.py',
+                                                    '../config/darpa_heli_test_all_optimalbbox_gridded.py')):
+    a,b,c = depends_on
+    protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True, save_to_db=True, batch_size=200)

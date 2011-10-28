@@ -3,6 +3,7 @@ import math
 import pymongo as pm
 import scipy as sp
 from bson import SON
+import tabular as tb
 import gridfs
 from starflow.utils import uniqify, ListUnion
 
@@ -341,11 +342,13 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
     
     for (tq,td,ntr,nte) in zip(task_queries,task_data,ntrain_vec,ntest_vec):
         assert ntr + nte <= len(td), 'not enough examples to train/test for %s, %d needed, but only have %d' % (repr(tq),ntr+nte,len(td))
+
     
     if overlap:
         assert isinstance(overlap,float) and 0 < overlap <= 1, 'overlap must be a float in (0,1]'
         for (_i,(td,ntr,nte)) in enumerate(zip(task_data,ntrain_vec,ntest_vec)):
             eff_n = int(math.ceil((ntr+nte)*(1/overlap)))
+            #add given category intersections and check for error
             perm = sp.random.permutation(len(td))
             task_data[_i] = [td[_j] for _j in perm[:eff_n]]
     
@@ -358,9 +361,14 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
         train_labels = []
         test_labels = []
         for (label,td,ntr,nte) in zip(labels,task_data,ntrain_vec,ntest_vec):
+            td = get_correct_td(td,test_data)
+            assert len(td) >= ntr + nte, 'problem with %s, need %d have %d'  % (label,ntr+nte,len(td))
             perm = sp.random.permutation(len(td))
             train_data.extend([td[i] for i in perm[:ntr]])
-            test_data.extend([td[i] for i in perm[ntr:ntr+nte]])
+            td = get_correct_td(td,train_data)
+            assert len(td) >= nte, 'problem with %s test, need %d have %d'  % (label,nte,len(td))
+            perm = sp.random.permutation(len(td))
+            test_data.extend([td[i] for i in perm[:nte]])
             train_labels.extend([label]*ntr)
             test_labels.extend([label]*nte)
 
@@ -372,3 +380,10 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
         splits.append(split)
    
     return splits
+
+
+def get_correct_td(td,T):
+    tf = np.array([str(t['filename']) for t in td])
+    Tf = np.array([str(t['filename']) for t in T])
+    good_inds = np.invert(tb.fast.isin(tf,Tf)).nonzero()[0]
+    return [td[ind] for ind in good_inds]
