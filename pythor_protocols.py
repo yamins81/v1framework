@@ -895,7 +895,7 @@ def put_in_split_result(res,image_config_gen,m,task,ext_hash,split_id,splitres_f
 #########EXTRACT AND EVALUATE############# 
 #########EXTRACT AND EVALUATE############# 
 
-def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
+def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port,use_db = False):
     classifier_kwargs = task.get('classifier_kwargs',{})  
     train_data = split['train_data']
     test_data = split['test_data']
@@ -1233,11 +1233,91 @@ def extract_and_evaluate_protocol(evaluate_config_path,model_config_path,image_c
     return DH
     
 
-#################DETECT_AND_EVALUATE###########
-#################DETECT_AND_EVALUATE###########
-#################DETECT_AND_EVALUATE###########
-#################DETECT_AND_EVALUATE###########
-#################DETECT_AND_EVALUATE###########
+#################HYPEROPT###########
+#################HYPEROPT###########
+#################HYPEROPT###########
+#################HYPEROPT###########
+#################HYPEROPT###########
+
+
+def optimization_protocol(opt_config_path,model_config_path,image_config_path,
+                      convolve_func_name='numpy', write=False,parallel=False):
+    model_config_gen = get_config(model_config_path)
+    model_hash = get_config_string(model_config_gen['models'])
+    model_certificate = '../.model_certificates/' + model_hash
+    
+    image_config_gen = get_config(image_config_path)
+    image_hash =  get_config_string(image_config_gen['images'])
+    image_certificate = '../.image_certificates/' + image_hash
+
+    opt_config = get_config(opt_config_path)
+    opt_config = opt_config.pop('optimization')
+
+    D = []
+    DH = {}
+    for opt in opt_config:
+        overall_config_gen = SON([('models',model_config_gen['models']),('images',image_config_gen['images']),('optimization',task)])
+        opt_hash = get_config_string(overall_config_gen)    
+        
+        optimization_certificate = '../.optimization_certificates/' + opt_hash
+        func = optimize
+                                                
+        op = ('optimization_' + opt_hash,func, (optimization_certificate,
+                                              image_certificate,
+                                              model_certificate,
+                                              opt_config_path,
+                                              convolve_func_name,
+                                              opt,
+                                              opt_hash))                                                
+        D.append(op)
+        DH[opt_hash] = [op]
+             
+    if write:
+        actualize(D)
+    return DH
+
+@activate(lambda x : x[0], lambda x : (x[1],x[2],x[3]))
+def optimize(outfile,
+			  image_certificate,
+			  model_certificate,
+			  opt_config_path,
+			  convolve_func_name,
+			  opt,
+			  opt_hash):
+	
+    image_config_gen, model_hash, image_hash = prepare_hyperopt(opt_hash,image_certificate_file, model_certificate_file,opt)
+                                                                                                  
+    #put args for bandit in file
+    
+    (tmpfile,tmpfilename) = tempfile.mkstemp()
+    source_string = opt['source_string']
+    bandit = opt['bandit']
+    bandit_algo = opt['bandit_algo']
+    steps = opt['steps']
+    
+    args = (source_string,
+                 image_hash,
+                 model_hash,
+                 image_config_gen,
+                 opt_hash,
+                 convolve_func_name)
+    argd = {'args':args}
+    cPickle.dump(argd,tmpfile)
+    tmpfile.close()
+    
+    command = 'hyperopt-mongo-search --block --steps ' + str(steps) + ' --bandit_argfile ' + tmpfilename + ' ' + bandit + ' ' + bandit_algo
+    status = os.system(command)
+
+    if not status == 0:
+        raise ValueError, 'Command %s threw an exception, see %s for log.' % (command, tmpfilename)
+    else:
+        os.remove(tmpfilename)
+    
+    createCertificateDict(outfile,{'image_file':image_certificate_file,'models_file':model_certificate_file})
+                                                                                
+                                                                                                
+			  
+			  
 
 #################NATURAL STATISTICS###########
 #################NATURAL STATISTICS###########
