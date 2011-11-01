@@ -50,7 +50,8 @@ def classify(train_features,
                 'coef' : model.coef_, 
                 'intercept' : model.intercept_,
                 'train_mean' : fmean,
-                'train_std': fstd
+                'train_std': fstd,
+                'test_margins' : test_predictor,
                }
 
     #accuracy
@@ -193,10 +194,10 @@ def multi_classify(train_features,
     train_prediction = labels[classifier.predict(train_features)]
     train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
     
-#    margin_fn = lambda v : (sp.dot(v,weights) + bias)
-#    test_margins = margin_fn(test_features)
+    margin_fn = lambda v : (sp.dot(v,weights) + bias)
+    test_margins = margin_fn(test_features)
 #    test_margin_prediction = labels[test_margins.argmax(1)]
-#    train_margins = margin_fn(train_features)
+    train_margins = margin_fn(train_features)
 #    train_margin_prediction = labels[train_margins.argmax(1)]
 #    assert (test_prediction == test_margin_prediction).all(), 'test margin prediction not correct'
 #    assert (train_prediction == train_margin_prediction).all(), 'train margin prediction not correct'    
@@ -210,7 +211,7 @@ def multi_classify(train_features,
      'train_prediction': train_prediction, 
      'test_prediction' : test_prediction,
      'labels' : labels,
-#     'test_margins' : test_margins,
+     'test_margins' : test_margins,
 #     'train_margins' : train_margins
      }
 

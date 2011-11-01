@@ -47,8 +47,8 @@ BALANCE3 = [0.0005,
 
 task = SON([
       ('N',1), 
-      ('ntrain', 40000),
-      ('ntest', 10000),
+      ('ntrain', 20000),
+      ('ntest', 5000),
       ('balance',BALANCE),
       ('universe',SON([('image.ObjectType',SON([('$ne','DCR')]))])),
       ('query',[SON([('image.ObjectType',t)]) for t in TYPES])

@@ -1,4 +1,5 @@
 import cPickle
+import itertools
 import math  
 import pymongo as pm
 import scipy as sp
@@ -70,18 +71,16 @@ def train_test(query,dbname, colname, ntrain,ntest,ntrain_pos = None,
 
 
 def combine_things(a,b):
+
     for k in b:
         if k == '$where' and k in a:
-            a[k] = a[k].strip('; ') + ' && ' + b[k]
-                
+            a[k] = a[k].strip('; ') + ' && ' + b[k]                
         elif k == '$or' and k in a:
             pass
-        elif hasattr(b[k],'get') and (b[k].get('$in') or b[k].get('$nin') or b[k].get('$ne')):
+        elif hasattr(b[k],'keys') and ('$in' in b[k] or '$nin' in b[k] or '$ne' in b[k]):
             pass
-            
         else:
             a[k] = b[k]
-    
 
 from dbutils import get_most_recent_files, dict_union
 def generate_split(dbname,collectionname,task_query,ntrain,ntest,ntrain_pos = None, universe = None):
@@ -306,12 +305,12 @@ def generate_multi_split(dbname,collectionname,queries,ntrain,ntest,ntrain_pos =
  
 def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
                           ntest, universe=None, labels=None, overlap=None,
-                          balance = None):
+                          balance = None, kfold=None):
 
     nq = len(task_queries)
     if labels is None:
         labels = range(nq)
-    
+
     task_queries = [copy.deepcopy(task_query) for task_query in task_queries]
     print('Generating splits ...')
     if universe is None:
@@ -325,9 +324,64 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
 
     for task_query in task_queries:
         combine_things(task_query,universe)
-    
+
     task_data = [list(data.find(task_query,fields=["filename"])) for task_query in task_queries]
 
+    if kfold is not None:
+        return generate_multi_kfold_splits(labels,kfold,task_data)
+    else:
+        return generate_multi_random_splits(labels,ntrain,ntest,task_data,overlap,N,balance)
+
+def generate_multi_kfold_splits(labels,kfold,task_data):
+
+    total = sum([len(td) for td in task_data])
+    perms = [sp.random.permutation(len(td)) for td in task_data]
+
+    indsets = []
+    for td in task_data:
+        indset = []
+        l = len(td)
+        ld = l/kfold
+        for i in range(kfold-1):
+            indset.append(range(ld*i,ld*(i+1)))
+        indset.append(range(ld*(kfold-1),l))
+        indsets.append(indset)
+
+    splits = []
+    for ind in range(kfold):
+        l_ind_out = range(kfold)
+        l_ind_out.pop(ind)
+        train_data = []
+        train_labels = []
+        test_data = []
+        test_labels = []
+        for indset, td, p, label in zip(indsets,task_data,perms,labels):
+            for _ind in l_ind_out:
+                new = [td[p[i]] for i in indset[_ind]]
+                train_data.extend(new)
+                train_labels.extend([label]*len(new))
+            new = [td[p[i]] for i in indset[ind]]
+            test_data.extend(new)
+            test_labels.extend([label]*len(new))
+
+        train_filenames = np.array([str(_t['filename']) for _t in train_data])
+        test_filenames = np.array([str(_t['filename']) for _t in test_data])
+        assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))
+        assert len(train_data) + len(test_data) == total
+
+        split = {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+        splits.append(split)
+
+    test_datas = [split['test_data'] for split in splits]
+    test_filenames = [[str(_t['filename']) for _t in tds] for tds in test_datas]
+    all_test_filenames = list(itertools.chain(*test_filenames))
+    assert len(all_test_filenames) == total
+    assert len(np.unique(all_test_filenames)) == total
+
+    return splits
+        
+def generate_multi_random_splits(labels,ntrain,ntest,task_data,overlap,N,balance):
+    
     floor = math.floor
     
     if balance is None:
@@ -352,10 +406,10 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
             perm = sp.random.permutation(len(td))
             task_data[_i] = [td[_j] for _j in perm[:eff_n]]
     
-    splits = []  
+    splits = []
     for ind in range(N):
         print('... split', ind)
-        
+    
         train_data = []
         test_data = []
         train_labels = []
@@ -371,7 +425,7 @@ def generate_multi_split2(dbname, collectionname, task_queries, N, ntrain,
             test_data.extend([td[i] for i in perm[:nte]])
             train_labels.extend([label]*ntr)
             test_labels.extend([label]*nte)
-
+    
         train_filenames = np.array([str(_t['filename']) for _t in train_data])
         test_filenames = np.array([str(_t['filename']) for _t in test_data])
         assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))

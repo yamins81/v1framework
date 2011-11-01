@@ -81,8 +81,11 @@ class config_gen(object):
             
         
 def specific_config_gen(IC,config):
-    images = config['specs']
-    return [SON([('image',m)]) for m in images]  
+    if config['generator'] == 'darpa':
+        return darpa.specific_config_gen(IC,config)
+    else:
+        images = config['specs']
+        return [SON([('image',m)]) for m in images]  
     
 def random_config_gen(IC,config):
     if config['generator'] == 'cairo':

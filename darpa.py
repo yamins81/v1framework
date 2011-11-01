@@ -82,6 +82,65 @@ class darpa_gridded_config_gen(object):
             return self._store.pop(0)
         
 
+def specific_config_gen(IC,args):
+    IC.base_dir = args['base_dir']
+    IC.annotate_dir = args['annotate_dir']
+    IC.groundtruth_dir = args['groundtruth_dir']
+    IC.correspondence = tb.tabarray(SVfile = args['frame_correspondence'])
+    IC.size = args['size']
+    IC.prefix = prefix = args.get('image_extension','.jpg')
+    IC.current_frame_path = None
+    csvs = [x for x in os.listdir(IC.annotate_dir) if x.endswith('.csv')]
+    csvs.sort()
+    Xs = [tb.tabarray(SVfile = os.path.join(IC.annotate_dir,csv)) for csv in csvs]
+    cns = [csv.split('.')[0] for csv in csvs]
+    cns = [[cn]*len(X) for (cn,X) in zip(cns,Xs)]
+    Xs = [X.addcols(cn,names=['clip_num']) for (cn,X) in zip(cns,Xs)]
+
+    csvs = [x for x in os.listdir(IC.groundtruth_dir) if x.endswith('.csv')]
+    csvs.sort()
+    Gs = []
+    fields = ['clip_num','Frame'] + xfields + yfields
+    for ind,csv in enumerate(csvs):
+        try:
+            g = tb.tabarray(SVfile = os.path.join(IC.groundtruth_dir,csv))
+        except:
+            x = Xs[ind].addcols([-1]*len(Xs[ind]),names=['Correctness'])
+        else:
+            g = g.addcols([csv.split('.')[0]]*len(g),names = ['clip_num'])
+            g = g[fields + ['Confidence']]
+            g.renamecol('Confidence','Correctness')
+            x = Xs[ind].join(g,keycols=fields)
+        Gs.append(x)
+    X = tb.tab_rowstack(Gs)
+    X.sort(order=['clip_num','Frame'])
+    
+    Y = IC.correspondence
+    F = tb.fast.recarrayisin(Y[['clip_num','Frame']],X[['clip_num','Frame']])
+    Y = Y[F]
+    X = X.join(Y,keycols=['clip_num','Frame'])
+
+    params = []
+    for t in X:
+        print(t)  
+        cn = t['clip_num']
+        fr = t['Frame']
+        box = get_darpa_box(t)
+        bb = box.pop('box')
+        xc,yc = bb.center
+        center = correct_center((xc,yc),IC.size,(1920,1080))
+        bb = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
+        p = SON([('size',IC.size),
+                     ('bounding_box',SON([('xfields',list(bb.xs)),('yfields',list(bb.ys))])),
+                     ('clip_num',cn),
+                     ('Frame',int(t['Original'])),
+                     ('base_dir',IC.base_dir),
+                     ('correctness',int(t['Correctness']))])
+        p.update(box)
+        p['GuessObjectType'] = p['ObjectType']
+        p['ObjectType'] == p['ObjectType'] if t['Correctness'] == 1 else ''
+        params.append(SON([('image',p)]))
+    return params
 
 def darpa_random_config_gen(IC,args):
     IC.current_frame_path = None
@@ -224,6 +283,12 @@ def get_gridded_darpa_boxes(im_size,sizes,offsets):
 
     return boxes
 
+def get_darpa_box(x):
+    box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
+                               ys = [x[yf] for yf in yfields])
+    obj = SON([('box',box)] + [(of,x[of]) for of in otherfields])
+    return obj
+                                    
 def get_all_darpa_boxes(X,cn,fr):
     boxes = []
     if all([xf in X.dtype.names for xf in xfields]) and all([yf in X.dtype.names for yf in yfields]): 
@@ -490,12 +555,10 @@ labels = ['Boat',
           'Truck',
           'Empty']
 
-def get_results(mean,std):
+def get_results(mean,std,ext_hash,splitfilename,outfile):
     conn = pm.Connection(document_class = SON)
     db = conn['thor']
     fcol = db['features.files']
-    ext_hash = 'b83caac21ef205e0f3622cd6209434f160c750ca'
-    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
     split_fs = gridfs.GridFS(db,'split_performance')
     fh = split_fs.get_version(splitfilename)
     r = cPickle.loads(fh.read())
@@ -504,6 +567,7 @@ def get_results(mean,std):
     bias = r['intercept']
     L = fcol.find({'__hash__':ext_hash},fields=['image.clip_num','image.Frame','feature','image.bounding_box'])
     recs = []
+    names = ['clip_num','frame','x1','x2','x3','x4','y1','y2','y3','y4'] + labels    
     for l in L:
         cn = str(l['image']['clip_num'])
         fr = l['image']['Frame']
@@ -515,22 +579,36 @@ def get_results(mean,std):
         m = sp.dot(feat,weights) + bias
         rec = (cn,fr,) + tuple(bx) + tuple(by) + tuple(m)
         recs.append(rec)
+        if len(recs) == 10000:
+            X = tb.tabarray(records = recs, names = names)
+            tb.io.appendSV(outfile,X,metadata=True)
+            recs = []
 
-    names = ['clip_num','frame','x1','x2','x3','x4','y1','y2','y3','y4'] + labels
-    X = tb.tabarray(records = recs,names = names)
-    X.saveSV('darpa_results.csv',metadata=True)
 
-def get_stats():
+#010846c656d4880a7a275cd9317555f0fa314b2d 72a0e505212e765483cbbccba527c5cb2adba64a
+#ac9e28f7e9e965ca19399853969a26c3cd293d10 cf5c20cd02920ed2c8466433cf57547384a79f0d
+
+def get_stats(splitfilename):
     conn = pm.Connection(document_class = SON)
     db = conn['thor']
 
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
-    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
-    r = cPickle.loads(split_fs.get_version(db,splitfilename).read())
+    r = cPickle.loads(split_fs.get_version(splitfilename).read())['split']
     filenames = [tr['filename'] for tr in r['train_data']]
     f_col = db['features.files']
     feats = f_col.find({'filename':{'$in':filenames}})
     L = list([y['feature'] for y in feats])
     F = np.array(L)
     return F.mean(0),F.std(0)
+
+
+def replace_irobot_labels():
+    ext_hash = 'ec4b653613768a40f4b5038750b19745f8744f87'
+    im_hash = '69ab3cfcf6360db19bc281ddd622020bb0efe9bc'
+    conn = pm.Connection()
+    db = conn['thor']
+    im_coll = db['images.files']
+    pth = os.path.join('darpa','Heli_iRobot_annotated')
+    csvs = os.listdir(pth)
+    Xs = [tb.tabarray(SVfile = os.path.join(pth,csv)) for csv in csvs]

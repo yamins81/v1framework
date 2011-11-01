@@ -693,6 +693,8 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     else:
         res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
+    res['cls_data']['train_filenames'] = train_filenames
+    res['cls_data']['test_filenames'] = test_filenames
     return res
     
     
@@ -716,7 +718,6 @@ def load_features_batch(feature_filenames,coll,fs,m,task,extraction,extraction_h
     
 
 def load_features(filename,coll,fs,m,task):
-
     feat = get_from_cache((filename,m),FEATURE_CACHE)
     if feat is None:
         #filename = coll.find_one({'model':m['config']['model'],'filename':image_filename},fields=["filename"])["filename"]
@@ -753,12 +754,16 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
 
     existing_train_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in train_filenames]
     existing_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is not None]
+    existing_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is not None]
     new_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is None]
+    reordered_train_filenames = existing_train_filenames + new_train_filenames
     new_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is None]
-    
+
     existing_test_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in test_filenames]
     existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
-    new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    existing_test_filenames = [test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is not None]
+    new_test_filenames = [test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    reordered_test_filenames = existing_test_filenames + new_test_filenames 
     new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
 
     if convolve_func_name == 'numpy':
@@ -819,6 +824,8 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
     else:
         res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
+    res['cls_data']['train_filenames'] = reordered_train_filenames
+    res['cls_data']['test_finames'] = reordered_test_filenames
     return res
 
      
@@ -1497,7 +1504,7 @@ def get_extraction_batches(image_hash,task,batch_size):
         q = reach_in('config',task.get('query',SON([])))
         q['__hash__'] = image_hash
         count = coll.find(q).count()
-        num_batches = int(math.ceil(count/batch_size))
+        num_batches = int(math.ceil(count/float(batch_size)))
         return [(batch_size*ind,batch_size*(ind+1)) for ind in range(num_batches)]
     else:
         return [None]
@@ -1518,9 +1525,10 @@ def get_extraction_configs(image_hash,task,batch):
         
 def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=None):
     base_query = SON([('__hash__',hash)])
-    ntrain = task_config['ntrain']
-    ntest = task_config['ntest']
-    N = task_config.get('N',10)
+    ntrain = task_config.get('ntrain')
+    ntest = task_config.get('ntest')
+    N = task_config.get('N')
+    kfold = task_config.get('kfold')
     univ = task_config.get('universe',SON([]))
     base_query.update(reach_in('config',univ) if reachin else univ)
 
@@ -1529,7 +1537,7 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=N
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
         return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
                                                ntest,universe=base_query,
-                                               overlap=overlap, balance=balance)
+                                               overlap=overlap, balance=balance, kfold=kfold)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
