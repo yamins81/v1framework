@@ -1,8 +1,10 @@
 import cPickle
+import itertools
 import math  
 import pymongo as pm
 import scipy as sp
 from bson import SON
+import tabular as tb
 import gridfs
 from starflow.utils import uniqify, ListUnion
 
@@ -19,18 +21,16 @@ train / test
 """
 
 def combine_things(a,b):
+
     for k in b:
         if k == '$where' and k in a:
-            a[k] = a[k].strip('; ') + ' && ' + b[k]
-                
+            a[k] = a[k].strip('; ') + ' && ' + b[k]                
         elif k == '$or' and k in a:
             pass
-        elif hasattr(b[k],'get') and (b[k].get('$in') or b[k].get('$nin') or b[k].get('$ne')):
+        elif hasattr(b[k],'keys') and ('$in' in b[k] or '$nin' in b[k] or '$ne' in b[k]):
             pass
-            
         else:
             a[k] = b[k]
-    
 
 def generate_splits(dbname,collectionname,task_query,N,ntrain,ntest,
                     ntrain_pos = None, ntest_pos = None, universe = None,
@@ -140,12 +140,12 @@ def validate(idseq):
  
 def generate_multi_splits(dbname, collectionname, task_queries, N, ntrain,
                           ntest, universe=None, labels=None, overlap=None,
-                          balance = None):
+                          balance = None, kfold=None):
 
     nq = len(task_queries)
     if labels is None:
         labels = range(nq)
-    
+
     task_queries = [copy.deepcopy(task_query) for task_query in task_queries]
     print('Generating splits ...')
     if universe is None:
@@ -159,9 +159,64 @@ def generate_multi_splits(dbname, collectionname, task_queries, N, ntrain,
 
     for task_query in task_queries:
         combine_things(task_query,universe)
-    
+
     task_data = [list(data.find(task_query,fields=["filename"])) for task_query in task_queries]
 
+    if kfold is not None:
+        return generate_multi_kfold_splits(labels,kfold,task_data)
+    else:
+        return generate_multi_random_splits(labels,ntrain,ntest,task_data,overlap,N,balance)
+
+def generate_multi_kfold_splits(labels,kfold,task_data):
+
+    total = sum([len(td) for td in task_data])
+    perms = [sp.random.permutation(len(td)) for td in task_data]
+
+    indsets = []
+    for td in task_data:
+        indset = []
+        l = len(td)
+        ld = l/kfold
+        for i in range(kfold-1):
+            indset.append(range(ld*i,ld*(i+1)))
+        indset.append(range(ld*(kfold-1),l))
+        indsets.append(indset)
+
+    splits = []
+    for ind in range(kfold):
+        l_ind_out = range(kfold)
+        l_ind_out.pop(ind)
+        train_data = []
+        train_labels = []
+        test_data = []
+        test_labels = []
+        for indset, td, p, label in zip(indsets,task_data,perms,labels):
+            for _ind in l_ind_out:
+                new = [td[p[i]] for i in indset[_ind]]
+                train_data.extend(new)
+                train_labels.extend([label]*len(new))
+            new = [td[p[i]] for i in indset[ind]]
+            test_data.extend(new)
+            test_labels.extend([label]*len(new))
+
+        train_filenames = np.array([str(_t['filename']) for _t in train_data])
+        test_filenames = np.array([str(_t['filename']) for _t in test_data])
+        assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))
+        assert len(train_data) + len(test_data) == total
+
+        split = {'train_data': train_data, 'test_data' : test_data, 'train_labels':train_labels,'test_labels':test_labels}
+        splits.append(split)
+
+    test_datas = [split['test_data'] for split in splits]
+    test_filenames = [[str(_t['filename']) for _t in tds] for tds in test_datas]
+    all_test_filenames = list(itertools.chain(*test_filenames))
+    assert len(all_test_filenames) == total
+    assert len(np.unique(all_test_filenames)) == total
+
+    return splits
+        
+def generate_multi_random_splits(labels,ntrain,ntest,task_data,overlap,N,balance):
+    
     floor = math.floor
     
     if balance is None:
@@ -176,29 +231,36 @@ def generate_multi_splits(dbname, collectionname, task_queries, N, ntrain,
     
     for (tq,td,ntr,nte) in zip(task_queries,task_data,ntrain_vec,ntest_vec):
         assert ntr + nte <= len(td), 'not enough examples to train/test for %s, %d needed, but only have %d' % (repr(tq),ntr+nte,len(td))
+
     
     if overlap:
         assert isinstance(overlap,float) and 0 < overlap <= 1, 'overlap must be a float in (0,1]'
         for (_i,(td,ntr,nte)) in enumerate(zip(task_data,ntrain_vec,ntest_vec)):
             eff_n = int(math.ceil((ntr+nte)*(1/overlap)))
+            #add given category intersections and check for error
             perm = sp.random.permutation(len(td))
             task_data[_i] = [td[_j] for _j in perm[:eff_n]]
     
-    splits = []  
+    splits = []
     for ind in range(N):
         print('... split', ind)
-        
+    
         train_data = []
         test_data = []
         train_labels = []
         test_labels = []
         for (label,td,ntr,nte) in zip(labels,task_data,ntrain_vec,ntest_vec):
+            td = get_correct_td(td,test_data)
+            assert len(td) >= ntr + nte, 'problem with %s, need %d have %d'  % (label,ntr+nte,len(td))
             perm = sp.random.permutation(len(td))
             train_data.extend([td[i] for i in perm[:ntr]])
-            test_data.extend([td[i] for i in perm[ntr:ntr+nte]])
+            td = get_correct_td(td,train_data)
+            assert len(td) >= nte, 'problem with %s test, need %d have %d'  % (label,nte,len(td))
+            perm = sp.random.permutation(len(td))
+            test_data.extend([td[i] for i in perm[:nte]])
             train_labels.extend([label]*ntr)
             test_labels.extend([label]*nte)
-
+    
         train_filenames = np.array([str(_t['filename']) for _t in train_data])
         test_filenames = np.array([str(_t['filename']) for _t in test_data])
         assert set(train_filenames).intersection(test_filenames) == set([]), str(set(train_filenames).intersection(test_filenames))
@@ -207,3 +269,10 @@ def generate_multi_splits(dbname, collectionname, task_queries, N, ntrain,
         splits.append(split)
    
     return splits
+
+
+def get_correct_td(td,T):
+    tf = np.array([str(t['filename']) for t in td])
+    Tf = np.array([str(t['filename']) for t in T])
+    good_inds = np.invert(tb.fast.isin(tf,Tf)).nonzero()[0]
+    return [td[ind] for ind in good_inds]

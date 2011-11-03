@@ -7,7 +7,7 @@ from scikits.learn.linear_model.logistic import LogisticRegression
 '''
 SVM classifier module
 '''
-    
+         
 def multi_classify(train_features,
                      train_labels,
                      test_features,
@@ -31,6 +31,21 @@ def multi_classify(train_features,
     weights = classifier.coef_.T
     bias = classifier.intercept_
 
+        
+    test_prediction = labels[classifier.predict(test_features)]
+    test_accuracy = float(100*(test_prediction == test_labels).sum() / float(len(test_prediction)))
+    train_prediction = labels[classifier.predict(train_features)]
+    train_accuracy = float(100*(train_prediction == train_labels).sum() / float( len(train_prediction)))
+    
+    margin_fn = lambda v : (sp.dot(v,weights) + bias)
+    test_margins = margin_fn(test_features)
+#    test_margin_prediction = labels[test_margins.argmax(1)]
+#    train_margins = margin_fn(train_features)
+#    train_margin_prediction = labels[train_margins.argmax(1)]
+#    assert (test_prediction == test_margin_prediction).all(), 'test margin prediction not correct'
+#    assert (train_prediction == train_margin_prediction).all(), 'train margin prediction not correct'    
+    
+
 	test_prediction = classifier.predict(test_features)
 	train_prediction = classifier.predict(train_features)
 	if labels:
@@ -47,7 +62,16 @@ def multi_classify(train_features,
      'train_mean' : train_mean,
      'train_std' : train_std,
      'sphere' : was_sphered
-     
+     'test_margins' : test_margins,
+#     'train_margins' : train_margins
+     }
+
+
+    return {'cls_data' : cls_data,
+     'train_accuracy' : train_accuracy,
+     'test_accuracy' : test_accuracy,
+     'mean_ap' : mean_ap,
+     'mean_auc' : mean_auc
      }
      
     stats = multiclass_stats(test_labels,test_prediction,train_labels,train_prediction,labels)     

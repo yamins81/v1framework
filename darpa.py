@@ -22,49 +22,125 @@ def uniqify(X):
 def darpa_image_path(t,prefix = '.jpg'):
     return t['clip_num'] + '_' + str(t['Frame']) + prefix
 
-def darpa_gridded_config_gen(IC,args):
-    IC.current_frame_path = None
+class darpa_gridded_config_gen(object):
+    def __init__(self,IC,args):
+        self.IC = IC
+        self.args = args
+        self.IC.current_frame_path = None
+        self.IC.base_dir = args['base_dir']
+        self.IC.prefix = args.get('image_extension','.jpg')
+        self.prefix = IC.prefix
+        self.mdp = os.path.join(IC.base_dir,'__metadata__.csv')
+        self.IC.metadata = X = tb.tabarray(SVfile = self.mdp)
+        self.IC.sizes = self.args['sizes']
+        self.IC.offsets = self.args.get('offsets',[(0,0)])
+        X.sort(order=['clip_num','Frame'])
+        self.T = np.unique(X[['clip_num','Frame']])
+        self._ind = 0
+        self.im_stuff = {}
+        self._store = []
+
+    
+    def __iter__(self):
+        return self
+        
+    def next(self):
+        try:
+            t = self.T[self._ind]
+        except IndexError:
+            raise StopIteration()
+        else:
+            if self._store == []:
+                self._ind += 1
+                print(t)
+                IC = self.IC
+                prefix = IC.prefix
+                mdp = self.mdp
+                clip_num = t['clip_num']
+                frame = t['Frame']
+                path = darpa_image_path(t,prefix=prefix)
+                add_im_stuff(self.im_stuff,self.IC,path,t, remove=True)
+                boxes = get_gridded_darpa_boxes(self.im_stuff[path]['size'],IC.sizes,IC.offsets)
+                for box in boxes:
+                    intersects_with = get_darpa_intersection(box,self.im_stuff[path]['boxes'])
+                    for (iwind,iw) in enumerate(intersects_with):
+                         iw = copy.deepcopy(iw)
+                         b = iw.pop('box')
+                         iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
+                         intersects_with[iwind] = iw
+                    label = uniqify([iw['ObjectType'] for iw in intersects_with])
+                    label.sort()
+                    p = SON([('size',(box.height,box.width)),         
+                             ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
+                             ('intersects_with',intersects_with),
+                             ('ObjectType',label),
+                             ('clip_num',clip_num),
+                             ('Frame',int(frame)),
+                             ('base_dir',IC.base_dir)])
+                    p = SON([('image',p)])
+                    self._store.append(p)
+            return self._store.pop(0)
+        
+
+def specific_config_gen(IC,args):
     IC.base_dir = args['base_dir']
-    IC.prefix = args.get('image_extension','.jpg')
-    prefix = IC.prefix
-    mdp = os.path.join(IC.base_dir,'__metadata__.csv')
-    IC.metadata = X = tb.tabarray(SVfile = mdp)
-    IC.sizes = args['sizes']
-    IC.offsets = args.get('offsets',[(0,0)])
-    T = np.unique(X[['clip_num','Frame']])
-    im_stuff = {}
+    IC.annotate_dir = args['annotate_dir']
+    IC.groundtruth_dir = args['groundtruth_dir']
+    IC.correspondence = tb.tabarray(SVfile = args['frame_correspondence'])
+    IC.size = args['size']
+    IC.prefix = prefix = args.get('image_extension','.jpg')
+    IC.current_frame_path = None
+    csvs = [x for x in os.listdir(IC.annotate_dir) if x.endswith('.csv')]
+    csvs.sort()
+    Xs = [tb.tabarray(SVfile = os.path.join(IC.annotate_dir,csv)) for csv in csvs]
+    cns = [csv.split('.')[0] for csv in csvs]
+    cns = [[cn]*len(X) for (cn,X) in zip(cns,Xs)]
+    Xs = [X.addcols(cn,names=['clip_num']) for (cn,X) in zip(cns,Xs)]
+
+    csvs = [x for x in os.listdir(IC.groundtruth_dir) if x.endswith('.csv')]
+    csvs.sort()
+    Gs = []
+    fields = ['clip_num','Frame'] + xfields + yfields
+    for ind,csv in enumerate(csvs):
+        try:
+            g = tb.tabarray(SVfile = os.path.join(IC.groundtruth_dir,csv))
+        except:
+            x = Xs[ind].addcols([-1]*len(Xs[ind]),names=['Correctness'])
+        else:
+            g = g.addcols([csv.split('.')[0]]*len(g),names = ['clip_num'])
+            g = g[fields + ['Confidence']]
+            g.renamecol('Confidence','Correctness')
+            x = Xs[ind].join(g,keycols=fields)
+        Gs.append(x)
+    X = tb.tab_rowstack(Gs)
+    X.sort(order=['clip_num','Frame'])
+    
+    Y = IC.correspondence
+    F = tb.fast.recarrayisin(Y[['clip_num','Frame']],X[['clip_num','Frame']])
+    Y = Y[F]
+    X = X.join(Y,keycols=['clip_num','Frame'])
+
     params = []
-    for t in T:
-        print(t)
-        clip_num = t['clip_num']
-        frame = t['Frame']
-        path = darpa_image_path(t,prefix=prefix)
-        add_im_stuff(im_stuff,IC,path,t)
-        boxes = get_gridded_darpa_boxes(im_stuff[path]['size'],IC.sizes,IC.offsets)
-        for box in boxes:
-            intersects_with = get_darpa_intersection(box,im_stuff[path]['boxes'])
-            for (iwind,iw) in enumerate(intersects_with):
-                 iw = copy.deepcopy(iw)
-                 b = iw.pop('box')
-                 iw['bounding_box'] = SON([('xfields',list(b.xs)),('yfields',list(b.ys))])
-                 intersects_with[iwind] = iw
-            label = uniqify([iw['ObjectType'] for iw in intersects_with])
-            label.sort()
-            p = SON([('size',(box.height,box.width)),         
-                     ('bounding_box',SON([('xfields',list(box.xs)),('yfields',list(box.ys))])),
-                     ('intersects_with',intersects_with),
-                     ('ObjectType',label),
-                     ('clip_num',clip_num),
-                     ('Frame',int(frame)),
-                     ('base_dir',IC.base_dir)])
-            p = SON([('image',p)])
-            params.append(p)            
-            
-    js = np.array( [p['image']['clip_num'] + '_' + str(p['image']['Frame']) for p in params])
-    js_ag = js.argsort()
-    params = [params[ind] for ind in js_ag]
-    return params            
-            
+    for t in X:
+        print(t)  
+        cn = t['clip_num']
+        fr = t['Frame']
+        box = get_darpa_box(t)
+        bb = box.pop('box')
+        xc,yc = bb.center
+        center = correct_center((xc,yc),IC.size,(1920,1080))
+        bb = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
+        p = SON([('size',IC.size),
+                     ('bounding_box',SON([('xfields',list(bb.xs)),('yfields',list(bb.ys))])),
+                     ('clip_num',cn),
+                     ('Frame',int(t['Original'])),
+                     ('base_dir',IC.base_dir),
+                     ('correctness',int(t['Correctness']))])
+        p.update(box)
+        p['GuessObjectType'] = p['ObjectType']
+        p['ObjectType'] == p['ObjectType'] if t['Correctness'] == 1 else ''
+        params.append(SON([('image',p)]))
+    return params
 
 def darpa_random_config_gen(IC,args):
     IC.current_frame_path = None
@@ -148,7 +224,7 @@ def correct_center(center,shp,size):
     return xc,yc
     
 
-def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
+def add_im_stuff(im_stuff,IC,p,t,get_boxes = True, remove = False):
     clip_num = t['clip_num']
     frame = t['Frame']
     if p not in im_stuff:
@@ -157,7 +233,11 @@ def add_im_stuff(im_stuff,IC,p,t,get_boxes = True):
         im_stuff[p] = {'size':Im.size}
         if get_boxes:
             all_boxes = get_all_darpa_boxes(IC.metadata,clip_num,frame)
-            im_stuff[p]['boxes'] =all_boxes
+            im_stuff[p]['boxes'] = all_boxes
+    if remove:
+        to_remove = [k for k in im_stuff if k != p]
+        for tr in to_remove:
+            im_stuff.pop(tr)
 
 import StringIO
 
@@ -203,6 +283,12 @@ def get_gridded_darpa_boxes(im_size,sizes,offsets):
 
     return boxes
 
+def get_darpa_box(x):
+    box = bbox.BoundingBox(xs = [x[xf] for xf in xfields],
+                               ys = [x[yf] for yf in yfields])
+    obj = SON([('box',box)] + [(of,x[of]) for of in otherfields])
+    return obj
+                                    
 def get_all_darpa_boxes(X,cn,fr):
     boxes = []
     if all([xf in X.dtype.names for xf in xfields]) and all([yf in X.dtype.names for yf in yfields]): 
@@ -469,12 +555,10 @@ labels = ['Boat',
           'Truck',
           'Empty']
 
-def get_results(mean,std):
+def get_results(mean,std,ext_hash,splitfilename,outfile):
     conn = pm.Connection(document_class = SON)
     db = conn['thor']
     fcol = db['features.files']
-    ext_hash = 'b83caac21ef205e0f3622cd6209434f160c750ca'
-    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
     split_fs = gridfs.GridFS(db,'split_performance')
     fh = split_fs.get_version(splitfilename)
     r = cPickle.loads(fh.read())
@@ -483,6 +567,7 @@ def get_results(mean,std):
     bias = r['intercept']
     L = fcol.find({'__hash__':ext_hash},fields=['image.clip_num','image.Frame','feature','image.bounding_box'])
     recs = []
+    names = ['clip_num','frame','x1','x2','x3','x4','y1','y2','y3','y4'] + labels    
     for l in L:
         cn = str(l['image']['clip_num'])
         fr = l['image']['Frame']
@@ -494,22 +579,36 @@ def get_results(mean,std):
         m = sp.dot(feat,weights) + bias
         rec = (cn,fr,) + tuple(bx) + tuple(by) + tuple(m)
         recs.append(rec)
+        if len(recs) == 10000:
+            X = tb.tabarray(records = recs, names = names)
+            tb.io.appendSV(outfile,X,metadata=True)
+            recs = []
 
-    names = ['clip_num','frame','x1','x2','x3','x4','y1','y2','y3','y4'] + labels
-    X = tb.tabarray(records = recs,names = names)
-    X.saveSV('darpa_results.csv',metadata=True)
 
-def get_stats():
+#010846c656d4880a7a275cd9317555f0fa314b2d 72a0e505212e765483cbbccba527c5cb2adba64a
+#ac9e28f7e9e965ca19399853969a26c3cd293d10 cf5c20cd02920ed2c8466433cf57547384a79f0d
+
+def get_stats(splitfilename):
     conn = pm.Connection(document_class = SON)
     db = conn['thor']
 
     split_col = db['splits.files']
     split_fs = gridfs.GridFS(db,'splits')
-    splitfilename = 'cca05854e7a0addf9a84bbb82f541bc9068b5512'
-    r = cPickle.loads(split_fs.get_version(db,splitfilename).read())
+    r = cPickle.loads(split_fs.get_version(splitfilename).read())['split']
     filenames = [tr['filename'] for tr in r['train_data']]
     f_col = db['features.files']
     feats = f_col.find({'filename':{'$in':filenames}})
     L = list([y['feature'] for y in feats])
     F = np.array(L)
     return F.mean(0),F.std(0)
+
+
+def replace_irobot_labels():
+    ext_hash = 'ec4b653613768a40f4b5038750b19745f8744f87'
+    im_hash = '69ab3cfcf6360db19bc281ddd622020bb0efe9bc'
+    conn = pm.Connection()
+    db = conn['thor']
+    im_coll = db['images.files']
+    pth = os.path.join('darpa','Heli_iRobot_annotated')
+    csvs = os.listdir(pth)
+    Xs = [tb.tabarray(SVfile = os.path.join(pth,csv)) for csv in csvs]

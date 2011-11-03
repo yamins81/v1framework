@@ -45,7 +45,11 @@ class EvaluationBandit(GensonBandit):
     def evaluate(self,argd,ctrl):
         model,task = self.model_and_task_from_template(argd)
         performance = self.get_performance(model,task)
-        return dict(loss = performance, status = 'ok')
+        if performance:
+            status = 'ok'
+        else:
+            status = 
+        return dict(loss = performance, status = status)
 
     def model_task_from_template(self,template):
         model = template['model']
@@ -56,28 +60,46 @@ class EvaluationBandit(GensonBandit):
 		
     def get_performance(self,model,task):
 	
-		perf_col = self.perf_col
-		split_fs = self.split_fs
 		opt_hash = self.opt_hash
 		convolve_func_name = self.convolve_func_name
 		image_hash = self.image_hash
 		image_config_gen = self.image_config_gen
 		use_db = self.use_db
 		
-		splits = generate_splits(task,image_hash,'images',
-		                         overlap=task.get('overlap'),
-		                         balance=task.get('balance')) 
-		for (ind,split) in enumerate(splits):
-			put_in_split(split,image_config_gen,model,task,
-			             opt_hash,ind,split_fs)
-			print('evaluating split %d' % ind)
-			res = extract_and_evaluate_core(split,model,convolve_func_name,
-			                                task,use_db=use_db)    
-			put_in_split_result(res,image_config_gen,model,task,
-			                    opt_hash,ind,splitperf_fs)
-			split_results.append(res)
-			perf = put_in_performance(split_results,image_config_gen,model,
-			                          model_hash,image_hash,
-			                          perf_col,task,opt_hash)
+		opstring= '-l qname=hyperopt.q -o /home/render/hyperopt_jobs -e /home/render/hyperopt_jobs'
+		jobid = qsub(get_performance,
+		             (model,task,image_hash,image_config_gen,opt_hash),
+		             opstring=opstring)
 		
-		return perf
+		status = wait_and_get_statuses([job_id])
+
+        if status == 0:
+            perf = perf_col.find_one({'image_hash':image_hash,
+                               'model':model,
+                               'task':son_escape(task)
+                               '__hash__':opt_hash})                                   
+		    return perf['test_accuracy']
+	
+
+def get_performance(model,task,image_hash,model_hash,image_config_gen,opt_hash)	
+
+	connection = pm.Connection(document_class = SON)
+	db = connection['thor']
+	perf_col = db['performance']
+	split_fs = gridfs.GridFS(db, 'splits')
+	splitperf_fs = gridfs.GridFS(db, 'split_performance')
+    model_hash = 'optimization'
+    
+	splits = generate_splits(task,image_hash,'images') 
+	for (ind,split) in enumerate(splits):
+		put_in_split(split,image_config_gen,model,task,
+					 opt_hash,ind,split_fs)
+		print('evaluating split %d' % ind)
+		res = extract_and_evaluate_core(split,model,convolve_func_name,
+										task,use_db=use_db)    
+		put_in_split_result(res,image_config_gen,model,task,
+							opt_hash,ind,splitperf_fs)
+		split_results.append(res)
+	put_in_performance(split_results,image_config_gen,model,
+								  model_hash,image_hash,
+								  perf_col,task,opt_hash)

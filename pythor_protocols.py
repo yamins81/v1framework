@@ -587,7 +587,7 @@ def evaluate(outfile,extraction_certificate_file,image_certificate_file,
                 taskc = copy.deepcopy(task)
                 taskc['universe']['model'] = m['config']['model']
                 taskc['universe']['extraction'] = son_escape(extraction)
-                splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance')) 
+                splits = generate_splits(taskc,extraction_hash,'features',reachin=False) 
                 for (ind,split) in enumerate(splits):
                     put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs,extraction = extraction)
                     print('evaluating split %d' % ind)
@@ -622,7 +622,7 @@ def evaluate_parallel(outfile,extraction_certificate_file,image_certificate_file
                 taskc = copy.deepcopy(task)
                 taskc['universe']['model_filename'] = m['filename']
                 taskc['universe']['extraction'] = son_escape(extraction)
-                splits = generate_splits(taskc,extraction_hash,'features',overlap=task.get('overlap'),reachin=False,balance=task.get('balance'))
+                splits = generate_splits(taskc,extraction_hash,'features',reachin=False)
                 print('On task',task)              
                 for (ind,split) in enumerate(splits):
                     put_in_split(split,image_config_gen,m,task,evaluation_hash,ind,split_fs)
@@ -707,14 +707,14 @@ def train_test(task,train_filenames,test_filenames,train_labels,test_labels,trai
     print('classifier ...')
     res = svm.multi_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs,relabel = task.get('relabel',True))
     print('Split test accuracy', res['test_accuracy'])
-
     if task.get('target_map'):
         res['cls_data']['train_labels'] = realign_labels(res['cls_data']['train_labels'], train_alignment)
         res['cls_data']['test_labels'] = realign_labels(res['cls_data']['test_labels'], test_alignment)
         res['cls_data']['train_prediction'] = realign_labels(res['cls_data']['train_prediction'], train_alignment)
         res['cls_data']['test_prediction'] = realign_labels(res['cls_data']['test_prediction'], test_alignment)
         if task['target_map'].get('statfunc'):
-            
+    res['cls_data']['train_filenames'] = train_filenames
+    res['cls_data']['test_filenames'] = test_filenames
 
     return res
     
@@ -785,7 +785,8 @@ def load_features_batch(feature_filenames,coll,fs,m,task,extraction,extraction_h
         return sp.row_stack([feature_postprocess(feat,task.get('feature_postprocess'),m,extraction) for feat in features]),feature_info
     
 
-def load_features(filename,coll,fs,m,task):    
+
+def load_features(filename,coll,fs,m,task):
     feat = get_from_cache((filename,m),FEATURE_CACHE)
     if feat is None:
         feat = cPickle.loads(fs.get_version(filename).read())
@@ -840,6 +841,8 @@ def put_in_performance(split_results,image_config_gen,m,model_hash,image_hash,pe
 
     print('inserting result ...')
     perf_coll.insert(out_record)
+    
+    return model_results
 
 
 def put_in_split(split,image_config_gen,m,task,ext_hash,split_id,split_fs,extraction=None):
@@ -907,12 +910,16 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port,use_db 
 
     existing_train_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in train_filenames]
     existing_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is not None]
+    existing_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is not None]
     new_train_filenames = [train_filenames[i] for (i,x) in enumerate(existing_train_features) if x is None]
+    reordered_train_filenames = existing_train_filenames + new_train_filenames
     new_train_labels = [train_labels[i] for (i,x) in enumerate(existing_train_features) if x is None]
-    
+
     existing_test_features = [get_from_cache((tf,m,task.get('transform_average')),FEATURE_CACHE) for tf in test_filenames]
     existing_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is not None]
-    new_test_filenames =[test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    existing_test_filenames = [test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is not None]
+    new_test_filenames = [test_filenames[i] for (i,x) in enumerate(existing_test_features) if x is None]
+    reordered_test_filenames = existing_test_filenames + new_test_filenames 
     new_test_labels = [test_labels[i] for (i,x) in enumerate(existing_test_features) if x is None]
 
     if convolve_func_name == 'numpy':
@@ -970,10 +977,12 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port,use_db 
     for(im,f) in zip(new_test_filenames,new_test_features):
         put_in_cache((im,m,task.get('transform_average')),f,FEATURE_CACHE)
           
-    res = train_test(task,train_filenames,test_filenames,train_labels,test_labels,train_features,test_features,classifier_kwargs)
+    res = train_test(task,reordered_train_filenames,reordered_test_filenames,train_labels,test_labels,train_features,test_features,classifier_kwargs)
     res['feature_info'] = get_feature_info_summary(train_features,test_features,train_feature_info,test_feature_info)
-    return res   
-     
+    return res
+
+
+
 def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certificate_file,task):
 
     conn = pm.Connection(document_class=bson.SON)
@@ -1002,7 +1011,6 @@ def prepare_extract_and_evaluate(ext_hash,image_certificate_file,model_certifica
     image_config_gen = image_certdict['args']
     
     
-    
     if isinstance(task,list):
         task_list = task
     else:
@@ -1025,7 +1033,7 @@ def extract_and_evaluate(outfile,image_certificate_file,model_certificate_file,c
         for task in task_list:  
             print('task',task)
             split_results = []
-            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
+            splits = generate_splits(task,image_hash,'images') 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)
                 print('evaluating split %d' % ind)
@@ -1080,7 +1088,7 @@ def extract_and_evaluate_parallel(outfile,image_certificate_file,model_certifica
         print('Evaluating model',m)
         for task in task_list:
             print('task',task)
-            splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
+            splits = generate_splits(task,image_hash,'images') 
             for (ind,split) in enumerate(splits):
                 put_in_split(split,image_config_gen,m,task,ext_hash,ind,split_fs)  
                 jobid = qsub(extract_and_evaluate_parallel_core,(image_config_gen,m,task,ext_hash,ind,convolve_func_name),opstring=opstring)
@@ -1144,7 +1152,7 @@ def extract_and_evaluate_semi_parallel(outfile,image_certificate_file,model_cert
         opstring = '-l qname=extraction_gpu.q -o /home/render -e /home/render'
     
     for task in task_list:
-        splits = generate_splits(task,image_hash,'images',overlap=task.get('overlap'),balance=task.get('balance')) 
+        splits = generate_splits(task,image_hash,'images') 
         for m in model_configs: 
             print('Evaluating model',m)
             print('On task',task)              
@@ -1294,18 +1302,25 @@ def optimize(outfile,
     bandit = opt['bandit']
     bandit_algo = opt['bandit_algo']
     steps = opt['steps']
+    bandit_args = opt.get('bandit_args',{'args':(),'kwargs':{}})
+    bandit_algo_args = opt.get('bandit_algo_args',{'args':(),'kwargs':{}})
     
     args = (source_string,
                  image_hash,
                  model_hash,
                  image_config_gen,
                  opt_hash,
-                 convolve_func_name)
-    argd = {'args':args}
+                 convolve_func_name) + bandit_args['args']
+    kwargs = bandit_args['kwargs']
+    argd = {'args':args,'kwargs':kwargs}
     cPickle.dump(argd,tmpfile)
     tmpfile.close()
+  
+    (tmpfile,tmpfilename2) = tempfile.mkstemp()
+    cPickle.dump(bandit_algo_args,tmpfile)
+    tmpfile.close()
     
-    command = 'hyperopt-mongo-search --block --steps ' + str(steps) + ' --bandit_argfile ' + tmpfilename + ' ' + bandit + ' ' + bandit_algo
+    command = 'hyperopt-mongo-search --block --steps ' + str(steps) + ' --bandit-argfile ' + tmpfilename + ' --bandit-algo-argfile ' + tmpfilename2 + ' ' + bandit + ' ' + bandit_algo
     status = os.system(command)
 
     if not status == 0:
@@ -1659,7 +1674,7 @@ def get_extraction_batches(image_hash,task,batch_size):
         q = reach_in('config',task.get('query',SON([])))
         q['__hash__'] = image_hash
         count = coll.find(q).count()
-        num_batches = int(math.ceil(count/batch_size))
+        num_batches = int(math.ceil(count/float(batch_size)))
         return [(batch_size*ind,batch_size*(ind+1)) for ind in range(num_batches)]
     else:
         return [None]
@@ -1678,20 +1693,23 @@ def get_extraction_configs(image_hash,task,batch):
     else:
         return coll.find(q,fields=['filename','config.image'])
         
-def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=None):
+def generate_splits(task_config,hash,colname,reachin=True):
     base_query = SON([('__hash__',hash)])
-    ntrain = task_config['ntrain']
-    ntest = task_config['ntest']
-    N = task_config.get('N',10)
+    ntrain = task_config.get('ntrain')
+    ntest = task_config.get('ntest')
+    N = task_config.get('N')
+    kfold = task_config.get('kfold')
+    balance = task_config.get('balance')
+    overlap = task_config.get('overlap')
     univ = task_config.get('universe',SON([]))
     base_query.update(reach_in('config',univ) if reachin else univ)
 
     query = copy.deepcopy(task_config['query'])
     if isinstance(query,list):
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
-        splits = traintest.generate_multi_splits(DB_NAME,colname,cqueries,N,ntrain,
-                                                 ntest,universe=base_query,
-                                                 overlap=overlap, balance=balance)
+        splits = traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
+                                               ntest,universe=base_query,
+                                               overlap=overlap, balance=balance, kfold=kfold)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
