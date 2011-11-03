@@ -511,7 +511,7 @@ def prepare_extract(ext_hash,image_certificate_file,model_certificate_file,task)
 #################EVALUATION#############
 #################EVALUATION#############    
     
-STATS = ['test_accuracy','ap','auc','mean_ap','mean_auc','train_accuracy']  
+STATS = ['train_accuracy','test_accuracy','train_ap','test_ap','train_auc','test_auc']  
 
 def evaluate_protocol(evaluation_config_path,extraction_config_path,model_config_path,image_config_path,write=False,parallel=False,use_db=False):
                         
@@ -687,11 +687,7 @@ def evaluate_core(split,m,task,extraction,extraction_hash,use_db):
     test_labels = split['test_labels']          
     
     print('classifier ...')
-    if len(uniqify(train_labels + test_labels)) > 2:
-        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    else:
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
     res['cls_data']['train_filenames'] = train_filenames
     res['cls_data']['test_filenames'] = test_filenames
@@ -818,11 +814,7 @@ def extract_and_evaluate_core(split,m,convolve_func_name,task,cache_port):
           
     
     print('classifier ...')
-    if len(uniqify(train_labels + test_labels)) > 2:
-        #res = svm.ova_classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
-        res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
-    else:
-        res = svm.classify(train_features,train_labels,test_features,test_labels,classifier_kwargs)
+    res = svm.multi_classify(train_features,train_labels,test_features,test_labels,**classifier_kwargs)
     print('Split test accuracy', res['test_accuracy'])
     res['cls_data']['train_filenames'] = reordered_train_filenames
     res['cls_data']['test_finames'] = reordered_test_filenames
@@ -1535,14 +1527,14 @@ def generate_splits(task_config,hash,colname,overlap=None,reachin=True,balance=N
     query = task_config['query'] 
     if isinstance(query,list):
         cqueries = [reach_in('config',q) if reachin else copy.deepcopy(q) for q in query]
-        return traintest.generate_multi_split2(DB_NAME,colname,cqueries,N,ntrain,
+        return traintest.generate_multi_splits(DB_NAME,colname,cqueries,N,ntrain,
                                                ntest,universe=base_query,
                                                overlap=overlap, balance=balance, kfold=kfold)
     else:
         ntrain_pos = task_config.get('ntrain_pos')
         ntest_pos = task_config.get('ntest_pos')
         cquery = reach_in('config',query) if reachin else copy.deepcopy(query)
-        return traintest.generate_split2(DB_NAME,colname,cquery,N,ntrain,ntest,
+        return traintest.generate_splits(DB_NAME,colname,cquery,N,ntrain,ntest,
                                          ntrain_pos=ntrain_pos,ntest_pos = ntest_pos,
                                          universe=base_query,use_negate = True,
                                          overlap=overlap)
@@ -1820,7 +1812,6 @@ def compute_features_core(image_fh,filters,model_config,convolve_func):
             if filter is not None:
                 filter = fix_filter(array[0],filter)
 
-            print('LAYERSTUFF',ind,array[0].shape)
             if isinstance(layer,list):
                 arrays = [compute_layer(array,filter,l,convolve_func,conv_mode) for l in layer]
                 array = harmonize_arrays(arrays,model_config)
@@ -1887,9 +1878,15 @@ def resample(array,scale,config):
     for k in array:
         sh = array[k].shape
         new_sh = scale + sh[2:]
-        adict[k] = np.resize(array[k],new_sh)
+        adict[k] = imresize(array[k],new_sh,mode='nearest')
     return adict
-    
+  
+from scipy.ndimage.interpolation import affine_transform
+def imresize(x,sh,**kwargs):
+    m = np.array(x.shape)/np.array(sh).astype(float)
+    print(m)
+    return affine_transform(x,m,output_shape = sh,**kwargs)
+        
 def harmonize_arrays(arrays,config):
     arrays = [fix_1ds(array) for array in arrays]
     sizes = [array[0].shape for array in arrays]
