@@ -7,7 +7,7 @@ from scikits.learn.linear_model.logistic import LogisticRegression
 '''
 SVM classifier module
 '''
-         
+
 def multi_classify(train_features,
                      train_labels,
                      test_features,
@@ -44,11 +44,10 @@ def multi_classify(train_features,
 #    train_margin_prediction = labels[train_margins.argmax(1)]
 #    assert (test_prediction == test_margin_prediction).all(), 'test margin prediction not correct'
 #    assert (train_prediction == train_margin_prediction).all(), 'train margin prediction not correct'    
-    
 
-	test_prediction = classifier.predict(test_features)
-	train_prediction = classifier.predict(train_features)
-	if labels:
+    test_prediction = classifier.predict(test_features)
+    train_prediction = classifier.predict(train_features)
+    if labels:
         test_prediction = labels[test_prediction]
         train_prediction = labels[train_prediction]
     
