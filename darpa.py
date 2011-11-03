@@ -129,16 +129,17 @@ def specific_config_gen(IC,args):
         bb = box.pop('box')
         xc,yc = bb.center
         center = correct_center((xc,yc),IC.size,(1920,1080))
-        bb = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
+        bb_new = bbox.BoundingBox(center = center,width = IC.size[0], height = IC.size[1])
         p = SON([('size',IC.size),
-                     ('bounding_box',SON([('xfields',list(bb.xs)),('yfields',list(bb.ys))])),
+                     ('bounding_box',SON([('xfields',list(bb_new.xs)),('yfields',list(bb_new.ys))])),
+                     ('original_bounding_box',SON([('xfields',list(bb.xs)),('yfields',list(bb.ys))])),
                      ('clip_num',cn),
                      ('Frame',int(t['Original'])),
                      ('base_dir',IC.base_dir),
                      ('correctness',int(t['Correctness']))])
         p.update(box)
         p['GuessObjectType'] = p['ObjectType']
-        p['ObjectType'] == p['ObjectType'] if t['Correctness'] == 1 else ''
+        p['ObjectType'] = p['ObjectType'] if t['Correctness'] == 1 else ''
         params.append(SON([('image',p)]))
     return params
 
@@ -555,6 +556,9 @@ labels = ['Boat',
           'Truck',
           'Empty']
 
+#ext_hash = ec4b653613768a40f4b5038750b19745f8744f87
+#splitfilename =
+
 def get_results(mean,std,ext_hash,splitfilename,outfile):
     conn = pm.Connection(document_class = SON)
     db = conn['thor']
@@ -587,6 +591,7 @@ def get_results(mean,std,ext_hash,splitfilename,outfile):
 
 #010846c656d4880a7a275cd9317555f0fa314b2d 72a0e505212e765483cbbccba527c5cb2adba64a
 #ac9e28f7e9e965ca19399853969a26c3cd293d10 cf5c20cd02920ed2c8466433cf57547384a79f0d
+#eec835e634b7fab0122f4ec2ac88c767d1fb2e41
 
 def get_stats(splitfilename):
     conn = pm.Connection(document_class = SON)
@@ -612,3 +617,85 @@ def replace_irobot_labels():
     pth = os.path.join('darpa','Heli_iRobot_annotated')
     csvs = os.listdir(pth)
     Xs = [tb.tabarray(SVfile = os.path.join(pth,csv)) for csv in csvs]
+
+
+#ebad6e12343073b404830de0a58a1f5e215e01af
+#07098d488c2ddbd8b7670b80a220c7df249f293a
+
+def get_thing(split_hash,f_hash,outfile):
+    conn = pm.Connection()
+    db = conn['thor']
+    
+    split_fs = gridfs.GridFS(db,'split_performance')
+    split_col = db['split_performance.files']
+    splits = list(split_col.find({'__hash__':split_hash}))
+    resdict = {}
+    for split in splits:
+        splitdata = cPickle.loads(split_fs.get_version(split['filename']).read())['split_result']
+        fnames = splitdata['cls_data']['test_filenames']
+        confs = splitdata['cls_data']['test_margins']
+        res = splitdata['cls_data']['test_prediction']
+        x = dict(zip(fnames,zip(confs,res)) )
+        resdict.update(x)
+
+    
+    f_coll = db['features.files']
+    recs = []
+    for im in f_coll.find({'__hash__':f_hash}):
+        margin,correct = resdict.get(im['filename'],(None,None))
+        if correct == 0:
+            print(im['filename'])
+            image = im['image']
+            cn = str(image['clip_num'])
+            frame = image['Frame']
+            xf = image['original_bounding_box']['xfields']
+            yf = image['original_bounding_box']['yfields']
+            r = (xf[0],yf[0],xf[1],yf[1],xf[2],yf[2],xf[3],yf[3])
+            r = tuple([int(rr) for rr in r])
+            ObjectType = str(image['GuessObjectType'])
+            Occlusion = str(image['Occlusion'])
+            Ambiguous = str(image['Ambiguous'])
+#            Confidence = float(image['Confidence'])
+            Confidence = margin
+            
+            print(ObjectType)
+            rec = (cn,frame) + r + (ObjectType,Occlusion,Ambiguous,Confidence)
+            recs.append(rec)
+        else:
+            print(im['filename'],'bad')
+
+    names = ['clip_num','Frame','BoundingBox_X1',
+              'BoundingBox_Y1',
+              'BoundingBox_X2',
+              'BoundingBox_Y2',
+              'BoundingBox_X3',
+              'BoundingBox_Y3',
+              'BoundingBox_X4',
+              'BoundingBox_Y4',
+              'ObjectType',
+              'Occlusion',
+              'Ambiguous',
+              'Confidence']
+    X = tb.tabarray(records = recs,names = names)
+    X.renamecol('Frame','Original')
+    Z = tb.tabarray(SVfile = '../../darpa/test_frame_correspondence.csv')
+    X = X.join(Z,keycols=['clip_num','Original'])
+    X = X.deletecols(['Original'])
+    X = X[X['ObjectType'] != '']
+    recs = []
+    for x in X:
+        rec = (x['clip_num'],x['Frame']) + tuple([x[o] for o in X.dtype.names[1:-1]])
+        recs.append(rec)
+    X = tb.tabarray(records =recs,names = ('clip_num','Frame') + X.dtype.names[1:-1])
+    X.saveSV(outfile)
+
+
+def split_thing(X,outdir):
+    os.mkdir(outdir)
+    for ind in range(1,26):
+        n = '0'*(3-len(str(ind))) + str(ind)
+        pth = os.path.join(outdir,n+'.csv')
+        Y = X[X['clip_num'] == ind]
+        Y = Y.deletecols(['clip_num'])
+        Y = Y.addcols([['']*len(Y),[1.4]*len(Y)],names=['SiteInfo','Version'])
+        Y.saveSV(pth)

@@ -134,7 +134,7 @@ def extract_optimal_darpa_models_ontest_irobot(depends_on=('../config/darpa_extr
     protocols.extraction_protocol(a,b,c,convolve_func_name='numpy', write=True,parallel=True, save_to_db=True, batch_size=200)
 
 @protocolize()
-def evaluate_optimal_darpa_models_ontest_irobot(depends_on=('../config/darpa_irobot_tasks.py',
+def evaluate_optimal_darpa_models_ontest_irobot(depends_on=('../config/darpa_irobot_binary_task.py',
                                                              '../config/darpa_extraction.py',
                                                              '../config/darpa_optimal_models.py',
                                                              '../config/darpa_heli_test_all_irobot.py')):
